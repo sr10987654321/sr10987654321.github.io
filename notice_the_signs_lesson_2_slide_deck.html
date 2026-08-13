@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Health Lesson 2 - Notice the Signs</title>
+<style>
+  :root {
+    --navy: #14213d;
+    --blue: #2f5d7c;
+    --gold: #f2b84b;
+    --cream: #fff7e8;
+    --paper: #fbf4e6;
+    --ink: #1f2933;
+    --muted: #64748b;
+    --green: #4f7f52;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #111827;
+    color: var(--ink);
+  }
+
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .slide {
+    width: 100vw;
+    height: 100vh;
+    padding: 5.5vh 6vw;
+    display: none;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(242,184,75,.22), transparent 28%),
+      radial-gradient(circle at 86% 12%, rgba(47,93,124,.16), transparent 25%),
+      linear-gradient(135deg, #fffaf0 0%, #f8edd9 100%);
+    position: relative;
+  }
+
+  .slide.active {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .slide::after {
+    content: "";
+    position: absolute;
+    inset: 18px;
+    border: 2px solid rgba(20,33,61,.12);
+    border-radius: 26px;
+    pointer-events: none;
+  }
+
+  h1 {
+    font-size: clamp(48px, 7vw, 94px);
+    line-height: .98;
+    margin: 0 0 28px;
+    color: var(--navy);
+    letter-spacing: -2px;
+  }
+
+  h2 {
+    font-size: clamp(38px, 5vw, 70px);
+    line-height: 1.05;
+    margin: 0 0 28px;
+    color: var(--navy);
+  }
+
+  h3 {
+    font-size: clamp(28px, 3vw, 42px);
+    margin: 0 0 16px;
+    color: var(--blue);
+  }
+
+  p, li {
+    font-size: clamp(23px, 2.2vw, 34px);
+    line-height: 1.35;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.2em;
+  }
+
+  .subtitle {
+    font-size: clamp(28px, 3vw, 44px);
+    color: var(--blue);
+    max-width: 980px;
+    line-height: 1.25;
+  }
+
+  .small {
+    font-size: clamp(18px, 1.5vw, 24px);
+    color: var(--muted);
+  }
+
+  .big-idea {
+    font-size: clamp(38px, 4vw, 66px);
+    line-height: 1.1;
+    max-width: 1100px;
+    color: var(--navy);
+    font-weight: 800;
+  }
+
+  .pill {
+    display: inline-block;
+    background: var(--navy);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: clamp(18px, 1.5vw, 24px);
+    letter-spacing: .5px;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 42px;
+    align-items: center;
+  }
+
+  .card {
+    background: rgba(255,255,255,.78);
+    border: 2px solid rgba(20,33,61,.12);
+    border-radius: 28px;
+    padding: 32px;
+    box-shadow: 0 16px 40px rgba(20,33,61,.08);
+  }
+
+  .scenario {
+    font-size: clamp(30px, 3.4vw, 54px);
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .three {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 26px;
+  }
+
+  .step {
+    min-height: 230px;
+  }
+
+  .step-number {
+    font-size: 22px;
+    font-weight: 800;
+    color: white;
+    background: var(--gold);
+    border-radius: 999px;
+    display: inline-flex;
+    width: 46px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .prompt {
+    font-size: clamp(36px, 4.3vw, 68px);
+    color: var(--navy);
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .footer {
+    position: absolute;
+    left: 6vw;
+    bottom: 4vh;
+    color: rgba(31,41,51,.55);
+    font-size: 18px;
+  }
+
+  .nav {
+    position: fixed;
+    right: 22px;
+    bottom: 18px;
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  button {
+    border: 0;
+    background: rgba(255,255,255,.86);
+    color: var(--navy);
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(0,0,0,.18);
+    cursor: pointer;
+  }
+
+  #counter {
+    color: white;
+    font-size: 15px;
+    opacity: .85;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .chalk {
+    background:
+      linear-gradient(135deg, rgba(20,33,61,.94), rgba(47,93,124,.95));
+    color: white;
+  }
+
+  .chalk h2, .chalk h1, .chalk .big-idea, .chalk .prompt {
+    color: white;
+  }
+
+  .chalk .card {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.22);
+    box-shadow: none;
+    color: white;
+  }
+
+  .chalk .small {
+    color: rgba(255,255,255,.75);
+  }
+
+  .chalk::after {
+    border-color: rgba(255,255,255,.16);
+  }
+
+  .chalk-word {
+    display: inline-block;
+    border: 3px dashed rgba(255,255,255,.7);
+    border-radius: 20px;
+    padding: 16px 24px;
+    margin: 12px;
+    font-size: clamp(32px, 4vw, 58px);
+    font-weight: 800;
+  }
+
+  .timer {
+    font-size: clamp(46px, 6vw, 90px);
+    font-weight: 900;
+    color: var(--gold);
+  }
+
+  @media print {
+    .nav { display: none; }
+    .slide { display: flex; page-break-after: always; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <section class="slide active">
+    <div class="pill">Year 4 Health</div>
+    <h1>Notice the Signs</h1>
+    <p class="subtitle">How can we notice what a friend might need, then choose a thoughtful next step?</p>
+    <div class="footer">Lesson 2: Friendship Chalk Walk</div>
+  </section>
+
+  <section class="slide">
+    <h2>Last lesson</h2>
+    <p class="big-idea">Small choices can affect how brightly someone feels.</p>
+    <p class="subtitle">Today we are practising how to notice those moments earlier.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Learning intention</h2>
+    <p class="big-idea">We are learning to notice clues in people’s words, faces and behaviour so we can respond thoughtfully.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Success criteria</h2>
+    <div class="three">
+      <div class="card step">
+        <div class="step-number">1</div>
+        <h3>Notice</h3>
+        <p>What clues can I see or hear?</p>
+      </div>
+      <div class="card step">
+        <div class="step-number">2</div>
+        <h3>Think</h3>
+        <p>What might they be feeling or needing?</p>
+      </div>
+      <div class="card step">
+        <div class="step-number">3</div>
+        <h3>Choose</h3>
+        <p>What could I say or do next?</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide chalk">
+    <h2>Big idea</h2>
+    <p class="prompt">Good friends do not have to guess perfectly.</p>
+    <p class="subtitle">They notice, check and listen.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Teacher quick act</h2>
+    <div class="card">
+      <p class="scenario">Someone says, “I’m fine,” but they look down, pack roughly, and stop joining in.</p>
+    </div>
+    <p class="small">Students: What clues did you notice?</p>
+  </section>
+
+  <section class="slide">
+    <h2>Be careful</h2>
+    <p class="big-idea">We can notice clues, but we cannot read minds.</p>
+    <p class="subtitle">A thoughtful friend checks instead of assuming.</p>
+  </section>
+
+  <section class="slide chalk">
+    <h2>Friendship Chalk Walk</h2>
+    <p class="subtitle">Around the undercover area, each button has a scenario recorded on it.</p>
+    <p class="big-idea">Press. Listen. Think. Chalk.</p>
+  </section>
+
+  <section class="slide chalk">
+    <h2>At each button, write:</h2>
+    <div>
+      <span class="chalk-word">Notice</span>
+      <span class="chalk-word">Feel</span>
+      <span class="chalk-word">Say</span>
+      <span class="chalk-word">Do</span>
+    </div>
+    <p class="small">You can write words, short phrases, arrows or quick sketches.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Example</h2>
+    <div class="two-col">
+      <div class="card">
+        <h3>Scenario</h3>
+        <p>Your friend is usually chatty, but today they are very quiet.</p>
+      </div>
+      <div class="card">
+        <h3>Chalk ideas</h3>
+        <p><b>Notice:</b> quiet, looking down<br>
+        <b>Feel:</b> sad, tired, worried<br>
+        <b>Say:</b> “Do you want to talk or have space?”<br>
+        <b>Do:</b> sit nearby, don’t push</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>Chalk Walk rules</h2>
+    <ul>
+      <li>Move calmly between buttons.</li>
+      <li>Read other groups’ ideas before adding yours.</li>
+      <li>Add a new idea, circle a strong one, or draw an arrow to connect ideas.</li>
+      <li>No real names. Use “someone,” “a friend,” or “the group.”</li>
+    </ul>
+  </section>
+
+  <section class="slide chalk">
+    <h2>Work time</h2>
+    <p class="timer">25 minutes</p>
+    <p class="subtitle">In pairs or small groups, visit as many buttons as you can.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Gallery walk</h2>
+    <p class="big-idea">Walk around and read the chalk clouds.</p>
+    <p class="subtitle">Find one response that is thoughtful, realistic or surprising.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Share</h2>
+    <div class="card">
+      <p class="prompt">What was one strong response you saw?</p>
+    </div>
+    <p class="small">Explain why it would help in a friendship.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Exit question</h2>
+    <p class="big-idea">What is one clue that someone might need us to respond differently?</p>
+    <p class="subtitle">Write your answer on a sticky note or say it to your partner.</p>
+  </section>
+
+  <section class="slide chalk">
+    <h2>Final thought</h2>
+    <p class="prompt">A thoughtful friend notices, checks and listens.</p>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button onclick="prevSlide()">← Back</button>
+  <div id="counter">1 / 16</div>
+  <button onclick="nextSlide()">Next →</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let current = 0;
+
+  function showSlide(index) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((slide, i) => slide.classList.toggle('active', i === current));
+    document.getElementById('counter').textContent = `${current + 1} / ${slides.length}`;
+  }
+
+  function nextSlide() { showSlide(current + 1); }
+  function prevSlide() { showSlide(current - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+    if (e.key === 'ArrowLeft') prevSlide();
+  });
+
+  showSlide(0);
+</script>
+</body>
+</html>
