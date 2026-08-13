@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Time Trials — Seeding & Order</title>
+<style>
+  :root{
+    --bg: #10131a;
+    --panel: #1a1f28;
+    --panel-2: #212834;
+    --border: #2c3442;
+    --text: #f4f6f8;
+    --text-dim: #94a1b3;
+    --text-faint: #5c6779;
+    --accent: #ffb020;
+    --accent-dim: #4a3a1a;
+    --accent-contrast: #241a00;
+    --danger: #ff5b4c;
+    --danger-dim: #3a2320;
+    --gold: #ffc53d;
+    --gold-text: #2b1e00;
+    --silver: #c9d1dc;
+    --silver-text: #1c222b;
+    --bronze: #d99361;
+    --bronze-text: #2b1608;
+    --header-bg: linear-gradient(180deg, #151a22, #10131a);
+    --actionbar-bg: linear-gradient(0deg, #10131a, #10131af0);
+    --radius: 14px;
+  }
+  html[data-theme="light"]{
+    --bg: #eef1f5;
+    --panel: #ffffff;
+    --panel-2: #e6eaf0;
+    --border: #cdd5df;
+    --text: #171c24;
+    --text-dim: #445061;
+    --text-faint: #7c8899;
+    --accent: #b57a00;
+    --accent-dim: #f5e3bd;
+    --accent-contrast: #ffffff;
+    --danger: #c8362a;
+    --danger-dim: #fadcd8;
+    --gold: #ffc53d;
+    --gold-text: #2b1e00;
+    --silver: #b9c2ce;
+    --silver-text: #1c222b;
+    --bronze: #d18a56;
+    --bronze-text: #2b1608;
+    --header-bg: linear-gradient(180deg, #ffffff, #eef1f5);
+    --actionbar-bg: linear-gradient(0deg, #eef1f5, #eef1f5f0);
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 100vh;
+  }
+  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  button{ font-family: inherit; }
+  button:focus-visible, input:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+  [hidden]{ display: none !important; }
+
+  .app{ max-width: 1280px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  .brand-bar{
+    padding: 16px 20px 10px;
+    display:flex; align-items:center; gap:10px;
+    font-weight: 800; font-size: 15px; letter-spacing: 0.02em; color: var(--text-dim);
+  }
+  .brand-bar .flag{ font-size: 18px; }
+  .theme-toggle{
+    margin-left: 12px;
+    width: 34px; height: 34px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--panel);
+    font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .theme-toggle:active{ transform: scale(0.94); }
+
+  .sync-status{
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 700;
+    color: var(--text-faint);
+  }
+  .sync-dot{ width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); flex: none; }
+  .sync-status.online{ color: #3dbb6c; }
+  .sync-status.online .sync-dot{ background: #3dbb6c; }
+  .sync-status.offline{ color: var(--danger); }
+  .sync-status.offline .sync-dot{ background: var(--danger); }
+  .sync-status.local .sync-dot{ background: var(--text-faint); }
+
+  .eyebrow{ font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: var(--accent); }
+  h1.page-title{
+    margin: 4px 0 2px;
+    font-size: clamp(22px, 4vw, 30px);
+    font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase;
+  }
+  .sub{ margin: 0; color: var(--text-dim); font-size: 14.5px; font-weight: 600; }
+
+  /* ============ SETUP SCREEN ============ */
+  .setup-screen{ padding: 4px 20px 40px; }
+  .setup-card{
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; margin-top: 18px; max-width: 620px;
+  }
+  .setup-card h2{ margin: 0 0 8px; font-size: 17px; font-weight: 800; }
+  .setup-card p{ margin: 0 0 14px; font-size: 13.5px; color: var(--text-dim); line-height: 1.5; }
+  .file-drop{
+    display: block;
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 26px; text-align: center; cursor: pointer;
+    color: var(--text-dim); font-weight: 700; font-size: 14.5px;
+    line-height: 1.7;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .file-drop:hover, .file-drop.dragover{ border-color: var(--accent); background: var(--panel-2); }
+  .file-drop input{ display: none; }
+  .setup-actions{ display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .link-btn{
+    background: none; border: none; color: var(--accent);
+    font-weight: 700; font-size: 13.5px; cursor: pointer; padding: 6px 0;
+  }
+  .csv-error{
+    margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+    background: var(--danger-dim); color: var(--danger);
+    font-size: 13.5px; font-weight: 700;
+  }
+  .csv-format{ margin-top: 16px; font-size: 12.5px; color: var(--text-faint); line-height: 1.6; }
+  .csv-format code{
+    background: var(--panel-2); padding: 2px 6px; border-radius: 5px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
+  }
+
+  /* ============ GROUP PICKER ============ */
+  .picker-screen{ padding: 4px 20px 30px; }
+  .picker-tools{ display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .tool-btn{
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  .tool-btn:active{ transform: scale(0.97); }
+  .tool-btn.danger{ color: var(--danger); border-color: var(--danger-dim); }
+  .group-grid{
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px; margin-top: 18px;
+  }
+  .group-card{
+    display: flex; flex-direction: column; gap: 10px; text-align: left;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; cursor: pointer; color: var(--text);
+    transition: transform 0.12s ease, background 0.12s ease;
+  }
+  .group-card:hover{ background: var(--panel-2); }
+  .group-card:active{ transform: scale(0.98); }
+  .gc-year{ font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: var(--accent); }
+  .gc-name{ font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+  .gc-status{ display:flex; align-items:center; gap: 7px; font-size: 12.5px; font-weight: 700; color: var(--text-dim); }
+  .status-dot{ width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: none; }
+  .status-dot.progress{ background: var(--accent); }
+  .status-dot.complete{ background: #3dbb6c; }
+
+  /* ============ GROUP (ORDERING) SCREEN ============ */
+  .group-screen{ display:flex; flex-direction:column; flex:1; }
+  .group-head{
+    padding: 4px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--header-bg);
+  }
+  .back-btn{
+    background: none; border: none; color: var(--accent);
+    font-weight: 800; font-size: 14px; cursor: pointer; padding: 8px 0 12px; display: block;
+  }
+
+  .board{
+    flex: 1; display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 0; padding: 18px 20px 10px; align-items: start;
+  }
+  .col-head{ display:flex; align-items:baseline; justify-content: space-between; margin-bottom: 4px; }
+  .col-head h2{ font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 800; color: var(--text-dim); margin: 0; }
+  .col-head .count{
+    font-size: 13px; font-weight: 800; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 2px 9px; border-radius: 100px;
+  }
+  .hint{ font-size: 12.5px; color: var(--text-faint); margin: 0 0 12px; }
+  .left-col, .right-col{ padding: 4px 14px; min-width: 0; }
+
+  .finish-line{
+    width: 3px; align-self: stretch;
+    background-image: repeating-linear-gradient(to bottom, var(--text) 0px, var(--text) 10px, transparent 10px, transparent 20px);
+    opacity: 0.35; background-size: 3px 40px;
+  }
+
+  .card-list{ display: flex; flex-direction: column; gap: 8px; }
+
+  .person-row{
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 5px solid var(--house-color, var(--text-faint));
+    border-radius: var(--radius); padding: 7px 8px;
+    position: relative;
+  }
+  .person-row.dragging{
+    opacity: 0.92; z-index: 10;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    border-color: var(--accent);
+  }
+  .person-row.drop-target-above::before,
+  .person-row.drop-target-below::after{
+    content: ''; position: absolute; left: 6px; right: 6px; height: 3px;
+    background: var(--accent); border-radius: 2px;
+  }
+  .person-row.drop-target-above::before{ top: -6px; }
+  .person-row.drop-target-below::after{ bottom: -6px; }
+
+  .drag-handle{
+    flex: none; width: 34px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-faint); cursor: grab;
+    font-size: 15px; letter-spacing: 1px;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    border-radius: 8px;
+  }
+  .drag-handle:active{ cursor: grabbing; background: var(--panel-2); }
+
+  .pos-badge{
+    flex: none; width: 44px; height: 44px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--panel-2); color: var(--text); font-weight: 900; line-height: 1;
+  }
+  .pos-badge .num{ font-size: 17px; font-variant-numeric: tabular-nums; }
+  .pos-badge .suf{ font-size: 8.5px; letter-spacing: 0.05em; opacity: 0.75; }
+  .pos-badge.p1{ background: var(--gold); color: var(--gold-text); }
+  .pos-badge.p2{ background: var(--silver); color: var(--silver-text); }
+  .pos-badge.p3{ background: var(--bronze); color: var(--bronze-text); }
+
+  .person-main{
+    flex: 1; min-width: 0;
+    background: transparent; border: none; text-align: left;
+    color: var(--text); cursor: pointer; padding: 6px 6px; border-radius: 9px;
+  }
+  .person-main:active{ background: var(--panel-2); }
+  .person-name{ font-size: 16px; font-weight: 700; }
+  .person-sub{ display:flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+  .person-sub .house-dot{ width: 8px; height: 8px; border-radius: 50%; background: var(--house-color); display:inline-block; flex:none; }
+
+  .row-controls{ display:flex; gap: 5px; flex: none; }
+  .icon-btn{
+    width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text-dim); font-size: 14px; font-weight: 800;
+    cursor: pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:disabled{ opacity: 0.3; cursor: default; }
+  .icon-btn:active:not(:disabled){ transform: scale(0.94); }
+  .icon-btn.remove{ color: var(--danger); border-color: var(--danger-dim); }
+
+  .empty-state{
+    text-align:center; padding: 30px 12px; color: var(--text-faint);
+    font-size: 14px; font-weight: 600; border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+
+  .add-student-btn{
+    width: 100%;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    padding: 11px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  .add-student-btn:active{ background: var(--panel-2); }
+  .add-student-form{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .add-student-form input{
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text);
+    font-size: 15px;
+    width: 100%;
+  }
+  .form-actions{ display:flex; gap: 8px; margin-top: 2px; }
+  .btn-small{
+    flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+    font-weight: 800; font-size: 13.5px; cursor: pointer;
+    background: var(--panel-2); color: var(--text);
+  }
+  .btn-small.primary{ background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
+  .action-bar{
+    position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 10px;
+    padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--actionbar-bg);
+    backdrop-filter: blur(6px);
+  }
+  .btn{
+    flex: 1 1 140px; border-radius: 12px; border: 1px solid var(--border);
+    padding: 14px 14px; font-size: 14.5px; font-weight: 800; letter-spacing: 0.01em; cursor: pointer;
+  }
+  .btn:disabled{ opacity: 0.35; cursor: default; }
+  .btn-secondary{ background: var(--panel-2); color: var(--text); }
+  .btn-secondary:active:not(:disabled){ transform: scale(0.98); }
+  .btn-danger{ background: var(--danger-dim); color: var(--danger); border-color: var(--danger-dim); }
+  .btn-danger:active{ transform: scale(0.98); }
+  .btn-print{ background: var(--panel-2); color: var(--accent); border-color: var(--accent-dim); }
+  .btn-print:active:not(:disabled){ transform: scale(0.98); }
+
+  /* ============ PRINT ============ */
+  .print-sheet{ display: none; }
+  @media print{
+    body *{ visibility: hidden; }
+    .print-sheet, .print-sheet *{ visibility: visible; }
+    .print-sheet{ display: block; position: absolute; top: 0; left: 0; width: 100%; background: #fff; }
+    @page{ margin: 1.5cm; }
+  }
+  .print-sheet, .print-sheet *{
+    color: #111; background: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  }
+  .print-header h1{ margin: 0; font-size: 20px; font-weight: 800; }
+  .print-header h2{ margin: 2px 0 12px; font-size: 14px; font-weight: 600; color: #444; }
+  .print-meta{ margin-bottom: 14px; font-size: 13px; line-height: 1.5; }
+  .print-meta .pm-group{ font-weight: 800; font-size: 15px; }
+  .print-table{ width: 100%; border-collapse: collapse; font-size: 14px; }
+  .print-table th, .print-table td{ border: 1px solid #999; padding: 7px 10px; text-align: left; }
+  .print-table th{ background: #eee; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .print-table td.place-col{ font-weight: 800; width: 60px; }
+  .print-note{ margin-top: 16px; font-size: 12.5px; color: #333; }
+  .print-footer{ margin-top: 18px; font-size: 11px; color: #666; }
+
+  @media (max-width: 860px){
+    .board{ grid-template-columns: 1fr; padding: 14px 14px 6px; gap: 18px; }
+    .finish-line{
+      width: auto; height: 3px;
+      background-image: repeating-linear-gradient(to right, var(--text) 0px, var(--text) 10px, transparent 10px, transparent 20px);
+      background-size: 40px 3px;
+    }
+    .left-col, .right-col{ padding: 0; }
+  }
+  @media (max-width: 480px){
+    .person-name{ font-size: 15px; }
+    .pos-badge{ width: 40px; height: 40px; }
+    .pos-badge .num{ font-size: 15px; }
+    .drag-handle{ width: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="brand-bar">
+    <span class="flag">⏱️</span> Time Trials — Seeding & Order
+    <span class="sync-status local" id="syncStatus"><span class="sync-dot"></span><span id="syncText">Local only</span></span>
+    <button class="theme-toggle" id="themeToggle" aria-label="Switch between light and dark mode">🌙</button>
+  </div>
+
+  <div class="print-sheet" id="printSheet"></div>
+
+  <!-- ============ SETUP ============ -->
+  <section id="screenSetup" class="setup-screen">
+    <div class="eyebrow">SETUP</div>
+    <h1 class="page-title">Load your students</h1>
+    <p class="sub">Upload a CSV of all students. Groups are built automatically per year level.</p>
+
+    <div class="setup-card">
+      <h2>Upload CSV</h2>
+      <p>Works directly with the school system's class list export: <strong>Full Name, Form Group (Current), Gender, House (Current), Year Level (Current)</strong> — column order doesn't matter, they're matched by name. Preferred names in brackets are used automatically, room numbers are pulled out of the form group, and gender splits each year into Boys / Girls / Other. A manual format also works: First Name, Last Name, Year, House, Room, Gender.</p>
+      <label class="file-drop" id="fileDrop">
+        📄 Tap to choose a CSV file<br>
+        <span style="font-size:12px; font-weight:600;">or drag one here</span>
+        <input type="file" id="csvInput" accept=".csv,text/csv,text/plain">
+      </label>
+      <div class="csv-error" id="csvError" hidden></div>
+      <div class="setup-actions">
+        <button class="link-btn" id="loadSampleBtn">Load sample data (for testing)</button>
+        <button class="link-btn" id="downloadTemplateBtn">Download a blank CSV template</button>
+      </div>
+      <div class="csv-format">
+        Name handling: <code>Jonathan (Jack) Smith</code> → Jack Smith · <code>Sarah Jane Wilson</code> → Sarah Jane-Wilson<br>
+        Form group: <code>Year 4 Room 7</code> → room 7<br>
+        Gender values: M / Male / Boy → Boys · F / Female / Girl → Girls · anything else (NB, X, Other…) → Other.<br>
+        Year values: K, PP, 1–6 (with or without the word "Year").
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GROUP PICKER ============ -->
+  <section id="screenPicker" class="picker-screen" hidden>
+    <div class="eyebrow">TIME TRIALS</div>
+    <h1 class="page-title">Select a group</h1>
+    <p class="sub" id="pickerSub">—</p>
+    <div class="picker-tools">
+      <button class="tool-btn" id="exportBtn">⬇ Export all results (CSV)</button>
+      <button class="tool-btn danger" id="clearDataBtn">Start over (clear data)</button>
+    </div>
+    <div class="group-grid" id="groupGrid"></div>
+  </section>
+
+  <!-- ============ GROUP SCREEN ============ -->
+  <section id="screenGroup" class="group-screen" hidden>
+    <div class="group-head">
+      <button id="backBtn" class="back-btn">← All groups</button>
+      <div class="eyebrow" id="groupYearLabel">—</div>
+      <h1 class="page-title" id="groupName">—</h1>
+      <p class="sub" id="groupSub">—</p>
+    </div>
+
+    <main class="board">
+      <section class="left-col">
+        <div class="col-head">
+          <h2>Running order</h2>
+          <span class="count" id="leftCount">0</span>
+        </div>
+        <p class="hint">Sort into predicted order (fastest first) — drag ≡ or use ▲▼. Tap a name when they finish.</p>
+
+        <button class="add-student-btn" id="addStudentToggle">+ Add student (fix missing data)</button>
+        <div class="add-student-form" id="addStudentForm" hidden>
+          <input type="text" id="newFirst" placeholder="First name">
+          <input type="text" id="newLast" placeholder="Last name">
+          <input type="text" id="newHouse" placeholder="House" list="houseOptions">
+          <datalist id="houseOptions"></datalist>
+          <input type="text" id="newRoom" placeholder="Room (e.g. Room 6)">
+          <div class="form-actions">
+            <button class="btn-small primary" id="confirmAddStudent">Add to this group</button>
+            <button class="btn-small" id="cancelAddStudent">Cancel</button>
+          </div>
+        </div>
+
+        <div class="card-list" id="leftList"></div>
+        <div class="empty-state" id="leftEmpty" hidden>🏁 Everyone's been placed.</div>
+      </section>
+
+      <div class="finish-line" aria-hidden="true"></div>
+
+      <section class="right-col">
+        <div class="col-head">
+          <h2>Trial results</h2>
+          <span class="count" id="rightCount">0</span>
+        </div>
+        <p class="hint">Finish order. Drag ≡ or ▲▼ to fix, ✕ to send back.</p>
+        <div class="card-list" id="rightList"></div>
+        <div class="empty-state" id="rightEmpty">No finishers yet — first tap becomes 1st.</div>
+      </section>
+    </main>
+
+    <footer class="action-bar">
+      <button class="btn btn-secondary" id="undoBtn" disabled>↩ Undo last</button>
+      <button class="btn btn-print" id="printBtn">🖨 Print results</button>
+      <button class="btn btn-danger" id="resetBtn">Reset group</button>
+    </footer>
+  </section>
+
+</div>
+
+<script>
+  // ==================================================
+  // CONSTANTS
+  // ==================================================
+  const STORAGE_KEY = 'timetrials-state-v1';
+  const HOUSE_PALETTE = ['#e8483a','#3e8eed','#3dbb6c','#f2b705','#a166e0','#22b8b0','#ef6ba5','#8a9a2b'];
+  const YEAR_ORDER = ['K','PP','1','2','3','4','5','6'];
+  const CAT_ORDER = ['Boys','Girls','Other','All'];
+
+  // ==================================================
+  // SYNC CONFIG
+  // ==================================================
+  // Paste your deployed Google Apps Script Web App URL here to sync across
+  // devices via a Google Sheet. IMPORTANT: use a NEW spreadsheet + deployment,
+  // separate from the carnival results one, or the two apps' data will mix.
+  // Leave blank ('') for single-device mode (saved on this device only).
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxfMJQXYyCs_0NbgsngLhcjw-KM-sFRieHX0VL-Tf3wcZfS55nIG1ZdNW1DsvLQ9RTZ/exec';
+  const SYNC_ENABLED = !!API_URL;
+  const POLL_INTERVAL_MS = 4000;
+
+  // ==================================================
+  // STATE
+  // ==================================================
+  // Everything is an action log. students / seedOrder / finishOrder are
+  // DERIVED — rebuilt by replaying the log — never mutated directly.
+  // In sync mode the log lives in the Google Sheet (cached locally);
+  // in local mode it lives in localStorage alone. Same replay either way.
+  let ACTION_LOG = [];      // confirmed actions (from server, or local-only history)
+  let pendingActions = [];  // sent-but-not-yet-seen (sync mode only)
+
+  let students = {};
+  let seedOrder = {};
+  let finishOrder = {};
+  let houseColors = {};
+
+  let currentView = 'setup'; // setup | picker | group
+  let currentGroupKey = null;
+
+  function uid(){ return 'a' + Date.now() + '-' + Math.random().toString(36).slice(2,7); }
+
+  // ==================================================
+  // LOCAL CACHE (survives refresh; offline safety net in sync mode)
+  // ==================================================
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ log: ACTION_LOG, pending: pendingActions }));
+    }catch(e){ /* storage unavailable (e.g. preview) — app still works, just won't survive refresh */ }
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data || !Array.isArray(data.log)) return false;
+      ACTION_LOG = data.log;
+      pendingActions = Array.isArray(data.pending) ? data.pending : [];
+      pendingActions.forEach(a => a._sent = false); // anything unconfirmed re-sends after a refresh
+      rebuildState();
+      return Object.keys(students).length > 0;
+    }catch(e){ return false; }
+  }
+  function clearState(){
+    ACTION_LOG = []; pendingActions = [];
+    students = {}; seedOrder = {}; finishOrder = {}; houseColors = {};
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+  }
+
+  // ==================================================
+  // REPLAY — rebuild derived state from the log
+  // ==================================================
+  function rebuildState(){
+    students = {}; seedOrder = {}; finishOrder = {};
+    const importBuffers = {}; // importId -> { chunks: {i: [students]}, of }
+
+    const combined = ACTION_LOG.concat(pendingActions);
+    combined.forEach(a => {
+      let p = {};
+      try{ p = typeof a.Payload === 'string' ? JSON.parse(a.Payload || '{}') : (a.Payload || {}); }
+      catch(e){ return; }
+
+      switch(a.Action){
+        case 'import_students': {
+          const buf = importBuffers[p.importId] = importBuffers[p.importId] || { chunks: {}, of: p.of };
+          buf.chunks[p.chunk] = p.students || [];
+          const have = Object.keys(buf.chunks).length;
+          if (have >= buf.of){
+            // full import assembled — replaces everything
+            students = {}; seedOrder = {}; finishOrder = {};
+            for (let i = 0; i < buf.of; i++){
+              (buf.chunks[i] || []).forEach(s => { students[s.id] = s; });
+            }
+          }
+          break;
+        }
+        case 'set_seed':
+          if (Array.isArray(p.order)) seedOrder[p.group] = p.order.filter(id => students[id]);
+          break;
+        case 'set_finish':
+          if (Array.isArray(p.order)) finishOrder[p.group] = p.order.filter(id => students[id]);
+          break;
+        case 'add_student':
+          if (p.student && p.student.id){
+            students[p.student.id] = p.student;
+            const k = p.student.year + '|' + p.student.cat;
+            if (seedOrder[k] && !seedOrder[k].includes(p.student.id)) seedOrder[k].push(p.student.id);
+          }
+          break;
+        case 'delete_student':
+          if (p.id){
+            delete students[p.id];
+            Object.keys(seedOrder).forEach(k => { seedOrder[k] = seedOrder[k].filter(x => x !== p.id); });
+            Object.keys(finishOrder).forEach(k => { finishOrder[k] = finishOrder[k].filter(x => x !== p.id); });
+          }
+          break;
+        case 'clear_all':
+          students = {}; seedOrder = {}; finishOrder = {};
+          break;
+      }
+    });
+
+    assignHouseColors();
+    buildGroups();
+  }
+
+  // ==================================================
+  // DISPATCH — the only way anything changes
+  // ==================================================
+  function dispatchAction(action, payload){
+    const a = {
+      Timestamp: new Date().toISOString(),
+      RaceId: (payload && payload.group) || '',
+      Action: action,
+      Payload: JSON.stringify(Object.assign({}, payload || {}, { _aid: uid() })),
+      _aid: null, _sent: false
+    };
+    a._aid = JSON.parse(a.Payload)._aid;
+
+    if (SYNC_ENABLED){
+      pendingActions.push(a);
+      rebuildState();
+      saveState();
+      refreshCurrentScreen();
+      sendAction(a);
+    } else {
+      ACTION_LOG.push(a);
+      rebuildState();
+      saveState();
+      refreshCurrentScreen();
+    }
+  }
+
+  async function sendAction(a){
+    try{
+      await fetch(API_URL, {
+        method: 'POST',
+        // text/plain avoids a CORS preflight, which Apps Script web apps don't handle
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ raceId: a.RaceId, action: a.Action, payload: JSON.parse(a.Payload), judge: '' })
+      });
+      a._sent = true; // delivered — stays pending until seen in a fetch
+      saveState();
+      setSyncStatus('online');
+    }catch(err){
+      setSyncStatus('offline');
+    }
+  }
+
+  function extractAid(action){
+    try{
+      const p = typeof action.Payload === 'string' ? JSON.parse(action.Payload || '{}') : (action.Payload || {});
+      return p._aid || null;
+    }catch(e){ return null; }
+  }
+
+  let pollSeq = 0;
+
+  // options.silent: refresh the underlying data but leave the screen alone —
+  // used by the background timer so nothing shifts while someone is actively
+  // ordering or recording. The screen updates on your own taps, when opening
+  // a group, or via a tap on the sync pill.
+  async function pollActions(options){
+    if (!SYNC_ENABLED) return;
+    const silent = !!(options && options.silent) && currentView === 'group';
+    const seq = ++pollSeq;
+    try{
+      const res = await fetch(API_URL, { method: 'GET' });
+      const data = await res.json();
+      if (seq !== pollSeq) return; // a newer request superseded this one
+      if (data && data.ok){
+        const seenAids = new Set();
+        ACTION_LOG = (data.actions || []).filter(a => {
+          const aid = extractAid(a);
+          if (!aid) return true;
+          if (seenAids.has(aid)) return false;
+          seenAids.add(aid);
+          return true;
+        });
+        pendingActions = pendingActions.filter(a => !seenAids.has(a._aid));
+        if (!silent){
+          rebuildState();
+          refreshCurrentScreen();
+        }
+        saveState();
+        setSyncStatus('online');
+      }
+    }catch(err){
+      if (seq === pollSeq) setSyncStatus('offline');
+    }
+  }
+
+  function flushPending(){
+    if (!SYNC_ENABLED) return;
+    pendingActions.filter(a => !a._sent).forEach(a => sendAction(a));
+  }
+
+  function refreshCurrentScreen(){
+    // If another device has imported the roster while this one sat on setup,
+    // move straight to the picker.
+    if (currentView === 'setup' && Object.keys(students).length > 0){
+      currentView = 'picker';
+      render();
+      return;
+    }
+    if (currentView === 'picker') renderPicker();
+    else if (currentView === 'group' && currentGroupKey){
+      if (!seedOrder[currentGroupKey]){
+        // group vanished (e.g. re-import elsewhere) — back to safety
+        currentView = 'picker'; currentGroupKey = null; render();
+      } else renderGroup();
+    }
+  }
+
+  function setSyncStatus(state){
+    const el = document.getElementById('syncStatus');
+    const text = document.getElementById('syncText');
+    if (!el) return;
+    el.className = 'sync-status ' + state;
+    text.textContent = state === 'online' ? 'Synced'
+      : state === 'offline' ? 'Offline — retrying'
+      : 'Local only';
+  }
+
+  // ==================================================
+  // CSV PARSING
+  // ==================================================
+  function parseCsv(text){
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++){
+      const c = text[i];
+      if (inQuotes){
+        if (c === '"'){
+          if (text[i+1] === '"'){ field += '"'; i++; }
+          else inQuotes = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ','){ row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r'){
+          if (c === '\r' && text[i+1] === '\n') i++;
+          row.push(field); field = '';
+          if (row.some(f => f.trim() !== '')) rows.push(row);
+          row = [];
+        }
+        else field += c;
+      }
+    }
+    row.push(field);
+    if (row.some(f => f.trim() !== '')) rows.push(row);
+    return rows;
+  }
+
+  function matchHeader(headers, candidates){
+    const norm = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    for (const cand of candidates){
+      const idx = norm.indexOf(cand);
+      if (idx > -1) return idx;
+    }
+    return -1;
+  }
+
+  function normaliseYear(v){
+    const s = String(v).trim().toUpperCase().replace(/^(YEAR|YR)\s*/,'');
+    if (s === 'K' || s === 'KINDY' || s === 'KINDERGARTEN') return 'K';
+    if (s === 'PP' || s === 'P' || s === 'PREPRIMARY' || s === 'PRE-PRIMARY') return 'PP';
+    const n = parseInt(s, 10);
+    if (!isNaN(n) && n >= 1 && n <= 6) return String(n);
+    return s || '?';
+  }
+
+  // "Jonathan (Jack) Smith" -> first: Jack, last: Smith
+  // "Sarah Jane Wilson"     -> first: Sarah, last: Jane-Wilson
+  // "Wilson, Sarah Jane"    -> first: Sarah, last: Jane-Wilson
+  function parseFullName(raw){
+    let s = String(raw).trim();
+    let preferred = null;
+    const bm = s.match(/\(([^)]+)\)/);
+    if (bm){
+      preferred = bm[1].trim();
+      s = s.replace(/\([^)]*\)/g, ' ');
+    }
+    s = s.replace(/\s+/g, ' ').trim();
+    if (!s && preferred) return { first: preferred, last: '' };
+
+    let first = '', extras = [];
+    if (s.includes(',')){
+      // "Surname(s), Firstname [middles]"
+      const parts = s.split(',').map(x => x.trim());
+      const surnameWords = parts[0] ? parts[0].split(' ') : [];
+      const givenWords = parts[1] ? parts[1].split(' ') : [];
+      first = preferred || givenWords[0] || '';
+      extras = givenWords.slice(1).concat(surnameWords);
+    } else {
+      const words = s.split(' ');
+      first = preferred || words[0] || '';
+      extras = words.slice(1);
+    }
+    return { first, last: extras.join('-') };
+  }
+
+  // "Year 4 Room 7" -> "7"   ·   "PP Room 3" -> "3"   ·   "Room 12" -> "12"
+  // Takes the LAST number, since the year level usually comes first.
+  function extractRoomNumber(raw){
+    const s = String(raw || '').trim();
+    const nums = s.match(/\d+/g);
+    if (nums && nums.length) return nums[nums.length - 1];
+    return s || '—';
+  }
+
+  function normaliseCat(v){
+    if (v === undefined || v === null) return 'All';
+    const s = String(v).trim().toLowerCase();
+    if (['m','male','boy','boys','b'].includes(s)) return 'Boys';
+    if (['f','female','girl','girls','g'].includes(s)) return 'Girls';
+    if (s === '') return 'Other';
+    return 'Other';
+  }
+
+  function importCsv(text){
+    const rows = parseCsv(text);
+    if (rows.length < 2) return { error: 'That file looks empty — it needs a header row plus at least one student.' };
+
+    const headers = rows[0];
+
+    // Two supported formats:
+    //  A) School system export: Full Name, Form Group (Current), House (Current), Year Level (Current)
+    //  B) Manual format: First Name, Last Name, Year, House, Room [, Gender]
+    const iFull  = matchHeader(headers, ['fullname','name','studentname','student']);
+    const iForm  = matchHeader(headers, ['formgroupcurrent','formgroup','form','formclass']);
+    const iFirst = matchHeader(headers, ['firstname','first','givenname','given']);
+    const iLast  = matchHeader(headers, ['lastname','last','surname','familyname']);
+    const iYear  = matchHeader(headers, ['year','yearlevel','yearlevelcurrent','yr','grade']);
+    const iHouse = matchHeader(headers, ['house','housecurrent','faction','team']);
+    const iRoom  = matchHeader(headers, ['room','roomnumber','rn','class','classroom']);
+    const iCat   = matchHeader(headers, ['gender','gendercurrent','sex','sexcurrent','category','cat']);
+
+    const systemFormat = iFull > -1;
+    const missing = [];
+    if (systemFormat){
+      if (iForm < 0 && iRoom < 0) missing.push('Form Group');
+      if (iYear < 0) missing.push('Year Level');
+      if (iHouse < 0) missing.push('House');
+    } else {
+      if (iFirst < 0) missing.push('First Name');
+      if (iLast < 0) missing.push('Last Name');
+      if (iYear < 0) missing.push('Year');
+      if (iHouse < 0) missing.push('House');
+      if (iRoom < 0) missing.push('Room');
+    }
+    if (missing.length) return { error: 'Couldn\'t find these columns in the header row: ' + missing.join(', ') + '. Check the spelling and try again.' };
+
+    const newStudents = {};
+    let counter = 0;
+    for (let r = 1; r < rows.length; r++){
+      const row = rows[r];
+      let first = '', last = '', room = '';
+      if (systemFormat){
+        const parsed = parseFullName(row[iFull] || '');
+        first = parsed.first; last = parsed.last;
+        room = extractRoomNumber(iForm > -1 ? row[iForm] : row[iRoom]);
+      } else {
+        first = (row[iFirst] || '').trim();
+        last = (row[iLast] || '').trim();
+        room = (row[iRoom] || '').trim() || '—';
+      }
+      if (!first && !last) continue;
+      const id = 's' + (++counter);
+      newStudents[id] = {
+        id,
+        first, last,
+        ord: counter,                    // row position — preserves a pre-seeded file's order
+        year: normaliseYear(row[iYear]),
+        house: (row[iHouse] || '').trim() || '—',
+        room,
+        cat: iCat > -1 ? normaliseCat(row[iCat]) : 'All'
+      };
+    }
+    if (counter === 0) return { error: 'No student rows found under the header.' };
+
+    // Dispatch as chunked actions (roughly 100 students per chunk keeps each
+    // spreadsheet cell comfortably under Google's 50k character limit).
+    // A fresh import replaces everything — replay handles that.
+    const all = Object.values(newStudents);
+    const CHUNK = 100;
+    const of = Math.max(1, Math.ceil(all.length / CHUNK));
+    const importId = uid();
+    for (let i = 0; i < of; i++){
+      dispatchAction('import_students', {
+        importId, chunk: i, of,
+        students: all.slice(i * CHUNK, (i + 1) * CHUNK)
+      });
+    }
+    return { ok: true, count: counter };
+  }
+
+  function assignHouseColors(){
+    houseColors = {};
+    const names = [...new Set(Object.values(students).map(s => s.house))];
+    // If a house name contains a colour word, use that colour; otherwise take from palette
+    const colourWords = { red:'#e8483a', blue:'#3e8eed', green:'#3dbb6c', yellow:'#f2b705', gold:'#f2b705', purple:'#a166e0', orange:'#f07f2e', teal:'#22b8b0', pink:'#ef6ba5' };
+    let paletteIdx = 0;
+    names.forEach(name => {
+      const lower = name.toLowerCase();
+      const word = Object.keys(colourWords).find(w => lower.includes(w));
+      if (word) houseColors[name] = colourWords[word];
+      else {
+        houseColors[name] = HOUSE_PALETTE[paletteIdx % HOUSE_PALETTE.length];
+        paletteIdx++;
+      }
+    });
+  }
+
+  // ==================================================
+  // GROUPS
+  // ==================================================
+  function groupKeyFor(s){ return s.year + '|' + s.cat; }
+
+  function buildGroups(){
+    // Ensure every student is in a seed order; default order = surname A-Z within group
+    const byGroup = {};
+    Object.values(students).forEach(s => {
+      const k = groupKeyFor(s);
+      (byGroup[k] = byGroup[k] || []).push(s);
+    });
+    Object.entries(byGroup).forEach(([k, list]) => {
+      if (!seedOrder[k]){
+        // Keep the order the students appeared in the CSV — that way a file
+        // that's already been seeded (e.g. from last year's times) loads in
+        // that running order. Falls back to surname A–Z if there's no order.
+        const haveOrd = list.every(s => typeof s.ord === 'number');
+        if (haveOrd) list.sort((a,b) => a.ord - b.ord);
+        else list.sort((a,b) => (a.last + a.first).localeCompare(b.last + b.first));
+        seedOrder[k] = list.map(s => s.id);
+      }
+      if (!finishOrder[k]) finishOrder[k] = [];
+    });
+    // Drop orphaned groups from old imports
+    Object.keys(seedOrder).forEach(k => { if (!byGroup[k]) { delete seedOrder[k]; delete finishOrder[k]; } });
+  }
+
+  function allGroupKeys(){
+    return Object.keys(seedOrder).sort((a,b) => {
+      const [ya, ca] = a.split('|'), [yb, cb] = b.split('|');
+      const yi = YEAR_ORDER.indexOf(ya) - YEAR_ORDER.indexOf(yb);
+      if (yi !== 0) return (YEAR_ORDER.indexOf(ya) === -1 ? 99 : YEAR_ORDER.indexOf(ya)) - (YEAR_ORDER.indexOf(yb) === -1 ? 99 : YEAR_ORDER.indexOf(yb));
+      return CAT_ORDER.indexOf(ca) - CAT_ORDER.indexOf(cb);
+    });
+  }
+
+  function groupLabel(key){
+    const [year, cat] = key.split('|');
+    const yearLabel = (year === 'K' || year === 'PP') ? year : 'Year ' + year;
+    return cat === 'All' ? yearLabel : yearLabel + ' ' + cat;
+  }
+
+  function ordinalSuffix(n){
+    const s = ['th','st','nd','rd'], v = n % 100;
+    return (s[(v-20)%10] || s[v] || s[0]);
+  }
+
+  // ==================================================
+  // RENDER — SETUP
+  // ==================================================
+  const csvInput = document.getElementById('csvInput');
+  const fileDrop = document.getElementById('fileDrop');
+  const csvError = document.getElementById('csvError');
+
+  function handleCsvText(text){
+    const res = importCsv(text);
+    if (res.error){
+      csvError.textContent = res.error;
+      csvError.hidden = false;
+      return;
+    }
+    csvError.hidden = true;
+    currentView = 'picker';
+    render();
+  }
+
+  csvInput.addEventListener('change', () => {
+    const file = csvInput.files && csvInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => handleCsvText(String(reader.result));
+    reader.onerror = () => { csvError.textContent = 'Couldn\'t read that file.'; csvError.hidden = false; };
+    reader.readAsText(file);
+    csvInput.value = '';
+  });
+
+  ['dragover','dragenter'].forEach(ev => fileDrop.addEventListener(ev, e => { e.preventDefault(); fileDrop.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => fileDrop.addEventListener(ev, e => { e.preventDefault(); fileDrop.classList.remove('dragover'); }));
+  fileDrop.addEventListener('drop', e => {
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => handleCsvText(String(reader.result));
+    reader.readAsText(file);
+  });
+
+  document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+    const csv = 'First Name,Last Name,Year,House,Room,Gender\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'time-trials-template.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('loadSampleBtn').addEventListener('click', () => {
+    const sample =
+`First Name,Last Name,Year,House,Room,Gender
+Amelia,Chen,4,Camden,Room 7,F
+Bella,Sutton,4,Casey,Room 8,F
+Chloe,Marchetti,4,Comet,Room 7,F
+Daisy,Whitmore,4,Camden,Room 8,F
+Eliza,Vance,4,Casey,Room 7,F
+Frankie,Boyd,4,Comet,Room 8,F
+George,Pemberton,4,Camden,Room 7,M
+Henry,Castellan,4,Casey,Room 8,M
+Isaac,Wren,4,Comet,Room 7,M
+Jaxon,Mercer,4,Camden,Room 8,M
+Kai,Sorensen,4,Casey,Room 7,M
+Liam,Fenwick,4,Comet,Room 8,M
+Riley,Osmond,4,Camden,Room 8,NB
+Sienna,Doyle,3,Casey,Room 5,F
+Matilda,Grant,3,Comet,Room 6,F
+Willow,Adams,3,Camden,Room 5,F
+Harriet,Voss,3,Casey,Room 6,F
+Lachlan,Brooks,3,Comet,Room 5,M
+Mason,Reilly,3,Camden,Room 6,M
+Toby,Kingston,3,Casey,Room 5,M
+Sophie,Lawrence,5,Comet,Room 9,F
+Ruby,Ashworth,5,Camden,Room 10,F
+Lily,Brennan,5,Casey,Room 9,F
+Jackson,Reid,5,Comet,Room 10,M
+Ethan,Marsh,5,Camden,Room 9,M
+Connor,Blake,5,Casey,Room 10,M`;
+    handleCsvText(sample);
+  });
+
+  // ==================================================
+  // RENDER — PICKER
+  // ==================================================
+  function renderPicker(){
+    const keys = allGroupKeys();
+    const total = Object.keys(students).length;
+    document.getElementById('pickerSub').textContent = total + ' students loaded · ' + keys.length + ' groups';
+
+    const grid = document.getElementById('groupGrid');
+    grid.innerHTML = '';
+    keys.forEach(k => {
+      const [year] = k.split('|');
+      const seedCount = seedOrder[k].length;
+      const doneCount = finishOrder[k].length;
+
+      let statusClass = '', statusText = 'Not started';
+      if (doneCount > 0 && doneCount < seedCount){ statusClass = 'progress'; statusText = doneCount + '/' + seedCount + ' placed'; }
+      else if (doneCount > 0 && doneCount >= seedCount){ statusClass = 'complete'; statusText = 'Complete · ' + seedCount + '/' + seedCount; }
+
+      const yearLabel = (year === 'K' || year === 'PP') ? year : 'YEAR ' + year;
+      const card = document.createElement('button');
+      card.className = 'group-card';
+      card.innerHTML =
+        '<div class="gc-year">' + yearLabel + '</div>' +
+        '<div class="gc-name">' + groupLabel(k) + '</div>' +
+        '<div class="gc-status"><span class="status-dot ' + statusClass + '"></span>' + statusText + ' · ' + seedCount + ' students</div>';
+      card.addEventListener('click', () => {
+        currentGroupKey = k;
+        currentView = 'group';
+        render();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  document.getElementById('clearDataBtn').addEventListener('click', () => {
+    if (confirm('Clear all students and results, and start again with a new CSV?' + (API_URL ? ' This clears it for every synced device.' : ''))){
+      if (SYNC_ENABLED){
+        dispatchAction('clear_all', {});
+      } else {
+        clearState();
+      }
+      currentView = 'setup';
+      render();
+    }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const lines = ['Group,Place,First Name,Last Name,Year,House,Room'];
+    allGroupKeys().forEach(k => {
+      finishOrder[k].forEach((sid, i) => {
+        const s = students[sid];
+        if (!s) return;
+        lines.push([groupLabel(k), i+1, s.first, s.last, s.year, s.house, s.room]
+          .map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g,'""') + '"' : v).join(','));
+      });
+      // Unplaced students listed with blank place so nobody is silently missing
+      const placed = new Set(finishOrder[k]);
+      seedOrder[k].filter(id => !placed.has(id)).forEach(sid => {
+        const s = students[sid];
+        if (!s) return;
+        lines.push([groupLabel(k), '', s.first, s.last, s.year, s.house, s.room]
+          .map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g,'""') + '"' : v).join(','));
+      });
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'time-trial-results.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // ==================================================
+  // RENDER — GROUP SCREEN
+  // ==================================================
+  function currentLeftIds(){
+    const placed = new Set(finishOrder[currentGroupKey]);
+    return seedOrder[currentGroupKey].filter(id => !placed.has(id));
+  }
+
+  function makePersonRow(s, opts){
+    // opts: {badgeNum, badgeMedal, onTap, onUp, onDown, upDisabled, downDisabled, onRemove, listName}
+    const row = document.createElement('div');
+    row.className = 'person-row';
+    row.dataset.sid = s.id;
+    row.style.setProperty('--house-color', houseColors[s.house] || 'var(--text-faint)');
+
+    const medalClass = opts.badgeMedal ? (opts.badgeNum === 1 ? ' p1' : opts.badgeNum === 2 ? ' p2' : opts.badgeNum === 3 ? ' p3' : '') : '';
+
+    row.innerHTML =
+      '<div class="drag-handle" aria-label="Drag to reorder">≡</div>' +
+      '<div class="pos-badge' + medalClass + '"><span class="num">' + opts.badgeNum + '</span><span class="suf">' + ordinalSuffix(opts.badgeNum) + '</span></div>' +
+      '<button class="person-main">' +
+        '<div class="person-name">' + s.first + ' ' + s.last + '</div>' +
+        '<div class="person-sub"><span class="house-dot"></span><span>' + s.house + '</span><span class="mono">' + s.room + '</span></div>' +
+      '</button>' +
+      '<div class="row-controls">' +
+        '<button class="icon-btn" data-a="up"' + (opts.upDisabled ? ' disabled' : '') + ' aria-label="Move up">▲</button>' +
+        '<button class="icon-btn" data-a="down"' + (opts.downDisabled ? ' disabled' : '') + ' aria-label="Move down">▼</button>' +
+        (opts.onRemove ? '<button class="icon-btn remove" data-a="rm" aria-label="Send back">✕</button>' : '') +
+        (opts.onDelete ? '<button class="icon-btn remove" data-a="del" aria-label="Delete student">🗑</button>' : '') +
+      '</div>';
+
+    if (opts.onTap) row.querySelector('.person-main').addEventListener('click', opts.onTap);
+    else row.querySelector('.person-main').style.cursor = 'default';
+    row.querySelector('[data-a="up"]').addEventListener('click', opts.onUp);
+    row.querySelector('[data-a="down"]').addEventListener('click', opts.onDown);
+    if (opts.onRemove) row.querySelector('[data-a="rm"]').addEventListener('click', opts.onRemove);
+    if (opts.onDelete) row.querySelector('[data-a="del"]').addEventListener('click', opts.onDelete);
+
+    attachDrag(row, opts.listName);
+    return row;
+  }
+
+  function renderGroup(){
+    const k = currentGroupKey;
+    const [year] = k.split('|');
+    document.getElementById('groupYearLabel').textContent = (year === 'K' || year === 'PP') ? year : 'YEAR ' + year;
+    document.getElementById('groupName').textContent = groupLabel(k);
+    document.getElementById('groupSub').textContent = seedOrder[k].length + ' students';
+
+    // LEFT: remaining runners in seed order
+    const leftIds = currentLeftIds();
+    const leftList = document.getElementById('leftList');
+    leftList.innerHTML = '';
+    document.getElementById('leftCount').textContent = leftIds.length;
+    document.getElementById('leftEmpty').hidden = leftIds.length > 0;
+
+    leftIds.forEach((sid, i) => {
+      const s = students[sid];
+      leftList.appendChild(makePersonRow(s, {
+        badgeNum: i + 1,
+        badgeMedal: false,
+        listName: 'left',
+        onTap: () => { dispatchAction('set_finish', { group: k, order: finishOrder[k].concat([sid]) }); },
+        onUp: () => moveInSeed(sid, -1),
+        onDown: () => moveInSeed(sid, +1),
+        upDisabled: i === 0,
+        downDisabled: i === leftIds.length - 1,
+        onDelete: () => {
+          if (confirm('Delete ' + s.first + ' ' + s.last + ' completely? Use this only to fix wrong data — they\'ll be removed from this group and the export.')){
+            deleteStudent(sid);
+          }
+        }
+      }));
+    });
+
+    // RIGHT: finish order
+    const order = finishOrder[k];
+    const rightList = document.getElementById('rightList');
+    rightList.innerHTML = '';
+    document.getElementById('rightCount').textContent = order.length;
+    document.getElementById('rightEmpty').style.display = order.length ? 'none' : 'block';
+
+    order.forEach((sid, i) => {
+      const s = students[sid];
+      if (!s) return;
+      rightList.appendChild(makePersonRow(s, {
+        badgeNum: i + 1,
+        badgeMedal: true,
+        listName: 'right',
+        onTap: null,
+        onUp: () => { swapFinish(i, i-1); },
+        onDown: () => { swapFinish(i, i+1); },
+        upDisabled: i === 0,
+        downDisabled: i === order.length - 1,
+        onRemove: () => {
+          dispatchAction('set_finish', { group: k, order: finishOrder[k].filter(x => x !== sid) });
+        }
+      }));
+    });
+
+    document.getElementById('undoBtn').disabled = order.length === 0;
+  }
+
+  // Move a student one step within the seed order — but relative to the
+  // *visible* (unplaced) list, skipping over already-finished students.
+  function moveInSeed(sid, dir){
+    const k = currentGroupKey;
+    const visible = currentLeftIds();
+    const vi = visible.indexOf(sid);
+    const target = visible[vi + dir];
+    if (target === undefined) return;
+    const arr = seedOrder[k].slice();          // work on a copy, then log the result
+    arr.splice(arr.indexOf(sid), 1);           // take the student out
+    const ti = arr.indexOf(target);            // find the neighbour they're jumping over
+    arr.splice(dir < 0 ? ti : ti + 1, 0, sid); // up = before the neighbour, down = after
+    dispatchAction('set_seed', { group: k, order: arr });
+  }
+
+  function swapFinish(i, j){
+    const k = currentGroupKey;
+    const arr = finishOrder[k].slice();
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    dispatchAction('set_finish', { group: k, order: arr });
+  }
+
+  function deleteStudent(sid){
+    const k = currentGroupKey;
+    const wasLast = seedOrder[k].filter(x => x !== sid).length === 0;
+    dispatchAction('delete_student', { id: sid, group: k });
+    if (wasLast){
+      // group is now empty — back to the picker
+      currentView = 'picker';
+      currentGroupKey = null;
+      render();
+    }
+  }
+
+  // ---- Add student (fix missing data) ----
+  function resetAddForm(){
+    ['newFirst','newLast','newHouse','newRoom'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('addStudentForm').hidden = true;
+  }
+
+  document.getElementById('addStudentToggle').addEventListener('click', () => {
+    const form = document.getElementById('addStudentForm');
+    form.hidden = !form.hidden;
+    if (!form.hidden){
+      // offer the houses already in the data as suggestions
+      const dl = document.getElementById('houseOptions');
+      dl.innerHTML = '';
+      Object.keys(houseColors).forEach(h => {
+        const opt = document.createElement('option');
+        opt.value = h;
+        dl.appendChild(opt);
+      });
+      document.getElementById('newFirst').focus();
+    }
+  });
+  document.getElementById('cancelAddStudent').addEventListener('click', resetAddForm);
+  document.getElementById('confirmAddStudent').addEventListener('click', () => {
+    const first = document.getElementById('newFirst').value.trim();
+    const last = document.getElementById('newLast').value.trim();
+    const house = document.getElementById('newHouse').value.trim() || '—';
+    const room = document.getElementById('newRoom').value.trim() || '—';
+    if (!first){ document.getElementById('newFirst').focus(); return; }
+
+    const k = currentGroupKey;
+    const [year, cat] = k.split('|');
+    const id = 'add-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+    resetAddForm();
+    // joins at the bottom of the running order — drag them into place
+    dispatchAction('add_student', { group: k, student: { id, first, last, year, house, room, cat } });
+  });
+
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    dispatchAction('set_finish', { group: currentGroupKey, order: finishOrder[currentGroupKey].slice(0, -1) });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (finishOrder[currentGroupKey].length === 0) return;
+    if (confirm('Clear the trial results for ' + groupLabel(currentGroupKey) + '? The running order is kept.')){
+      dispatchAction('set_finish', { group: currentGroupKey, order: [] });
+    }
+  });
+
+  document.getElementById('backBtn').addEventListener('click', () => {
+    resetAddForm();
+    currentView = 'picker';
+    currentGroupKey = null;
+    render();
+  });
+
+  // ==================================================
+  // DRAG TO REORDER (pointer events — works with touch)
+  // ==================================================
+  let drag = null;
+
+  function attachDrag(row, listName){
+    const handle = row.querySelector('.drag-handle');
+    handle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      drag = { row, listName, sid: row.dataset.sid, startY: e.clientY, moved: false, targetSid: null, before: true };
+      row.classList.add('dragging');
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!drag || drag.row !== row) return;
+      const dy = e.clientY - drag.startY;
+      if (Math.abs(dy) > 4) drag.moved = true;
+      row.style.transform = 'translateY(' + dy + 'px)';
+
+      // find which sibling we're hovering over
+      const container = row.parentElement;
+      const siblings = Array.from(container.children).filter(el => el !== row && el.classList.contains('person-row'));
+      siblings.forEach(el => el.classList.remove('drop-target-above','drop-target-below'));
+      drag.targetSid = null;
+
+      const y = e.clientY;
+      for (const el of siblings){
+        const r = el.getBoundingClientRect();
+        if (y < r.top + r.height / 2){
+          el.classList.add('drop-target-above');
+          drag.targetSid = el.dataset.sid;
+          drag.before = true;
+          return;
+        }
+      }
+      // below all siblings
+      if (siblings.length){
+        const lastEl = siblings[siblings.length - 1];
+        lastEl.classList.add('drop-target-below');
+        drag.targetSid = lastEl.dataset.sid;
+        drag.before = false;
+      }
+    });
+    function endDrag(e){
+      if (!drag || drag.row !== row) return;
+      row.classList.remove('dragging');
+      row.style.transform = '';
+      const container = row.parentElement;
+      Array.from(container.children).forEach(el => el.classList.remove('drop-target-above','drop-target-below'));
+
+      if (drag.moved && drag.targetSid && drag.targetSid !== drag.sid){
+        applyDrop(drag.listName, drag.sid, drag.targetSid, drag.before);
+      }
+      drag = null;
+    }
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+  }
+
+  function applyDrop(listName, sid, targetSid, before){
+    const k = currentGroupKey;
+    const arr = (listName === 'left' ? seedOrder[k] : finishOrder[k]).slice();
+    const from = arr.indexOf(sid);
+    if (from < 0) return;
+    arr.splice(from, 1);
+    let to = arr.indexOf(targetSid);
+    if (to < 0) return;
+    if (!before) to += 1;
+    arr.splice(to, 0, sid);
+    dispatchAction(listName === 'left' ? 'set_seed' : 'set_finish', { group: k, order: arr });
+  }
+
+  // ==================================================
+  // PRINT
+  // ==================================================
+  document.getElementById('printBtn').addEventListener('click', () => {
+    const k = currentGroupKey;
+    const order = finishOrder[k];
+    const placed = new Set(order);
+    const notPlaced = seedOrder[k].filter(id => !placed.has(id));
+    const dateStr = new Date().toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    const rows = order.map((sid, i) => {
+      const s = students[sid];
+      if (!s) return '';
+      return '<tr><td class="place-col">' + (i+1) + ordinalSuffix(i+1) + '</td><td>' + s.first + ' ' + s.last + '</td><td>' + s.house + '</td><td>' + s.room + '</td></tr>';
+    }).join('');
+
+    const noteHtml = notPlaced.length
+      ? '<div class="print-note"><strong>Not yet placed (' + notPlaced.length + '):</strong> ' + notPlaced.map(id => students[id].first + ' ' + students[id].last).join(', ') + '</div>'
+      : '';
+
+    document.getElementById('printSheet').innerHTML =
+      '<div class="print-header"><h1>Hilton Primary School</h1><h2>Time Trials — Finish Order</h2></div>' +
+      '<div class="print-meta"><div class="pm-group">' + groupLabel(k) + '</div><div>' + dateStr + '</div></div>' +
+      '<table class="print-table"><thead><tr><th>Place</th><th>Name</th><th>House</th><th>Room</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="4">No results recorded yet.</td></tr>') +
+      '</tbody></table>' + noteHtml +
+      '<div class="print-footer">Recorded ' + order.length + ' of ' + seedOrder[k].length + ' students</div>';
+
+    window.print();
+  });
+
+  // ==================================================
+  // THEME
+  // ==================================================
+  (function initTheme(){
+    const btn = document.getElementById('themeToggle');
+    function apply(theme){
+      document.documentElement.setAttribute('data-theme', theme);
+      btn.textContent = theme === 'light' ? '🌙' : '☀️';
+      try{ localStorage.setItem('carnival-theme', theme); }catch(e){}
+    }
+    let saved = 'dark';
+    try{ saved = localStorage.getItem('carnival-theme') || 'dark'; }catch(e){}
+    apply(saved);
+    btn.addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+      apply(cur === 'light' ? 'dark' : 'light');
+    });
+  })();
+
+  // ==================================================
+  // TOP-LEVEL RENDER
+  // ==================================================
+  function render(){
+    document.getElementById('screenSetup').hidden = currentView !== 'setup';
+    document.getElementById('screenPicker').hidden = currentView !== 'picker';
+    document.getElementById('screenGroup').hidden = currentView !== 'group';
+    if (currentView === 'picker') renderPicker();
+    if (currentView === 'group') renderGroup();
+  }
+
+  // Boot: restore whatever this device already knows, then (in sync mode)
+  // catch up from the shared sheet.
+  if (loadState()){
+    currentView = 'picker';
+  }
+  if (SYNC_ENABLED){
+    setSyncStatus('offline'); // flips to 'online' on the first successful poll
+    pollActions();            // full catch-up — may auto-advance past setup if a roster exists
+    setInterval(() => { pollActions({ silent: true }); flushPending(); }, POLL_INTERVAL_MS);
+
+    // Manual refresh: tap the sync pill to pull in changes from other devices
+    // without waiting for a natural resync point.
+    const syncEl = document.getElementById('syncStatus');
+    syncEl.style.cursor = 'pointer';
+    syncEl.title = 'Tap to refresh';
+    syncEl.addEventListener('click', () => pollActions());
+  } else {
+    setSyncStatus('local');
+  }
+  render();
+</script>
+
+</body>
+</html>
