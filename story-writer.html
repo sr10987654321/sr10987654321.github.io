@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Story Writer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Andika:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script>
+/* ==========================================================================
+   SETUP — paste your Apps Script web app URL here (the one ending in /exec)
+   ========================================================================== */
+const API_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE';
+</script>
+<style>
+  :root{
+    --ink:#2B1B4D;        /* deep grape — all outlines and text */
+    --paper:#FFFDF6;      /* the page they write on */
+    --shell:#E9E6FF;      /* desk behind the page */
+    --coral:#FF6B5A;
+    --sun:#FFC93C;
+    --mint:#3FC9A0;
+    --sky:#4D8DFF;
+    --rule:#D9DCF5;
+    --line:36px;
+    --display:"Fredoka","Trebuchet MS",system-ui,sans-serif;
+    --write:"Andika",Verdana,system-ui,sans-serif;
+    --pop:3px 3px 0 var(--ink);
+    --pop-sm:2px 2px 0 var(--ink);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;color:var(--ink)}
+  body{
+    font-family:var(--display);font-size:16px;
+    background:var(--shell);
+    background-image:radial-gradient(var(--sky) 1.5px, transparent 1.6px);
+    background-size:22px 22px;
+    padding-bottom:6.5rem;
+  }
+
+  /* ---------------------------------------------------------------- header */
+  header{
+    position:sticky;top:0;z-index:20;
+    background:#fff;
+    border-bottom:3px solid var(--ink);
+    padding:.6rem max(.75rem,env(safe-area-inset-left)) .6rem;
+  }
+  .row{display:flex;gap:.5rem;align-items:center;max-width:54rem;margin:0 auto;flex-wrap:wrap}
+
+  .mark{
+    font-family:var(--display);font-weight:700;font-size:1.05rem;line-height:1;
+    background:var(--sun);border:3px solid var(--ink);border-radius:12px;
+    padding:.45rem .6rem;box-shadow:var(--pop-sm);transform:rotate(-3deg);
+    flex:none;margin-right:.2rem;
+  }
+  .mark em{font-style:normal;color:var(--coral)}
+
+  .field{display:flex;flex-direction:column;gap:.15rem;flex:1 1 9rem;min-width:9rem}
+  .field label{font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--ink);opacity:.7}
+  .field input{
+    font:600 17px/1.2 var(--display);color:var(--ink);
+    border:3px solid var(--ink);border-radius:12px;background:#fff;
+    padding:.5rem .6rem;min-height:44px;width:100%;box-shadow:var(--pop-sm);
+  }
+  .field input::placeholder{color:#a49fc4;font-weight:500}
+  .field input:focus{outline:none;background:#FFF8E4;box-shadow:var(--pop)}
+
+  .status{
+    display:flex;align-items:center;gap:.4rem;flex:0 0 auto;
+    font:700 13px/1 var(--display);
+    padding:.55rem .7rem;border-radius:99px;border:3px solid var(--ink);
+    background:var(--mint);box-shadow:var(--pop-sm);white-space:nowrap;
+  }
+  .status .dot{width:9px;height:9px;border-radius:50%;background:var(--ink);flex:none}
+  .status.busy{background:var(--sun)}
+  .status.busy .dot{animation:blink 1s infinite ease-in-out}
+  .status.warn{background:var(--coral);color:#fff}
+  .status.warn .dot{background:#fff}
+  .status.idle{background:#fff}
+  .status.pop{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.14) rotate(-3deg)}100%{transform:scale(1)}}
+
+  /* --------------------------------------------------------------- toolbar */
+  .toolbar{display:flex;gap:.4rem;max-width:54rem;margin:.55rem auto 0;flex-wrap:wrap}
+  .tool{
+    font:700 17px/1 var(--display);color:var(--ink);
+    min-width:48px;height:46px;padding:0 .8rem;
+    border:3px solid var(--ink);border-radius:12px;background:#fff;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    box-shadow:var(--pop-sm);transition:transform .06s,box-shadow .06s;
+  }
+  .tool:active{transform:translate(2px,2px);box-shadow:none}
+  .tool[aria-pressed="true"]{background:var(--sky);color:#fff}
+  .tool.b{font-weight:700}
+  .tool.i{font-style:italic}
+  .tool.u{text-decoration:underline}
+  .tool.sm{font-size:14px;height:44px;min-width:44px;padding:0 .7rem}
+  .tool.bullet{background:#fff}
+  .spacer{flex:1}
+
+  /* ----------------------------------------------------------------- sheet */
+  main{max-width:54rem;margin:1.1rem auto;padding:0 max(.6rem,env(safe-area-inset-left))}
+  .sheet{
+    background:var(--paper);
+    border:3px solid var(--ink);
+    border-radius:18px;
+    box-shadow:6px 6px 0 var(--ink);
+    padding:1.5rem 1.4rem 3rem 2.9rem;
+    position:relative;
+    background-image:repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent calc(var(--line) - 2px),
+      var(--rule) calc(var(--line) - 2px), var(--rule) var(--line));
+    background-position:0 1.5rem;
+  }
+  .sheet::before{
+    content:"";position:absolute;top:14px;bottom:14px;left:1.9rem;width:3px;
+    background:var(--coral);border-radius:3px;
+  }
+  #editor{
+    font-family:var(--write);font-size:19px;line-height:var(--line);
+    min-height:58vh;outline:none;white-space:pre-wrap;word-wrap:break-word;
+  }
+  #editor:empty::before{content:attr(data-placeholder);color:#b3aed0}
+  #editor p{margin:0 0 var(--line)}
+  #editor ul,#editor ol{margin:0 0 var(--line);padding-left:1.7rem}
+
+  /* ------------------------------------------------------------ bottom bar */
+  footer{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;
+    background:#fff;border-top:3px solid var(--ink);
+    padding:.5rem max(.75rem,env(safe-area-inset-left)) max(.55rem,env(safe-area-inset-bottom));
+  }
+  .meter{flex:1 1 8rem;min-width:7rem;display:flex;flex-direction:column;gap:.2rem}
+  .meter .label{font:700 12px/1 var(--display);display:flex;justify-content:space-between;gap:.5rem}
+  .meter .label b{font-size:15px}
+  .meter .label span{opacity:.65;font-weight:600}
+  .bar{height:14px;border:3px solid var(--ink);border-radius:99px;background:#fff;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--mint);transition:width .3s ease}
+  .bar.full i{background:var(--sun)}
+
+  select{
+    font:600 15px/1 var(--display);color:var(--ink);height:46px;
+    border:3px solid var(--ink);border-radius:12px;background:#fff;padding:0 .5rem;
+    box-shadow:var(--pop-sm);flex:1 1 8rem;min-width:0;max-width:15rem;
+  }
+  .primary{background:var(--coral);color:#fff}
+  .go{background:var(--sky);color:#fff}
+
+  /* -------------------------------------------------------------- messages */
+  .note{
+    max-width:54rem;margin:.9rem auto 0;padding:.85rem 1rem;
+    border:3px solid var(--ink);border-radius:16px;box-shadow:var(--pop);
+    font-family:var(--display);font-size:14.5px;line-height:1.5;display:none;
+  }
+  .note.show{display:block}
+  .note.recover{background:var(--sun)}
+  .note.setup{background:#fff}
+  .note.error{background:var(--coral);color:#fff}
+  .note button{margin:.6rem .4rem 0 0}
+  .note code{background:#fff;border:2px solid var(--ink);padding:.05rem .3rem;border-radius:6px;font-size:12.5px}
+  .note h2{font-size:16px;margin:0 0 .3rem}
+
+  @media (max-width:540px){
+    .field{flex:1 1 100%}
+    .sheet{padding:1.3rem 1rem 2.5rem 2.4rem;box-shadow:4px 4px 0 var(--ink)}
+    .sheet::before{left:1.5rem}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media print{
+    header,footer,.toolbar,.note{display:none!important}
+    body{background:#fff;padding:0}
+    .sheet{border:0;box-shadow:none;background-image:none;padding:0}
+    .sheet::before{display:none}
+    #editor{font-size:12pt;line-height:1.6}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="row">
+    <div class="mark">Story<em>!</em></div>
+    <div class="field">
+      <label for="student">Your name</label>
+      <input id="student" list="names" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="e.g. Ava">
+      <datalist id="names"></datalist>
+    </div>
+    <div class="field">
+      <label for="title">Story title</label>
+      <input id="title" autocomplete="off" autocapitalize="sentences" placeholder="Untitled story">
+    </div>
+    <div class="status idle" id="status"><span class="dot"></span><span id="statusText">Not saved yet</span></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool b" data-cmd="bold" title="Bold">B</button>
+    <button class="tool i" data-cmd="italic" title="Italic">I</button>
+    <button class="tool u" data-cmd="underline" title="Underline">U</button>
+    <button class="tool bullet" data-cmd="insertUnorderedList" title="Bullet list">•</button>
+    <button class="tool" data-cmd="insertOrderedList" title="Numbered list">1.</button>
+    <button class="tool" data-cmd="undo" title="Undo">↶</button>
+    <button class="tool" data-cmd="redo" title="Redo">↷</button>
+    <span class="spacer"></span>
+    <button class="tool sm" data-cmd="removeFormat" title="Clear formatting">Plain</button>
+  </div>
+</header>
+
+<div class="note setup" id="setupNote">
+  <h2>Add your Apps Script link</h2>
+  Open this file and replace <code>PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE</code> with your web app URL.
+  Until then, writing is kept on this iPad only.
+</div>
+
+<div class="note recover" id="recoverNote">
+  <h2>We found writing on this iPad</h2>
+  <span id="recoverText"></span>
+  <div>
+    <button class="tool sm go" id="recoverYes">Bring it back</button>
+    <button class="tool sm" id="recoverNo">Start fresh</button>
+  </div>
+</div>
+
+<div class="note error" id="errorNote"></div>
+
+<main>
+  <div class="sheet">
+    <div id="editor" contenteditable="true" spellcheck="true" autocapitalize="sentences"
+         data-placeholder="Once upon a time…"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="row">
+    <div class="meter">
+      <div class="label"><span><b id="words">0</b> words</span><span id="goalText">next stop 25</span></div>
+      <div class="bar" id="bar"><i id="barFill"></i></div>
+    </div>
+    <select id="openList" aria-label="Open a saved story">
+      <option value="">Open a story…</option>
+    </select>
+    <button class="tool sm" id="newBtn">New</button>
+    <button class="tool sm" id="printBtn">Print</button>
+    <button class="tool sm primary" id="saveBtn">Save now</button>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var LOCAL_KEY = 'storyWriter.draft';
+  var LAST_NAME_KEY = 'storyWriter.lastName';
+  var configured = /^https:\/\/script\.google\.com\/.+\/exec/.test(API_URL);
+
+  var el = {
+    student: document.getElementById('student'),
+    title: document.getElementById('title'),
+    editor: document.getElementById('editor'),
+    words: document.getElementById('words'),
+    goalText: document.getElementById('goalText'),
+    bar: document.getElementById('bar'),
+    barFill: document.getElementById('barFill'),
+    status: document.getElementById('status'),
+    statusText: document.getElementById('statusText'),
+    openList: document.getElementById('openList'),
+    names: document.getElementById('names'),
+    setupNote: document.getElementById('setupNote'),
+    recoverNote: document.getElementById('recoverNote'),
+    recoverText: document.getElementById('recoverText'),
+    errorNote: document.getElementById('errorNote')
+  };
+
+  var state = {
+    fileId: null,
+    stories: [],
+    dirty: false,
+    saving: false,
+    lastSent: '',
+    typingTimer: null
+  };
+
+  /* ------------------------------------------------------------- server io */
+
+  function api(action, payload) {
+    var body = Object.assign({ action: action }, payload || {});
+    return fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Drive did not answer (' + res.status + ')');
+      return res.json();
+    }).then(function (data) {
+      if (!data.ok) throw new Error(data.error || 'Something went wrong');
+      return data;
+    });
+  }
+
+  /* --------------------------------------------------------------- status */
+
+  function setStatus(text, kind, celebrate) {
+    el.statusText.textContent = text;
+    el.status.className = 'status ' + (kind || '');
+    if (celebrate) {
+      void el.status.offsetWidth;
+      el.status.classList.add('pop');
+    }
+  }
+
+  function showError(message) {
+    el.errorNote.textContent = message;
+    el.errorNote.classList.add('show');
+    clearTimeout(showError.t);
+    showError.t = setTimeout(function () { el.errorNote.classList.remove('show'); }, 8000);
+  }
+
+  /* --------------------------------------------------------- local backup */
+
+  function localSave(synced) {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({
+        name: el.student.value,
+        title: el.title.value,
+        html: el.editor.innerHTML,
+        fileId: state.fileId,
+        synced: !!synced,
+        at: Date.now()
+      }));
+    } catch (err) { /* storage full or private mode — ignore */ }
+  }
+
+  function localRead() {
+    try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null'); }
+    catch (err) { return null; }
+  }
+
+  /* ---------------------------------------------------------- word counter */
+
+  function countWords() {
+    var text = (el.editor.innerText || '').replace(/\s+/g, ' ').trim();
+    return text ? text.split(' ').length : 0;
+  }
+
+  function goalFor(n) {
+    var steps = [25, 50, 100, 150, 200, 300, 400, 500, 750, 1000];
+    for (var i = 0; i < steps.length; i++) { if (n < steps[i]) return steps[i]; }
+    return Math.ceil((n + 1) / 500) * 500;
+  }
+
+  function updateWords() {
+    var n = countWords();
+    var goal = goalFor(n);
+    var prev = Number(el.words.dataset.n || 0);
+    el.words.textContent = n;
+    el.words.dataset.n = n;
+    el.goalText.textContent = 'next stop ' + goal;
+    el.barFill.style.width = Math.min(100, Math.round((n / goal) * 100)) + '%';
+    if (goalFor(prev) !== goal && n > prev) {
+      el.bar.classList.add('full');
+      setTimeout(function () { el.bar.classList.remove('full'); }, 1200);
+    }
+  }
+
+  /* ---------------------------------------------------------------- saving */
+
+  function snapshot() {
+    return el.student.value + '\u0000' + el.title.value + '\u0000' + el.editor.innerHTML;
+  }
+
+  function markDirty() {
+    state.dirty = true;
+    updateWords();
+    localSave(false);
+    setStatus('Writing…', 'idle');
+    clearTimeout(state.typingTimer);
+    state.typingTimer = setTimeout(function () { save(); }, 2500);
+  }
+
+  function save(opts) {
+    opts = opts || {};
+    if (!configured) { localSave(false); setStatus('On this iPad', 'warn'); return Promise.resolve(); }
+    if (state.saving) return Promise.resolve();
+
+    var name = el.student.value.trim();
+    if (!name) {
+      if (opts.manual) showError('Type your name at the top, then it can save to Drive.');
+      setStatus('Add your name', 'warn');
+      return Promise.resolve();
+    }
+    var current = snapshot();
+    if (!opts.manual && current === state.lastSent) return Promise.resolve();
+    if (!el.editor.innerText.trim() && !state.fileId) { setStatus('Nothing to save yet', 'idle'); return Promise.resolve(); }
+
+    state.saving = true;
+    setStatus('Saving…', 'busy');
+
+    return api('save', {
+      id: state.fileId,
+      name: name,
+      title: el.title.value.trim(),
+      html: el.editor.innerHTML,
+      words: countWords()
+    }).then(function (data) {
+      state.fileId = data.id;
+      state.lastSent = current;
+      state.dirty = false;
+      localSave(true);
+      setStatus('Saved!', '', true);
+      refreshList();
+    }).catch(function (err) {
+      localSave(false);
+      setStatus('Kept on this iPad', 'warn');
+      if (opts.manual) showError(err.message);
+    }).then(function () {
+      state.saving = false;
+    });
+  }
+
+  /* ---------------------------------------------------------- open / list */
+
+  function refreshList() {
+    if (!configured) return Promise.resolve();
+    return api('list').then(function (data) {
+      state.stories = data.stories || [];
+      renderNames();
+      renderList();
+    }).catch(function () { /* offline — keep whatever list we have */ });
+  }
+
+  function renderNames() {
+    var seen = {}, html = '';
+    state.stories.forEach(function (s) {
+      if (s.student && !seen[s.student]) { seen[s.student] = 1; html += '<option value="' + escapeAttr(s.student) + '">'; }
+    });
+    el.names.innerHTML = html;
+  }
+
+  function renderList() {
+    var name = el.student.value.trim().toLowerCase();
+    var mine = state.stories.filter(function (s) {
+      return !name || (s.student || '').toLowerCase() === name;
+    });
+    var html = '<option value="">' + (mine.length ? 'Open a story…' : 'No stories yet') + '</option>';
+    mine.forEach(function (s) {
+      var label = s.title + (name ? '' : ' — ' + s.student) + ' (' + s.words + ' words)';
+      html += '<option value="' + escapeAttr(s.id) + '"' + (s.id === state.fileId ? ' selected' : '') + '>'
+        + escapeHtml(label) + '</option>';
+    });
+    el.openList.innerHTML = html;
+  }
+
+  function openStory(id) {
+    if (!id) return;
+    setStatus('Opening…', 'busy');
+    api('load', { id: id }).then(function (data) {
+      state.fileId = data.id;
+      el.student.value = data.student || el.student.value;
+      el.title.value = data.title || '';
+      el.editor.innerHTML = data.html || '';
+      updateWords();
+      state.lastSent = snapshot();
+      state.dirty = false;
+      localSave(true);
+      setStatus('Opened', '', true);
+      renderList();
+      el.editor.focus();
+    }).catch(function (err) {
+      setStatus('Could not open', 'warn');
+      showError(err.message);
+    });
+  }
+
+  function newStory() {
+    if (state.dirty && !confirm('Start a new story? Anything unsaved will be lost.')) return;
+    state.fileId = null;
+    el.title.value = '';
+    el.editor.innerHTML = '';
+    updateWords();
+    state.lastSent = snapshot();
+    state.dirty = false;
+    localSave(true);
+    setStatus('New story', 'idle');
+    renderList();
+    el.title.focus();
+  }
+
+  /* ------------------------------------------------------------ formatting */
+
+  document.querySelectorAll('.tool[data-cmd]').forEach(function (btn) {
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () {
+      el.editor.focus();
+      document.execCommand(btn.dataset.cmd, false, null);
+      updateToolbar();
+      markDirty();
+    });
+  });
+
+  function updateToolbar() {
+    ['bold', 'italic', 'underline'].forEach(function (cmd) {
+      var btn = document.querySelector('.tool[data-cmd="' + cmd + '"]');
+      var on = false;
+      try { on = document.queryCommandState(cmd); } catch (err) { on = false; }
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  /* ------------------------------------------------------------- plumbing */
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function escapeAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
+
+  el.editor.addEventListener('input', markDirty);
+  el.editor.addEventListener('keyup', updateToolbar);
+  el.editor.addEventListener('mouseup', updateToolbar);
+  el.editor.addEventListener('blur', function () { if (state.dirty) save(); });
+
+  // Paste as plain text so odd formatting can't come in from the web.
+  el.editor.addEventListener('paste', function (e) {
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+
+  el.title.addEventListener('input', markDirty);
+  el.student.addEventListener('input', function () { renderList(); markDirty(); });
+  el.student.addEventListener('change', function () {
+    try { localStorage.setItem(LAST_NAME_KEY, el.student.value.trim()); } catch (err) {}
+    renderList();
+  });
+
+  el.openList.addEventListener('change', function () {
+    var id = el.openList.value;
+    if (!id) return;
+    if (state.dirty) { save().then(function () { openStory(id); }); }
+    else { openStory(id); }
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', function () { save({ manual: true }); });
+  document.getElementById('newBtn').addEventListener('click', newStory);
+  document.getElementById('printBtn').addEventListener('click', function () { window.print(); });
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save({ manual: true }); }
+  });
+
+  // Safety nets: periodic save, retry when the wifi returns, save on leaving.
+  setInterval(function () { if (state.dirty) save(); }, 20000);
+  window.addEventListener('online', function () { if (state.dirty) save(); });
+  window.addEventListener('pagehide', function () { if (state.dirty) { localSave(false); save(); } });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden' && state.dirty) save();
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* ----------------------------------------------------------------- start */
+
+  if (!configured) {
+    el.setupNote.classList.add('show');
+    setStatus('This iPad only', 'warn');
+  }
+
+  try {
+    var last = localStorage.getItem(LAST_NAME_KEY);
+    if (last) el.student.value = last;
+  } catch (err) {}
+
+  var draft = localRead();
+  if (draft && !draft.synced && (draft.html || '').replace(/<[^>]*>/g, '').trim()) {
+    el.recoverText.textContent = '"' + (draft.title || 'Untitled story') + '" by '
+      + (draft.name || 'someone') + ' did not reach Drive last time.';
+    el.recoverNote.classList.add('show');
+    document.getElementById('recoverYes').addEventListener('click', function () {
+      el.student.value = draft.name || '';
+      el.title.value = draft.title || '';
+      el.editor.innerHTML = draft.html || '';
+      state.fileId = draft.fileId || null;
+      updateWords();
+      el.recoverNote.classList.remove('show');
+      renderList();
+      save({ manual: true });
+    });
+    document.getElementById('recoverNo').addEventListener('click', function () {
+      el.recoverNote.classList.remove('show');
+      localSave(true);
+    });
+  }
+
+  state.lastSent = snapshot();
+  updateWords();
+  refreshList();
+})();
+</script>
+</body>
+</html>
