@@ -38,6 +38,16 @@
   .icon-sq{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
     background:var(--panel);font-size:14px;cursor:pointer;display:flex;align-items:center;
     justify-content:center;flex:none}
+  .savechip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:100px;
+    border:1px solid var(--border);background:var(--panel);font-size:12px;font-weight:800;
+    color:var(--dim);cursor:pointer;white-space:nowrap}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+  .savechip.ok{color:var(--green);border-color:var(--green-dim);background:var(--green-dim)}
+  .savechip.ok .sdot{background:var(--green)}
+  .savechip.busy{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim)}
+  .savechip.busy .sdot{background:var(--accent)}
+  .savechip.bad{color:var(--danger);border-color:var(--danger-dim);background:var(--danger-dim)}
+  .savechip.bad .sdot{background:var(--danger)}
   .tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
   .tab{border:1px solid var(--border);background:var(--panel);color:var(--dim);
     padding:8px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer}
@@ -216,6 +226,7 @@
 
   <div class="bar">
     <span>🏅 Sports Carnival</span>
+    <span class="savechip" id="saveChip" title="Tap for details"><span class="sdot"></span><span id="saveTxt">—</span></span>
     <div class="tabs" id="tabs"></div>
     <button class="icon-sq" id="themeBtn" aria-label="Light or dark mode">🌙</button>
   </div>
@@ -439,35 +450,165 @@ function raceColors(div,heat,heats){
 function applyColors(el,div,heat,heats){
   el.style.setProperty('--cardaccent',raceColors(div,heat,heats).accent);
 }
+// =====================================================
+// SYNC — same action-log model as the Time Trials app.
+// Every change is appended to a Google Sheet and replayed, so several
+// iPads recording at once converge instead of overwriting each other.
+// Point this at your own deployment for the carnival's own sheet.
+// =====================================================
+const API_URL='https://script.google.com/macros/s/AKfycbwlJfWWZ62ZKLIDVjazdU7aBR2cJg3c6Q75v9JdUBmvA_bQ4P2TkluFe1JjTgG82a_C/exec';
+const POLL_MS=4000;
 const STORE='carnival2026-v1';
 
 // ---------------- state ----------------
+let LOG=[];            // actions confirmed by the sheet
+let pending=[];        // our own actions not yet seen back
 let results={};        // raceId -> [studentId] in finish order
 let extra={};          // raceId -> [student] added by hand
 let removed={};        // raceId -> Set(studentId)
-let scheme=[8,6,4,3,2,1];   // points for 1st..nth
+let scheme=[8,6,4,3,2,1];
 let partPts=0;
 let topHeatOnly=false;
-let timeOffset=0;      // minutes the whole programme has slipped
 let overrides={};      // division -> {scheme, partPts}
 let evOverrides={};    // event type -> {scheme, partPts}
+let timeOffset=0;      // minutes the whole programme has slipped
 let view='prog', curRace=null, yearFilter='all', stuQuery='';
+let syncState='idle', lastSynced=null, everSynced=false;
 
 const $=id=>document.getElementById(id);
-function save(){
-  try{ localStorage.setItem(STORE,JSON.stringify({results,extra,
-    removed:Object.fromEntries(Object.entries(removed).map(([k,v])=>[k,[...v]])),
-    scheme,partPts,topHeatOnly,overrides,evOverrides,timeOffset})); }catch(e){}
+function uid(){ return 'a'+Date.now()+'-'+Math.random().toString(36).slice(2,7); }
+function aidOf(a){
+  try{ const p=typeof a.Payload==='string'?JSON.parse(a.Payload||'{}'):(a.Payload||{}); return p._aid||null; }
+  catch(e){ return null; }
 }
-function load(){
+
+// Cache the log so a reload with no wifi still shows everything recorded.
+function cache(){
+  try{ localStorage.setItem(STORE,JSON.stringify({LOG,pending})); }catch(e){ setSync('nostore'); }
+}
+function loadCache(){
   try{
-    const d=JSON.parse(localStorage.getItem(STORE)||'null'); if(!d) return;
-    results=d.results||{}; extra=d.extra||{};
-    removed=Object.fromEntries(Object.entries(d.removed||{}).map(([k,v])=>[k,new Set(v)]));
-    scheme=d.scheme||scheme; partPts=d.partPts??0; topHeatOnly=!!d.topHeatOnly; overrides=d.overrides||{}; evOverrides=d.evOverrides||{}; timeOffset=d.timeOffset||0;
+    const d=JSON.parse(localStorage.getItem(STORE)||'null');
+    if(d){ LOG=d.LOG||[]; pending=d.pending||[]; }
   }catch(e){}
 }
-RACES.forEach(r=>{ results[r.id]=results[r.id]||[]; extra[r.id]=extra[r.id]||[]; removed[r.id]=removed[r.id]||new Set(); });
+
+function rebuild(){
+  results={}; extra={}; removed={};
+  RACES.forEach(r=>{ results[r.id]=[]; extra[r.id]=[]; removed[r.id]=new Set(); });
+  scheme=[8,6,4,3,2,1]; partPts=0; topHeatOnly=false; overrides={}; evOverrides={}; timeOffset=0;
+
+  LOG.concat(pending).forEach(a=>{
+    let p={};
+    try{ p=typeof a.Payload==='string'?JSON.parse(a.Payload||'{}'):(a.Payload||{}); }catch(e){ return; }
+    switch(a.Action){
+      case 'cn_result':
+        if(p.raceId&&Array.isArray(p.order)) results[p.raceId]=p.order.slice();
+        break;
+      case 'cn_add':
+        if(p.raceId&&p.student) (extra[p.raceId]=extra[p.raceId]||[]).push(p.student);
+        break;
+      case 'cn_remove':
+        if(p.raceId&&p.studentId){
+          (removed[p.raceId]=removed[p.raceId]||new Set()).add(p.studentId);
+          extra[p.raceId]=(extra[p.raceId]||[]).filter(x=>x.id!==p.studentId);
+          results[p.raceId]=(results[p.raceId]||[]).filter(x=>x!==p.studentId);
+        }
+        break;
+      case 'cn_settings':
+        if(Array.isArray(p.scheme)) scheme=p.scheme.slice();
+        if(typeof p.partPts==='number') partPts=p.partPts;
+        if(typeof p.topHeatOnly==='boolean') topHeatOnly=p.topHeatOnly;
+        if(p.overrides) overrides=p.overrides;
+        if(p.evOverrides) evOverrides=p.evOverrides;
+        if(typeof p.timeOffset==='number') timeOffset=p.timeOffset;
+        break;
+    }
+  });
+}
+
+async function send(action,payload){
+  const aid=uid();
+  const a={Timestamp:new Date().toISOString(),RaceId:(payload&&payload.raceId)||'',
+           Action:action,Payload:JSON.stringify(Object.assign({},payload||{},{_aid:aid})),_aid:aid,_sent:false};
+  pending.push(a);
+  rebuild(); cache(); render();
+  setSync('busy');
+  try{
+    await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({raceId:a.RaceId,action,payload:JSON.parse(a.Payload),judge:'Carnival'})});
+    a._sent=true; cache();
+    lastSynced=new Date(); everSynced=true; setSync('ok');
+  }catch(e){ setSync('offline'); }   // stays queued; poll() retries it
+}
+function saveRace(id){ send('cn_result',{raceId:id,order:results[id]||[]}); }
+function saveSettings(){
+  send('cn_settings',{scheme,partPts,topHeatOnly,overrides,evOverrides,timeOffset});
+}
+
+// Anything recorded while the wifi was down sits in `pending`; push it as soon
+// as we can reach the sheet again. Re-sending is safe because the poll dedupes
+// on the action id, so a POST that actually landed won't be counted twice.
+async function flushPending(){
+  for(const a of pending.slice()){
+    if(a._sent) continue;               // already reached the sheet, just not read back yet
+    await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({raceId:a.RaceId,action:a.Action,payload:JSON.parse(a.Payload),judge:'Carnival'})});
+    a._sent=true;
+  }
+}
+
+let seq=0;
+async function poll(){
+  const n=++seq;
+  try{
+    if(pending.some(a=>!a._sent)) await flushPending();
+    const res=await fetch(API_URL,{method:'GET'});
+    const d=await res.json();
+    if(n!==seq) return;
+    if(d&&d.ok){
+      const seen=new Set();
+      LOG=(d.actions||[]).filter(x=>{
+        const id=aidOf(x); if(!id) return true;
+        if(seen.has(id)) return false; seen.add(id); return true;
+      });
+      // only drop a pending action once the sheet actually shows it back
+      pending=pending.filter(x=>!seen.has(x._aid));
+      lastSynced=new Date(); everSynced=true;
+      rebuild(); cache();
+      setSync('ok');
+      renderIfChanged();
+    }
+  }catch(e){ if(n===seq) setSync('offline'); }
+}
+
+function stateHash(){
+  return JSON.stringify([results,Object.keys(extra).map(k=>extra[k].length),
+    Object.keys(removed).map(k=>[...removed[k]].length),scheme,partPts,topHeatOnly,
+    overrides,evOverrides,timeOffset]);
+}
+let lastHash='';
+function renderIfChanged(){
+  const h=stateHash();
+  if(h===lastHash) return;        // don't disturb a screen mid-tap for no reason
+  lastHash=h; render();
+}
+
+function recordedCount(){ return RACES.filter(r=>(results[r.id]||[]).length).length; }
+function setSync(st){
+  syncState=st;
+  const chip=$('saveChip'), txt=$('saveTxt');
+  if(!chip) return;
+  const cls={ok:'ok',busy:'busy',offline:'bad',nostore:'bad',idle:''}[st]||'';
+  chip.className='savechip '+cls;
+  const n=recordedCount();
+  txt.textContent =
+    st==='busy'    ? 'Saving…' :
+    st==='offline' ? 'Offline' :
+    st==='nostore' ? 'NOT SAVED' :
+    st==='idle'    ? 'Connecting…' :
+                     'Synced · '+n+' race'+(n===1?'':'s');
+}
 
 // ---------------- helpers ----------------
 function raceById(id){ return RACES.find(r=>r.id===id); }
@@ -669,13 +810,10 @@ function renderRace(){
       '<span class="rmeta"><span class="hchip">'+s.house+'</span><span class="rm mono">Rm '+s.room+'</span></span></button>'+
       '<button class="xbtn" aria-label="Remove">✕</button>';
     d.querySelector('.runner-tap').addEventListener('click',()=>{
-      results[r.id].push(s.id); save(); renderRace(); });
+      results[r.id].push(s.id); saveRace(r.id); });
     d.querySelector('.xbtn').addEventListener('click',()=>{
       if(confirm('Remove '+s.name+' from this race? Use for absences or wrong entries.')){
-        removed[r.id].add(s.id);
-        extra[r.id]=(extra[r.id]||[]).filter(x=>x.id!==s.id);
-        results[r.id]=results[r.id].filter(x=>x!==s.id);
-        save(); renderRace();
+        send('cn_remove',{raceId:r.id,studentId:s.id});
       }});
     pl.appendChild(d);
   });
@@ -698,11 +836,11 @@ function renderRace(){
         '<button class="ib" data-a="dn"'+(i===order.length-1?' disabled':'')+'>▼</button>'+
         '<button class="ib rm" data-a="x">✕</button></div>';
     row.querySelector('[data-a=up]').addEventListener('click',()=>{
-      [order[i-1],order[i]]=[order[i],order[i-1]]; save(); renderRace(); });
+      [order[i-1],order[i]]=[order[i],order[i-1]]; saveRace(r.id); });
     row.querySelector('[data-a=dn]').addEventListener('click',()=>{
-      [order[i+1],order[i]]=[order[i],order[i+1]]; save(); renderRace(); });
+      [order[i+1],order[i]]=[order[i],order[i+1]]; saveRace(r.id); });
     row.querySelector('[data-a=x]').addEventListener('click',()=>{
-      results[r.id]=order.filter(x=>x!==sid); save(); renderRace(); });
+      results[r.id]=order.filter(x=>x!==sid); saveRace(r.id); });
     rl.appendChild(row);
   });
   $('undoBtn').disabled=order.length===0;
@@ -715,16 +853,14 @@ $('addCancel').addEventListener('click',()=>{ $('addForm').hidden=true; });
 $('addOk').addEventListener('click',()=>{
   const n=$('newName').value.trim(); if(!n){ $('newName').focus(); return; }
   const r=raceById(curRace);
-  extra[r.id]=extra[r.id]||[];
-  extra[r.id].push({id:'add-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
-    name:n,house:$('newHouse').value||'—',room:$('newRoom').value.trim()||'—',year:''});
+  send('cn_add',{raceId:r.id,student:{id:'add-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+    name:n,house:$('newHouse').value||'—',room:$('newRoom').value.trim()||'—',year:''}});
   $('newName').value=''; $('newRoom').value=''; $('addForm').hidden=true;
-  save(); renderRace();
 });
-$('undoBtn').addEventListener('click',()=>{ results[curRace].pop(); save(); renderRace(); });
+$('undoBtn').addEventListener('click',()=>{ results[curRace].pop(); saveRace(curRace); });
 $('resetBtn').addEventListener('click',()=>{
   if(!results[curRace].length) return;
-  if(confirm('Clear the finish order for this race?')){ results[curRace]=[]; save(); renderRace(); }
+  if(confirm('Clear the finish order for this race?')){ results[curRace]=[]; saveRace(curRace); }
 });
 
 // ---------------- points ----------------
@@ -735,7 +871,7 @@ function renderPoints(){
     const tr=document.createElement('tr');
     tr.innerHTML='<td>'+(i+1)+ord(i+1)+'</td><td><input type="number" min="0" step="1" value="'+v+'"></td>';
     tr.querySelector('input').addEventListener('input',e=>{
-      scheme[i]=Math.max(0,parseInt(e.target.value,10)||0); save(); });
+      scheme[i]=Math.max(0,parseInt(e.target.value,10)||0); saveSettings(); });
     tb.appendChild(tr);
   });
   $('partPts').value=partPts;
@@ -758,7 +894,7 @@ function renderPoints(){
         const arr=v.split(',').map(x=>Math.max(0,parseInt(x.trim(),10)||0));
         if(arr.length) evOverrides[t]={scheme:arr,partPts:partPts};
       }
-      save(); renderPoints();
+      saveSettings();
     });
     ev.appendChild(row);
   });
@@ -779,7 +915,7 @@ function renderPoints(){
         const arr=s.split(',').map(x=>Math.max(0,parseInt(x.trim(),10)||0));
         if(arr.length) overrides[d]={scheme:arr,partPts:partPts};
       }
-      save(); renderPoints();
+      saveSettings();
     });
     ov.appendChild(row);
   });
@@ -797,18 +933,18 @@ function renderOffset(){
 }
 function setOffset(v){
   timeOffset=Math.max(-720,Math.min(720,Math.round(v)||0));
-  save(); render();
+  saveSettings();
 }
 $('offsetIn').addEventListener('input',e=>setOffset(parseInt(e.target.value,10)));
 $('off5less').addEventListener('click',()=>setOffset(timeOffset-5));
 $('off5more').addEventListener('click',()=>setOffset(timeOffset+5));
 $('offReset').addEventListener('click',()=>setOffset(0));
 
-$('partPts').addEventListener('input',e=>{ partPts=Math.max(0,parseInt(e.target.value,10)||0); save(); });
-$('allHeats').addEventListener('change',e=>{ topHeatOnly=!e.target.checked; save(); renderPoints(); });
-$('topHeatOnly').addEventListener('change',e=>{ topHeatOnly=e.target.checked; save(); renderPoints(); });
-$('addPlaceBtn').addEventListener('click',()=>{ scheme.push(0); save(); renderPoints(); });
-$('rmPlaceBtn').addEventListener('click',()=>{ if(scheme.length>1){ scheme.pop(); save(); renderPoints(); } });
+$('partPts').addEventListener('input',e=>{ partPts=Math.max(0,parseInt(e.target.value,10)||0); saveSettings(); });
+$('allHeats').addEventListener('change',e=>{ topHeatOnly=!e.target.checked; saveSettings(); });
+$('topHeatOnly').addEventListener('change',e=>{ topHeatOnly=e.target.checked; saveSettings(); });
+$('addPlaceBtn').addEventListener('click',()=>{ scheme.push(0); saveSettings(); });
+$('rmPlaceBtn').addEventListener('click',()=>{ if(scheme.length>1){ scheme.pop(); saveSettings(); } });
 
 // ---------------- standings ----------------
 function renderStand(){
@@ -852,6 +988,30 @@ function renderStand(){
     tb.appendChild(tr);
   });
 }
+$('saveChip').addEventListener('click',()=>{
+  const n=recordedCount();
+  if(syncState==='nostore'){
+    alert('This browser will not let the page store anything.\n\n'+
+      'Usually that means a Private tab. Results still sync to the sheet while you have wifi, '+
+      'but nothing is kept on the iPad, so a reload with no signal would show an empty programme.\n\n'+
+      'Fix: open this page in a normal tab.');
+    return;
+  }
+  if(syncState==='offline'){
+    alert('No connection to the results sheet right now.\n\n'+
+      'Keep recording — everything is held on this iPad and sent automatically as soon as the wifi returns. '+
+      'Nothing is lost.\n\n'+
+      (everSynced&&lastSynced?'Last reached the sheet at '+lastSynced.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+'.'
+        :'This iPad has not reached the sheet yet, so it may not have other devices\u2019 results.'));
+    return;
+  }
+  alert('Results are syncing to the shared sheet.\n\n'+
+    n+' of '+RACES.length+' races recorded.\n'+
+    (lastSynced?'Last synced at '+lastSynced.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit',second:'2-digit'}):'')+'\n\n'+
+    'Every iPad running this page shares the same results, and each one also keeps a local copy so it '+
+    'keeps working if the wifi drops.');
+});
+
 $('stuSearch').addEventListener('input',e=>{ stuQuery=e.target.value; renderStand(); });
 
 // ---------------- print / export ----------------
@@ -980,7 +1140,8 @@ function render(){
   else if(view==='points') renderPoints();
   else if(view==='stand') renderStand();
 }
-load(); render();
+loadCache(); rebuild(); setSync('idle'); render(); lastHash=stateHash();
+poll(); setInterval(poll,POLL_MS);
 </script>
 </body>
 </html>
