@@ -349,13 +349,13 @@ Zoe Carter, Kingia, 9"></textarea>
    Paste the Apps Script web app URL between the quotes — it must
    end in /exec. Leave it blank to enter the URL by hand instead.
    ══════════════════════════════════════════════════════════════════ */
-var SYNC_URL = "https://script.google.com/macros/s/AKfycbyG5qH29LusdPTQsmIOIgBIznIWOZQmHrMBN04UEGmke3d1YtJfscWSoSembEQTPTPT/exec";
+var SYNC_URL = "";
 /* ══════════════════════════════════════════════════════════════════ */
 
 var KEY="colourrun.v2";
 var state={
   events:[],roster:[],cursor:0,rosterRev:"",
-  settings:{event:"Colour Run",device:"iPad 1",cooldown:8,sound:true,url:"",sync:false,every:5}
+  settings:{event:"Colour Run",device:"iPad 1",cooldown:8,sound:true,url:"",sync:true,every:5}
 };
 function load(){
   try{
@@ -372,7 +372,9 @@ load();
 
 /* A baked-in URL always wins, so a helper never has to type anything. */
 var BAKED=!!(SYNC_URL&&SYNC_URL.indexOf("http")===0);
-if(BAKED){state.settings.url=SYNC_URL;if(state.settings.sync!==false)state.settings.sync=true;}
+if(BAKED)state.settings.url=SYNC_URL;
+/* Sync follows the URL unless the user has deliberately switched it off. */
+if(BAKED||state.settings.syncChoice===undefined)state.settings.sync=!!state.settings.url;
 
 /* Name each phone on its own so the log can tell them apart. */
 if(!state.settings.device||state.settings.device==="iPad 1"){
@@ -725,7 +727,8 @@ setInterval(function(){
 function paintSync(){
   var pill=$("#syncPill"),txt=$("#syncTxt"),n=pending().length;
   pill.className="";
-  if(!state.settings.url||!state.settings.sync){txt.textContent=n?n+" waiting":"Not linked";}
+  if(!state.settings.url){pill.className="bad";txt.textContent="No sheet link";}
+  else if(!state.settings.sync){txt.textContent=n?"Paused · "+n:"Sync paused";}
   else if(syncing){pill.className="busy";txt.textContent="Sending";}
   else if(fails){pill.className="bad";txt.textContent=n?"Retrying · "+n:"Retrying";}
   else if(n){pill.className="live";txt.textContent=n+" waiting";}
@@ -735,7 +738,9 @@ function paintSync(){
     ? "<b>"+n+"</b> scan"+(n===1?"":"s")+" waiting to send · <b>"+state.events.length+"</b> held on this iPad · "
       +(lastOk?"last success "+ago(lastOk)+" ago":"not synced yet")
       +(lastErr?" · last error: "+esc(lastErr):"")
-    : "Paste the web app URL above, tick <b>Keep this iPad in sync</b>, then Test connection.";
+    : "Paste the web app URL above, then Test connection.";
+  if(info&&state.settings.url&&!state.settings.sync)
+    info.innerHTML="<b>Syncing is paused.</b> Tick <b>Keep this iPad in sync</b> to start sending. "+info.innerHTML;
 }
 function ago(t){
   var s=Math.round((Date.now()-t)/1000);
@@ -885,7 +890,9 @@ $("#pullRoster").addEventListener("click",function(){
   post({action:"roster",rosterRev:""}).then(function(r){
     if(!r||!r.ok)throw new Error(r&&r.error?r.error:"Sheet said no");
     if(!r.roster||!r.roster.length){toast("The sheet's Roster tab is empty");return;}
-    state.roster=r.roster;state.rosterRev=r.rosterRev||"";save();drawRoster();refresh();
+    state.roster=r.roster;state.rosterRev=r.rosterRev||"";
+    if(!state.settings.syncChoice){state.settings.sync=true;$("#setSync").checked=true;}
+    save();drawRoster();refresh();paintSync();
     toast("Loaded "+r.roster.length+" runners from the sheet");
   }).catch(function(e){toast("Couldn't fetch roster: "+e.message);});
 });
@@ -903,6 +910,16 @@ function bind(sel,key,type){
 bind("#setUrl","url");bind("#setDevice","device");bind("#setEvery","every","num");
 bind("#setSync","sync","check");bind("#setEvent","event");bind("#setCool","cooldown","num");
 bind("#setSound","sound","check");
+$("#setSync").addEventListener("change",function(){
+  state.settings.syncChoice=true;save();
+  if(this.checked){nextSync=0;doSync(true);}
+});
+$("#setUrl").addEventListener("input",function(){
+  if(state.settings.syncChoice)return;
+  state.settings.sync=/^https?:\/\//.test(state.settings.url);
+  $("#setSync").checked=state.settings.sync;
+  save();paintSync();
+});
 if(BAKED){
   $("#setUrl").readOnly=true;
   $("#setUrl").style.opacity=".6";
@@ -914,7 +931,11 @@ $("#testBtn").addEventListener("click",function(){
   if(!state.settings.url){toast("Paste the web app URL first");return;}
   toast("Testing…");
   post({action:"ping"}).then(function(r){
-    if(r&&r.ok)toast("Connected to “"+(r.sheet||"the sheet")+"” — "+(r.rows||0)+" scans already logged");
+    if(r&&r.ok){
+      state.settings.sync=true;$("#setSync").checked=true;save();paintSync();
+      nextSync=0;
+      toast("Connected to “"+(r.sheet||"the sheet")+"” — "+(r.rows||0)+" scans logged. Syncing is on.");
+    }
     else toast("Reached it, but it replied: "+(r&&r.error?r.error:"unexpected response"));
   }).catch(function(e){
     toast("No connection: "+e.message+". Check the URL ends in /exec and access is set to Anyone.");
