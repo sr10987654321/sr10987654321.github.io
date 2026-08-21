@@ -281,7 +281,10 @@
       <button class="btn" id="printFieldsBtn" style="flex:0 1 auto">🖨 All fields</button>
     </div>
     <div class="grid" id="evGrid"></div>
-    <div class="empty" id="noEvents" hidden>No entries yet — upload the schools' lists first.</div>
+    <div class="empty" id="noEvents" hidden>
+      No events yet.<br>Load the schools' entry lists from the <b>Entries</b> tab and the programme builds itself.
+      <div class="row" style="justify-content:center"><button class="btn pri" id="goEntries">Go to Entries</button></div>
+    </div>
   </section>
 
   <!-- ============ EVENT ============ -->
@@ -383,7 +386,7 @@ const EVENT_ORDER=['100m','200m','Long Jump','Shot Put','Discus','Javelin','Vort
 // spreadsheet. Paste the /exec URL from your deployment below. Leave it
 // blank and the app still works, saving to this device only.
 // =====================================================
-const API_URL='https://script.google.com/macros/s/AKfycbxqnVWejKy2t7ysTN_NQuue-vIqgOr5BRIT39fJvddWNfIwxmoJnUjA1uTAthbKFLoYgQ/exec';        // <-- paste your interschool deployment URL here
+const API_URL='';        // <-- paste your interschool deployment URL here
 const POLL_MS=4000;
 const STORE='interschool-v1';
 
@@ -393,7 +396,7 @@ let entries=[];          // {id,school,name,year,gender,event}
 let results={};          // eventKey -> [entryId]
 let marks={};            // eventKey -> {entryId:number}
 let scheme=[10,8,6,5,4,3,2,1];
-let view='entries', curEv=null, filter='all', stuQuery='';
+let view='prog', curEv=null, filter='all', stuQuery='';
 let syncState='idle', lastSynced=null, everSynced=false;
 
 const $=id=>document.getElementById(id);
@@ -1099,7 +1102,7 @@ $('exportBtn').addEventListener('click',()=>{
 // ---------- shell ----------
 function renderTabs(){
   const t=$('tabs'); t.innerHTML='';
-  [['entries','Entries'],['prog','Events'],['stand','Standings']].forEach(([v,l])=>{
+  [['prog','Events'],['stand','Standings'],['entries','Entries']].forEach(([v,l])=>{
     const b=document.createElement('button');
     b.className='tab'+((view===v||(v==='prog'&&view==='event'))?' on':'');
     b.textContent=l;
@@ -1108,6 +1111,7 @@ function renderTabs(){
   });
 }
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{ view=b.dataset.goto; render(); }));
+$('goEntries').addEventListener('click',()=>{ view='entries'; render(); window.scrollTo(0,0); });
 (function(){ const b=$('themeBtn');
   const ap=t=>{document.documentElement.setAttribute('data-theme',t); b.textContent=t==='dark'?'☀️':'🌙';
     try{localStorage.setItem('interschool-theme',t)}catch(e){}};
