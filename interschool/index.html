@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+
+
+
+  <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -184,6 +187,13 @@
   .hrow .pts{margin-left:auto;font-size:14px;font-weight:800;color:var(--accent)}
   .empty{text-align:center;padding:28px 12px;color:var(--faint);font-size:14px;font-weight:600;
     border:1px dashed var(--border);border-radius:var(--radius)}
+  .prnbar{display:flex;align-items:center;gap:9px;margin:16px 0 0;padding:10px 13px;
+    border:1px solid var(--border);border-radius:11px;background:var(--panel-2);
+    font-size:13px;font-weight:700;color:var(--dim)}
+  .prnbar .pdot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+  .prnbar.on{border-color:var(--green-dim);background:var(--green-dim);color:var(--green)}
+  .prnbar.on .pdot{background:var(--green)}
+  .prnbar.off{opacity:.7}
   .actions{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:9px;
     padding:11px 18px calc(13px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--bg)}
   .actions .btn{flex:1 1 130px}
@@ -322,9 +332,21 @@
     </div>
 
     <div id="teamWrap" hidden>
-      <p class="hint">Tap the schools in finishing order.</p>
-      <div class="list" id="teamPool"></div>
-      <div class="list" id="teamOrder" style="margin-top:14px"></div>
+      <div class="board">
+        <div class="col">
+          <div class="col-head"><h2>Still to place</h2><span class="count" id="teamPoolCount">0</span></div>
+          <p class="hint">Tap each school as they finish</p>
+          <div class="list" id="teamPool"></div>
+          <div class="empty" id="teamPoolEmpty" hidden>🏁 All six schools placed.</div>
+        </div>
+        <div class="finish"></div>
+        <div class="col">
+          <div class="col-head"><h2>Finish order</h2><span class="count" id="teamOrderCount">0</span></div>
+          <p class="hint">▲▼ to fix · ✕ to send back</p>
+          <div class="list" id="teamOrder"></div>
+          <div class="empty" id="teamOrderEmpty">Nothing placed yet — the first tap is 1st.</div>
+        </div>
+      </div>
     </div>
 
     <div id="fieldWrap" hidden>
@@ -338,8 +360,11 @@
       </div>
     </div>
 
+    <div class="prnbar" id="prnBar"></div>
+
     <div class="actions">
       <button class="btn" id="undoBtn" disabled>↩ Undo last</button>
+      <button class="btn" id="receiptBtn">🧾 Receipt</button>
       <button class="btn" id="printFieldBtn">🖨 Print field</button>
       <button class="btn dan" id="resetBtn">Reset event</button>
     </div>
@@ -379,7 +404,10 @@
         <tbody id="stuBody"></tbody></table>
     </div>
 
+    <div class="prnbar" id="prnBar2"></div>
+
     <div class="actions">
+      <button class="btn" id="receiptLadderBtn">🧾 Receipt</button>
       <button class="btn" id="printStandBtn">🖨 Print standings</button>
       <button class="btn" id="exportBtn">⬇ Export CSV</button>
     </div>
@@ -409,6 +437,7 @@ const EVENT_ORDER=['100m','200m','Long Jump','Shot Put','Discus','Javelin','Vort
 // blank and the app still works, saving to this device only.
 // =====================================================
 const API_URL='https://script.google.com/macros/s/AKfycbxqnVWejKy2t7ysTN_NQuue-vIqgOr5BRIT39fJvddWNfIwxmoJnUjA1uTAthbKFLoYgQ/exec';        // <-- paste your interschool deployment URL here
+
 const POLL_MS=4000;
 const STORE='interschool-v1';
 
@@ -931,7 +960,7 @@ function renderEvent(){
   $('teamWrap').hidden=!team;
   $('trackWrap').hidden=team||!track;
   $('fieldWrap').hidden=team||track;
-  $('undoBtn').hidden=!track;
+  $('undoBtn').hidden=!(track||team);
   $('evNo').textContent='EVENT '+String(ev.no).padStart(2,'0')+' · '+evKind(ev.event).toUpperCase();
   $('evTitle').textContent=evName(ev);
   $('evSub').textContent=team
@@ -988,6 +1017,9 @@ function renderTrack(ev){
 function renderTeam(ev){
   const order=results[ev.key]||[];
   const pool=SCHOOLS.filter(s=>!order.includes(s));
+
+  $('teamPoolCount').textContent=pool.length;
+  $('teamPoolEmpty').hidden=pool.length>0;
   const pl=$('teamPool'); pl.innerHTML='';
   pool.forEach(s=>{
     const b=document.createElement('button');
@@ -996,19 +1028,30 @@ function renderTeam(ev){
     b.addEventListener('click',()=>send('is_result',{key:ev.key,order:order.concat([s])}));
     pl.appendChild(b);
   });
-  if(!pool.length) pl.innerHTML='<div class="empty">All schools placed.</div>';
 
+  $('teamOrderCount').textContent=order.length;
+  $('teamOrderEmpty').style.display=order.length?'none':'block';
   const ol=$('teamOrder'); ol.innerHTML='';
   order.forEach((s,i)=>{
     const row=document.createElement('div');
-    row.className='hrow'; row.style.setProperty('--sc',schoolColor(s));
-    row.innerHTML='<span class="pl'+(i<3?' p'+(i+1):'')+'">'+(i+1)+'</span><span>'+esc(s)+'</span>'+
-      '<span class="pts">'+tabPoints(i)+' pts</span>'+
-      '<button class="ib rm" style="margin-left:10px">✕</button>';
-    row.querySelector('button').addEventListener('click',()=>
+    row.className='res-row'; row.style.setProperty('--sc',schoolColor(s));
+    const medal=i===0?' p1':i===1?' p2':i===2?' p3':'';
+    row.innerHTML='<div class="place'+medal+'"><span class="n">'+(i+1)+'</span><span class="s">'+ord(i+1)+'</span></div>'+
+      '<div class="ri"><div class="n">'+esc(s)+'</div></div>'+
+      '<div class="pts">'+tabPoints(i)+' pts</div>'+
+      '<div class="ctrls">'+
+        '<button class="ib" data-a="up"'+(i===0?' disabled':'')+'>▲</button>'+
+        '<button class="ib" data-a="dn"'+(i===order.length-1?' disabled':'')+'>▼</button>'+
+        '<button class="ib rm" data-a="x">✕</button></div>';
+    row.querySelector('[data-a=up]').addEventListener('click',()=>{
+      const o=order.slice(); [o[i-1],o[i]]=[o[i],o[i-1]]; send('is_result',{key:ev.key,order:o}); });
+    row.querySelector('[data-a=dn]').addEventListener('click',()=>{
+      const o=order.slice(); [o[i+1],o[i]]=[o[i],o[i+1]]; send('is_result',{key:ev.key,order:o}); });
+    row.querySelector('[data-a=x]').addEventListener('click',()=>
       send('is_result',{key:ev.key,order:order.filter(x=>x!==s)}));
     ol.appendChild(row);
   });
+  syncUndoState(ev);
 }
 function renderField(ev){
   const mk=marks[ev.key]||{};
@@ -1046,6 +1089,9 @@ $('undoBtn').addEventListener('click',()=>{
   const ev=evById(curEv); if(!ev) return;
   const o=(results[ev.key]||[]).slice(); o.pop(); send('is_result',{key:ev.key,order:o});
 });
+function syncUndoState(ev){
+  $('undoBtn').disabled=!((results[ev.key]||[]).length);
+}
 $('resetBtn').addEventListener('click',()=>{
   const ev=evById(curEv); if(!ev) return;
   if(!confirm('Clear everything recorded for this event?')) return;
@@ -1170,6 +1216,10 @@ $('printListBtn').addEventListener('click',()=>{
     '</tbody></table>';
   window.print();
 });
+$('receiptBtn').addEventListener('click',()=>{
+  const ev=evById(curEv); if(ev) printReceipt(eventReceipt(ev));
+});
+$('receiptLadderBtn').addEventListener('click',()=>printReceipt(ladderReceipt()));
 $('printStandBtn').addEventListener('click',()=>{
   const st=schoolTotals(), t=tally();
   let h=head('Standings');
@@ -1206,6 +1256,219 @@ $('exportBtn').addEventListener('click',()=>{
   a.download='interschool-results.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
 
+
+// =====================================================
+// RECEIPT PRINTER — YHK / Anko BLE thermal printer
+// Protocol per joshmcarthur/yhk-mini-printer: ISSC Transparent UART service,
+// ESC/POS raster (GS v 0), 384-dot head, paced writes so the printer's small
+// buffer doesn't overflow and silently drop the bottom of the image.
+// =====================================================
+const PRN = {
+  SERVICE:'49535343-fe7d-4ae5-8fa9-9fafd205e455',
+  TX:     '49535343-8841-43f4-a8d4-ecbe34729bb3',
+  WIDTH:384,          // dots across a 58mm head
+  CHUNK:182,          // fits a typical BLE MTU
+  DELAY:40,           // ms between chunks (~5KB/s)
+  FLUSH:1500          // let the head catch up after the last chunk
+};
+let prnDevice=null, prnChar=null;
+const prnSupported = typeof navigator!=='undefined' && !!navigator.bluetooth;
+
+async function prnConnect(){
+  if(!prnSupported) throw new Error('nobluetooth');
+  prnDevice = await navigator.bluetooth.requestDevice({
+    filters:[{namePrefix:'YHK'}],
+    optionalServices:[PRN.SERVICE]
+  });
+  prnDevice.addEventListener('gattserverdisconnected',()=>{ prnChar=null; renderPrinterBar(); });
+  const server = await prnDevice.gatt.connect();
+  const svc = await server.getPrimaryService(PRN.SERVICE);
+  prnChar = await svc.getCharacteristic(PRN.TX);
+  renderPrinterBar();
+}
+function prnDisconnect(){
+  try{ if(prnDevice&&prnDevice.gatt.connected) prnDevice.gatt.disconnect(); }catch(e){}
+  prnDevice=null; prnChar=null; renderPrinterBar();
+}
+const prnReady = ()=> !!(prnChar && prnDevice && prnDevice.gatt.connected);
+
+// --- compose a receipt onto a 384px canvas -------------------------------
+// Everything is drawn bold and large; a 1-bit threshold destroys thin
+// antialiased strokes, so small light text would come out patchy.
+function receiptCanvas(doc){
+  const W=PRN.WIDTH, pad=8;
+  const c=document.createElement('canvas');
+  const ctx=c.getContext('2d');
+  const lines=[];
+  const push=(text,opt={})=>lines.push(Object.assign({text,size:22,bold:false,align:'left',gap:6},opt));
+
+  push(doc.title,{size:30,bold:true,align:'center',gap:4});
+  if(doc.subtitle) push(doc.subtitle,{size:20,align:'center',gap:10});
+  lines.push({rule:true,gap:10});
+  (doc.rows||[]).forEach(r=>lines.push(Object.assign({row:true,size:24,gap:9},r)));
+  if(doc.footer){ lines.push({rule:true,gap:8}); push(doc.footer,{size:18,align:'center',gap:4}); }
+
+  let h=pad;
+  lines.forEach(l=>{ h += (l.rule?2:(l.size||22)) + (l.sub?17:0) + (l.gap||6); });
+  h+=pad;
+  c.width=W; c.height=Math.ceil(h);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,c.height);
+  ctx.fillStyle='#000'; ctx.textBaseline='top';
+
+  let y=pad;
+  lines.forEach(l=>{
+    if(l.rule){
+      ctx.fillRect(pad,y,W-pad*2,2); y+=2+(l.gap||6); return;
+    }
+    ctx.font=(l.bold?'bold ':'')+(l.size||22)+'px "Helvetica Neue", Arial, sans-serif';
+    if(l.row){
+      // place | name | value, with the school on a quieter second line —
+      // 58mm paper is too narrow to fit "Name · Long School" on one line
+      ctx.font='bold '+(l.size)+'px "Helvetica Neue", Arial, sans-serif';
+      if(l.left) ctx.fillText(l.left,pad,y);
+      const rightW = l.right ? ctx.measureText(l.right).width : 0;
+      if(l.right) ctx.fillText(l.right,W-pad-rightW,y);
+      const lx=pad+(l.left?38:0);
+      let mid=l.mid||'';
+      const avail=W-pad-rightW-lx-10;
+      while(mid&&ctx.measureText(mid).width>avail) mid=mid.slice(0,-2)+'…';
+      ctx.fillText(mid,lx,y);
+      if(l.sub){
+        ctx.font='15px "Helvetica Neue", Arial, sans-serif';
+        let sub=l.sub;
+        while(sub&&ctx.measureText(sub).width>W-pad-lx) sub=sub.slice(0,-2)+'…';
+        ctx.fillText(sub,lx,y+(l.size)+1);
+      }
+    } else {
+      const w=ctx.measureText(l.text).width;
+      const x = l.align==='center' ? (W-w)/2 : pad;
+      ctx.fillText(l.text,x,y);
+    }
+    y+=(l.size||22)+(l.sub?17:0)+(l.gap||6);
+  });
+  return c;
+}
+
+// --- canvas -> 1-bit rows -> ESC/POS raster ------------------------------
+function canvasToBits(canvas){
+  const ctx=canvas.getContext('2d');
+  const {width:w,height:h}=canvas;
+  const d=ctx.getImageData(0,0,w,h).data;
+  const bits=new Uint8Array(w*h);
+  for(let i=0,px=0;px<w*h;px++,i+=4){
+    // luminance, then threshold at 128; treat transparent as white
+    const a=d[i+3]/255;
+    const lum=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])*a + 255*(1-a);
+    bits[px]= lum<128 ? 1 : 0;
+  }
+  return bits;
+}
+function encodeRaster(bits,w,h){
+  const wb=Math.ceil(w/8);
+  const body=new Uint8Array(wb*h);
+  for(let y=0;y<h;y++)
+    for(let x=0;x<w;x++)
+      if(bits[y*w+x]) body[y*wb+(x>>3)] |= 1<<(7-(x&7));
+  const head=new Uint8Array([0x1D,0x76,0x30,0x00, wb&0xff,(wb>>8)&0xff, h&0xff,(h>>8)&0xff]);
+  const out=new Uint8Array(2+head.length+body.length+3);
+  let o=0;
+  out.set([0x1B,0x40],o); o+=2;                 // ESC @  reset
+  out.set(head,o); o+=head.length;
+  out.set(body,o); o+=body.length;
+  out.set([0x1B,0x64,0x04],o);                  // ESC d 4  feed clear of the tear bar
+  return out;
+}
+async function prnSend(bytes,onProgress){
+  const total=Math.ceil(bytes.length/PRN.CHUNK);
+  for(let i=0;i<total;i++){
+    const slice=bytes.slice(i*PRN.CHUNK,(i+1)*PRN.CHUNK);
+    await prnChar.writeValueWithoutResponse(slice);
+    if(onProgress) onProgress(i+1,total);
+    await new Promise(r=>setTimeout(r,PRN.DELAY));
+  }
+  await new Promise(r=>setTimeout(r,PRN.FLUSH));
+}
+async function printReceipt(doc){
+  if(!prnReady()){
+    alert(prnSupported
+      ? 'No printer connected.\n\nTap “Connect printer”, pick your YHK device, then try again.'
+      : 'This browser cannot talk to Bluetooth printers.\n\nWeb Bluetooth works in Chrome or Edge on a laptop or Android tablet. Safari and Chrome on iPad do not support it.');
+    return;
+  }
+  const say=t=>document.querySelectorAll('.prnstatus').forEach(e=>e.textContent=t);
+  try{
+    const canvas=receiptCanvas(doc);
+    const bytes=encodeRaster(canvasToBits(canvas),canvas.width,canvas.height);
+    await prnSend(bytes,(n,t)=>say('Printing '+Math.round(n/t*100)+'%'));
+    say('Printed');
+    setTimeout(renderPrinterBar,1200);
+  }catch(e){
+    alert('Printing failed: '+(e.message||e)+'\n\nCheck the printer is on and not connected to a phone app.');
+    renderPrinterBar();
+  }
+}
+
+// --- what to print -------------------------------------------------------
+function eventReceipt(ev){
+  const rows=[];
+  if(ev.team){
+    (results[ev.key]||[]).forEach((school,i)=>
+      rows.push({left:(i+1)+'.',mid:school,right:tabPoints(i)+'pt'}));
+  } else if(isTrack(ev.event)){
+    (results[ev.key]||[]).forEach((id,i)=>{
+      const e=ev.entries.find(x=>x.id===id); if(!e) return;
+      rows.push({left:(i+1)+'.',mid:e.name,sub:e.school,right:pointsFor(i)+'pt'});
+    });
+  } else {
+    fieldRanking(ev).forEach((r,i)=>
+      rows.push({left:(i+1)+'.',mid:r.entry.name,sub:r.entry.school,
+                 right:r.value.toFixed(2)+unitFor(ev.event)}));
+  }
+  if(!rows.length) rows.push({left:'',mid:'No result recorded yet.',right:''});
+  return {title:evName(ev),subtitle:'Event '+ev.no+' · '+evKind(ev.event),rows,
+          footer:new Date().toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+
+                 ' · Interschool Carnival'};
+}
+function ladderReceipt(){
+  const st=schoolTotals();
+  const rows=Object.entries(st).sort((a,b)=>b[1]-a[1])
+    .map(([s,p],i)=>({left:(i+1)+'.',mid:s,right:String(p)}));
+  const evs=allEvents();
+  return {title:'School Ladder',
+          subtitle:evs.filter(e=>counted(e)).length+' of '+evs.length+' events in',
+          rows,
+          footer:new Date().toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+
+                 ' · Interschool Carnival'};
+}
+
+// --- the connect bar -----------------------------------------------------
+function renderPrinterBar(){
+  ['prnBar','prnBar2'].forEach(id=>paintPrinterBar($(id)));
+}
+function paintPrinterBar(bar){
+  if(!bar) return;
+  if(!prnSupported){
+    bar.className='prnbar off';
+    bar.innerHTML='<span class="pdot"></span><span class="prnstatus">Receipt printing needs Chrome or Edge</span>';
+    return;
+  }
+  const on=prnReady();
+  bar.className='prnbar '+(on?'on':'');
+  bar.innerHTML='<span class="pdot"></span><span class="prnstatus">'+
+    (on?'Printer connected':'Printer not connected')+'</span>'+
+    '<button class="btn" id="prnBtn" style="margin-left:auto;padding:8px 13px;font-size:12.5px">'+
+    (on?'Disconnect':'Connect printer')+'</button>';
+  bar.querySelector('#prnBtn').addEventListener('click',async()=>{
+    if(prnReady()){ prnDisconnect(); return; }
+    bar.querySelector('.prnstatus').textContent='Choosing a printer…';
+    try{ await prnConnect(); }
+    catch(e){
+      renderPrinterBar();
+      if(e&&e.name!=='NotFoundError') alert('Could not connect: '+(e.message||e));
+    }
+  });
+}
+
 // ---------- shell ----------
 function renderTabs(){
   const t=$('tabs'); t.innerHTML='';
@@ -1233,7 +1496,7 @@ function render(){
   $('scrProg').hidden=view!=='prog';
   $('scrEvent').hidden=view!=='event';
   $('scrStand').hidden=view!=='stand';
-  renderTabs(); setSync(syncState);
+  renderTabs(); setSync(syncState); renderPrinterBar();
   if(view==='entries') renderEntries();
   else if(view==='prog'){ renderProg(); renderFinder(); }
   else if(view==='event') renderEvent();
