@@ -173,6 +173,15 @@
     border-radius:9px;padding:11px;color:var(--text);font-size:17px;font-weight:700;text-align:right;
     font-variant-numeric:tabular-nums}
   .mrow .unit{width:22px;flex:none;font-size:13px;color:var(--faint);font-weight:700}
+  .hrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);
+    border:1px solid var(--border);border-left:7px solid var(--sc);border-radius:var(--radius);
+    padding:15px 14px;cursor:pointer;color:var(--text);font-size:18px;font-weight:800}
+  .hrow .pl{width:46px;height:46px;border-radius:10px;background:var(--panel-2);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900}
+  .hrow .pl.p1{background:var(--gold);color:var(--gold-t)}
+  .hrow .pl.p2{background:var(--silver);color:var(--silver-t)}
+  .hrow .pl.p3{background:var(--bronze);color:var(--bronze-t)}
+  .hrow .pts{margin-left:auto;font-size:14px;font-weight:800;color:var(--accent)}
   .empty{text-align:center;padding:28px 12px;color:var(--faint);font-size:14px;font-weight:600;
     border:1px dashed var(--border);border-radius:var(--radius)}
   .actions{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:9px;
@@ -312,6 +321,12 @@
       </div>
     </div>
 
+    <div id="teamWrap" hidden>
+      <p class="hint">Tap the schools in finishing order.</p>
+      <div class="list" id="teamPool"></div>
+      <div class="list" id="teamOrder" style="margin-top:14px"></div>
+    </div>
+
     <div id="fieldWrap" hidden>
       <p class="hint" id="fieldHint">—</p>
       <div class="list" id="fieldList"></div>
@@ -352,6 +367,12 @@
     </div>
 
     <div class="card">
+      <h2>Team game points</h2>
+      <p>Tunnelball, Leaderball and Passball — awarded straight to the school.</p>
+      <table class="ptable"><thead><tr><th>Place</th><th>Points</th></tr></thead><tbody id="tabBody"></tbody></table>
+    </div>
+
+    <div class="card">
       <h2>Individuals</h2>
       <input class="search" id="stuSearch" placeholder="Search a name or school…">
       <table class="rank"><thead><tr><th class="p">#</th><th>Name</th><th>School</th><th>Year</th><th>Points</th></tr></thead>
@@ -378,6 +399,7 @@ const SCHOOL_COLOR={
 };
 const TRACK=['100m','200m'];
 const JUMPS=['Long Jump','High Jump','Triple Jump'];
+const TABLOIDS=['Tunnelball','Leaderball','Passball'];
 const THROWS=['Shot Put','Discus','Javelin','Vortex','Ball Throw'];
 const FIELD_UNITS={'Long Jump':'m','Shot Put':'m','Discus':'m','Javelin':'m','Vortex':'m'};
 const EVENT_ORDER=['100m','200m','Long Jump','Shot Put','Discus','Javelin','Vortex'];
@@ -386,7 +408,7 @@ const EVENT_ORDER=['100m','200m','Long Jump','Shot Put','Discus','Javelin','Vort
 // spreadsheet. Paste the /exec URL from your deployment below. Leave it
 // blank and the app still works, saving to this device only.
 // =====================================================
-const API_URL='';        // <-- paste your interschool deployment URL here
+const API_URL='https://script.google.com/macros/s/AKfycbxqnVWejKy2t7ysTN_NQuue-vIqgOr5BRIT39fJvddWNfIwxmoJnUjA1uTAthbKFLoYgQ/exec';        // <-- paste your interschool deployment URL here
 const POLL_MS=4000;
 const STORE='interschool-v1';
 
@@ -396,6 +418,7 @@ let entries=[];          // {id,school,name,year,gender,event}
 let results={};          // eventKey -> [entryId]
 let marks={};            // eventKey -> {entryId:number}
 let scheme=[10,8,6,5,4,3,2,1];
+let tabScheme=[12,10,8,6,4,2];   // team-game points, straight to the school
 let view='prog', curEv=null, filter='all', stuQuery='';
 let syncState='idle', lastSynced=null, everSynced=false;
 
@@ -423,10 +446,11 @@ function schoolColor(s){
   } else if(L>0.62) c=mix(c,[0,0,0],0.22);
   return rgb2css(c);
 }
-function isTrack(ev){ return TRACK.includes(ev)||/^\d+m$/.test(ev); }
-function isJump(ev){ return JUMPS.includes(ev)||/jump/i.test(ev); }
-function isThrow(ev){ return !isTrack(ev)&&(THROWS.includes(ev)||!isJump(ev)); }
-function evKind(ev){ return isTrack(ev)?'Track':isJump(ev)?'Jumps':'Throws'; }
+function isTabloid(ev){ return TABLOIDS.includes(ev); }
+function isTrack(ev){ return !isTabloid(ev)&&(TRACK.includes(ev)||/^\d+m$/.test(ev)); }
+function isJump(ev){ return !isTabloid(ev)&&(JUMPS.includes(ev)||/jump/i.test(ev)); }
+function isThrow(ev){ return !isTabloid(ev)&&!isTrack(ev)&&(THROWS.includes(ev)||!isJump(ev)); }
+function evKind(ev){ return isTabloid(ev)?'Tabloids':isTrack(ev)?'Track':isJump(ev)?'Jumps':'Throws'; }
 function unitFor(ev){ return FIELD_UNITS[ev]||'m'; }
 function ord(n){ const s=['th','st','nd','rd'],v=n%100; return (s[(v-20)%10]||s[v]||s[0]); }
 function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -448,7 +472,7 @@ function load(){
   }catch(e){}
 }
 function rebuild(){
-  entries=[]; results={}; marks={}; scheme=[10,8,6,5,4,3,2,1];
+  entries=[]; results={}; marks={}; scheme=[10,8,6,5,4,3,2,1]; tabScheme=[12,10,8,6,4,2];
   const buf={};
   LOG.concat(pending).forEach(a=>{
     let p={};
@@ -472,7 +496,10 @@ function rebuild(){
           else marks[p.key][p.entryId]=Number(p.value);
         }
         break;
-      case 'is_settings': if(Array.isArray(p.scheme)) scheme=p.scheme.slice(); break;
+      case 'is_settings':
+        if(Array.isArray(p.scheme)) scheme=p.scheme.slice();
+        if(Array.isArray(p.tabScheme)) tabScheme=p.tabScheme.slice();
+        break;
       case 'is_clear': entries=[]; results={}; marks={}; break;
     }
   });
@@ -520,7 +547,7 @@ async function poll(){
     }
   }catch(e){ if(n===seq) setSync('offline'); }
 }
-function stateHash(){ return JSON.stringify([entries.length,results,marks,scheme]); }
+function stateHash(){ return JSON.stringify([entries.length,results,marks,scheme,tabScheme]); }
 let lastHash='';
 function renderIfChanged(){
   const h=stateHash();
@@ -545,20 +572,32 @@ function save(){ /* superseded by send() */ }
 
 // ---------- events derived from whoever has been entered ----------
 function evKey(e){ return e.year+'|'+e.gender+'|'+e.event; }
+function tabloidYears(){
+  const ys=[...new Set(entries.map(e=>e.year))].filter(Boolean).sort((a,b)=>a-b);
+  return ys.length?ys:[3,4,5,6];
+}
 function allEvents(){
   const m={};
   entries.forEach(e=>{
     const k=evKey(e);
     (m[k]=m[k]||{key:k,year:e.year,gender:e.gender,event:e.event,entries:[]}).entries.push(e);
   });
-  return Object.values(m).sort((a,b)=>
+  const list=Object.values(m).sort((a,b)=>
     a.year-b.year ||
     a.gender.localeCompare(b.gender) ||
-    EVENT_ORDER.indexOf(a.event)-EVENT_ORDER.indexOf(b.event)
-  ).map((ev,i)=>Object.assign(ev,{no:i+1}));
+    EVENT_ORDER.indexOf(a.event)-EVENT_ORDER.indexOf(b.event));
+  // Team games are school-vs-school, so they exist whether or not anyone has
+  // been nominated individually.
+  tabloidYears().forEach(y=>TABLOIDS.forEach(t=>{
+    list.push({key:'tab|'+y+'|'+t,year:y,gender:'Mixed',event:t,entries:[],team:true});
+  }));
+  return list.map((ev,i)=>Object.assign(ev,{no:i+1}));
 }
 function evById(k){ return allEvents().find(e=>e.key===k); }
-function evName(ev){ return 'Year '+ev.year+' '+ev.gender+' · '+ev.event; }
+function evName(ev){
+  return ev.team ? 'Year '+ev.year+' · '+ev.event
+                 : 'Year '+ev.year+' '+ev.gender+' · '+ev.event;
+}
 // lanes are drawn so schools are spread across the track rather than clumped
 function laneOrder(ev){
   const bySchool={};
@@ -581,7 +620,12 @@ function fieldRanking(ev){
     .map(e=>({entry:e,value:Number(mk[e.id])}))
     .sort((a,b)=>b.value-a.value||a.entry.name.localeCompare(b.entry.name));
 }
-function counted(ev){ return isTrack(ev.event) ? (results[ev.key]||[]).length : Object.keys(marks[ev.key]||{}).length; }
+function counted(ev){
+  if(ev.team||isTrack(ev.event)) return (results[ev.key]||[]).length;
+  return Object.keys(marks[ev.key]||{}).length;
+}
+function expected(ev){ return ev.team ? SCHOOLS.length : ev.entries.length; }
+function tabPoints(i){ return i<tabScheme.length?tabScheme[i]:0; }
 function pointsFor(i){ return i<scheme.length?scheme[i]:0; }
 
 // An athlete is one person across every event they enter, so aggregate on the
@@ -595,6 +639,7 @@ function tally(){
       if(!t[k]) t[k]={name:e.name,school:e.school,year:e.year,pts:0,events:0};
       t[k].pts+=pointsFor(i); t[k].events++;
     };
+    if(ev.team) return;                       // team games score to the school, not individuals
     if(isTrack(ev.event)) (results[ev.key]||[]).forEach((id,i)=>{
       const e=ev.entries.find(x=>x.id===id); if(e) add(e,i);
     });
@@ -602,9 +647,17 @@ function tally(){
   });
   return t;
 }
+function tabloidPoints(){
+  const s={};
+  allEvents().filter(ev=>ev.team).forEach(ev=>{
+    (results[ev.key]||[]).forEach((school,i)=>{ s[school]=(s[school]||0)+tabPoints(i); });
+  });
+  return s;
+}
 function schoolTotals(){
   const s={}; SCHOOLS.forEach(x=>s[x]=0);
   Object.values(tally()).forEach(a=>{ if(a.school in s) s[a.school]+=a.pts; });
+  Object.entries(tabloidPoints()).forEach(([k,v])=>{ s[k]=(s[k]||0)+v; });
   return s;
 }
 
@@ -733,7 +786,7 @@ function renderProg(){
   const done=evs.filter(ev=>counted(ev)>=ev.entries.length&&ev.entries.length).length;
   $('progSub').textContent=evs.length?evs.length+' events · '+done+' complete':'—';
 
-  const kinds=['all','Track','Field','Jumps','Throws',
+  const kinds=['all','Track','Field','Jumps','Throws','Tabloids',
     ...[...new Set(evs.map(e=>'Year '+e.year))].sort()];
   const ch=$('filterChips'); ch.innerHTML='';
   kinds.forEach(k=>{
@@ -746,14 +799,15 @@ function renderProg(){
 
   const list=evs.filter(ev=>filter==='all'?true
     :filter==='Track'?isTrack(ev.event)
-    :filter==='Field'?!isTrack(ev.event)
+    :filter==='Field'?(!isTrack(ev.event)&&!isTabloid(ev.event))
     :filter==='Jumps'?isJump(ev.event)
     :filter==='Throws'?isThrow(ev.event)
+    :filter==='Tabloids'?isTabloid(ev.event)
     :('Year '+ev.year)===filter);
 
   const g=$('evGrid'); g.innerHTML='';
   list.forEach(ev=>{
-    const n=counted(ev), tot=ev.entries.length;
+    const n=counted(ev), tot=expected(ev);
     let cls='',txt='Not started';
     if(n>0&&n<tot){cls='part';txt=n+'/'+tot+' recorded';}
     else if(n>0&&n>=tot){cls='done';txt='Complete';}
@@ -761,10 +815,12 @@ function renderProg(){
     const c=document.createElement('button');
     c.className='ev-card';
     const kind=evKind(ev.event);
-    c.style.setProperty('--ec',kind==='Track'?'hsl(212 72% 42%)':kind==='Jumps'?'hsl(150 62% 34%)':'hsl(28 78% 40%)');
+    c.style.setProperty('--ec',kind==='Track'?'hsl(212 72% 42%)':kind==='Jumps'?'hsl(150 62% 34%)'
+      :kind==='Throws'?'hsl(28 78% 40%)':'hsl(280 55% 45%)');
     c.innerHTML='<div class="ev-no">EVENT '+String(ev.no).padStart(2,'0')+' · '+kind.toUpperCase()+'</div>'+
       '<div><div class="ev-name">'+esc(evName(ev))+'</div>'+
-      '<div class="ev-meta">'+tot+' competitors · '+schools+' schools</div></div>'+
+      '<div class="ev-meta">'+(ev.team?SCHOOLS.length+' schools · team game'
+        :tot+' competitors · '+schools+' schools')+'</div></div>'+
       '<div class="ev-status"><span class="dot '+cls+'"></span>'+txt+'</div>';
     c.addEventListener('click',()=>{ curEv=ev.key; view='event'; render(); window.scrollTo(0,0); });
     g.appendChild(c);
@@ -775,7 +831,7 @@ function renderProg(){
 let findQuery='', findPick=null, findHi=0, findOpen=false;
 function athleteIndex(){
   const ix={};
-  allEvents().forEach(ev=>ev.entries.forEach(e=>{
+  allEvents().filter(ev=>!ev.team).forEach(ev=>ev.entries.forEach(e=>{
     const k=athleteKey(e);
     const a=ix[k]||(ix[k]={key:k,name:e.name,school:e.school,year:e.year,rows:[]});
     a.rows.push({ev,entry:e});
@@ -871,13 +927,18 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.finder')) $('sugge
 // ---------- event ----------
 function renderEvent(){
   const ev=evById(curEv); if(!ev){ view='prog'; return render(); }
-  const track=isTrack(ev.event);
-  $('trackWrap').hidden=!track; $('fieldWrap').hidden=track;
+  const team=!!ev.team, track=!team&&isTrack(ev.event);
+  $('teamWrap').hidden=!team;
+  $('trackWrap').hidden=team||!track;
+  $('fieldWrap').hidden=team||track;
   $('undoBtn').hidden=!track;
   $('evNo').textContent='EVENT '+String(ev.no).padStart(2,'0')+' · '+evKind(ev.event).toUpperCase();
   $('evTitle').textContent=evName(ev);
-  $('evSub').textContent=ev.entries.length+' competitors from '+
-    new Set(ev.entries.map(e=>e.school)).size+' schools'+(track?'':' · distances in '+unitFor(ev.event));
+  $('evSub').textContent=team
+    ? 'Team game · place the '+SCHOOLS.length+' schools'
+    : ev.entries.length+' competitors from '+
+      new Set(ev.entries.map(e=>e.school)).size+' schools'+(track?'':' · distances in '+unitFor(ev.event));
+  if(team) return renderTeam(ev);
   track?renderTrack(ev):renderField(ev);
 }
 function renderTrack(ev){
@@ -923,6 +984,31 @@ function renderTrack(ev){
     rl.appendChild(row);
   });
   $('undoBtn').disabled=order.length===0;
+}
+function renderTeam(ev){
+  const order=results[ev.key]||[];
+  const pool=SCHOOLS.filter(s=>!order.includes(s));
+  const pl=$('teamPool'); pl.innerHTML='';
+  pool.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='hrow'; b.style.setProperty('--sc',schoolColor(s));
+    b.innerHTML='<span class="pl">—</span><span>'+esc(s)+'</span>';
+    b.addEventListener('click',()=>send('is_result',{key:ev.key,order:order.concat([s])}));
+    pl.appendChild(b);
+  });
+  if(!pool.length) pl.innerHTML='<div class="empty">All schools placed.</div>';
+
+  const ol=$('teamOrder'); ol.innerHTML='';
+  order.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.className='hrow'; row.style.setProperty('--sc',schoolColor(s));
+    row.innerHTML='<span class="pl'+(i<3?' p'+(i+1):'')+'">'+(i+1)+'</span><span>'+esc(s)+'</span>'+
+      '<span class="pts">'+tabPoints(i)+' pts</span>'+
+      '<button class="ib rm" style="margin-left:10px">✕</button>';
+    row.querySelector('button').addEventListener('click',()=>
+      send('is_result',{key:ev.key,order:order.filter(x=>x!==s)}));
+    ol.appendChild(row);
+  });
 }
 function renderField(ev){
   const mk=marks[ev.key]||{};
@@ -991,8 +1077,18 @@ function renderStand(){
     tr.innerHTML='<td>'+(i+1)+ord(i+1)+'</td><td><input type="number" min="0" step="1" value="'+v+'"></td>';
     tr.querySelector('input').addEventListener('change',e=>{
       const sc=scheme.slice(); sc[i]=Math.max(0,parseInt(e.target.value,10)||0);
-      send('is_settings',{scheme:sc}); });
+      send('is_settings',{scheme:sc,tabScheme}); });
     pb.appendChild(tr);
+  });
+
+  const tb2=$('tabBody'); tb2.innerHTML='';
+  tabScheme.forEach((v,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+(i+1)+ord(i+1)+'</td><td><input type="number" min="0" step="1" value="'+v+'"></td>';
+    tr.querySelector('input').addEventListener('change',e=>{
+      const sc=tabScheme.slice(); sc[i]=Math.max(0,parseInt(e.target.value,10)||0);
+      send('is_settings',{scheme,tabScheme:sc}); });
+    tb2.appendChild(tr);
   });
 
   const q=stuQuery.trim().toLowerCase();
@@ -1043,6 +1139,12 @@ $('rmPlace').addEventListener('click',()=>{ if(scheme.length>1) send('is_setting
 function today(){ return new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}); }
 function head(sub){ return '<h1>Interschool Carnival</h1><h2>'+sub+' · '+today()+'</h2>'; }
 function fieldBlock(ev){
+  if(ev.team){
+    return '<div class="pb"><h3>Event '+ev.no+' · '+esc(evName(ev))+'</h3>'+
+      '<table><thead><tr><th>School</th><th>Place</th></tr></thead><tbody>'+
+      SCHOOLS.map(s=>'<tr><td>'+esc(s)+'</td><td class="blank"></td></tr>').join('')+
+      '</tbody></table></div>';
+  }
   const track=isTrack(ev.event);
   const list=track?laneOrder(ev):ev.entries.slice().sort((a,b)=>
     a.school.localeCompare(b.school)||a.name.localeCompare(b.name));
@@ -1064,7 +1166,7 @@ $('printListBtn').addEventListener('click',()=>{
   $('printSheet').innerHTML=head('Event List')+
     '<table><thead><tr><th>Event</th><th>Year</th><th>Gender</th><th>Discipline</th><th>Type</th><th>Entries</th></tr></thead><tbody>'+
     allEvents().map(ev=>'<tr><td>'+ev.no+'</td><td>Year '+ev.year+'</td><td>'+ev.gender+'</td><td>'+
-      esc(ev.event)+'</td><td>'+evKind(ev.event)+'</td><td>'+ev.entries.length+'</td></tr>').join('')+
+      esc(ev.event)+'</td><td>'+evKind(ev.event)+'</td><td>'+expected(ev)+'</td></tr>').join('')+
     '</tbody></table>';
   window.print();
 });
@@ -1084,6 +1186,11 @@ $('exportBtn').addEventListener('click',()=>{
   const q=v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':v;
   const lines=['Event,Year,Gender,Discipline,Place,Name,School,Result,Points'];
   allEvents().forEach(ev=>{
+    if(ev.team){
+      (results[ev.key]||[]).forEach((school,i)=>
+        lines.push([ev.no,'Year '+ev.year,'Mixed',ev.event,i+1,'—',school,'',tabPoints(i)].map(q).join(',')));
+      return;
+    }
     if(isTrack(ev.event)) (results[ev.key]||[]).forEach((id,i)=>{
       const e=ev.entries.find(x=>x.id===id); if(!e) return;
       lines.push([ev.no,'Year '+ev.year,ev.gender,ev.event,i+1,e.name,e.school,'',pointsFor(i)].map(q).join(','));
