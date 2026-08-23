@@ -332,6 +332,8 @@
     <h1 id="raceDiv">—</h1>
     <p class="sub" id="raceSub">—</p>
     <div class="race-banner" id="raceBanner"></div>
+    <div class="notice" id="noRoster" hidden>No class list on this device, so competitors show as codes.
+      Load <b>carnival-roster.json</b> from Settings to see names.</div>
     <div class="notice" id="notReady" hidden></div>
 
     <div id="measureWrap" hidden>
@@ -368,7 +370,10 @@
         <p class="hint">Listed in lane order · tap each name as they cross the line</p>
         <button class="addbtn" id="addToggle">+ Add a runner to this race</button>
         <div class="addform" id="addForm" hidden>
-          <input type="text" id="newName" placeholder="Full name">
+          <div style="font-size:12px;color:var(--dim);line-height:1.45">Anyone added here is shared with the
+          other devices, so whatever you type <b>is</b> stored in the results sheet. Use initials if you'd
+          rather it wasn't.</div>
+          <input type="text" id="newName" placeholder="Name or initials">
           <select id="newHouse"></select>
           <input type="text" id="newRoom" placeholder="Room">
           <div class="row">
@@ -404,6 +409,36 @@
     <div class="eyebrow">SETTINGS</div>
     <h1>Settings</h1>
     <p class="sub">Changes apply straight away and every total recalculates.</p>
+
+    <div class="card" id="setupCard">
+      <h2>Where results are stored</h2>
+      <p id="storeNote">—</p>
+      <div class="row" id="storeRow"></div>
+    </div>
+
+    <div class="card">
+      <h2>Readable workbook</h2>
+      <p><b>Download</b> builds a real .xlsx on this device and saves it — no sign-in, nothing in the cloud,
+      works offline. <b>Update the cloud workbook</b> writes the same three sheets into the shared
+      workbook instead. Both produce <b>Results</b>, <b>Standings</b> and <b>Programme</b> tabs that
+      anyone can read without the app.</p>
+      <div class="row">
+        <button class="btn pri" id="downloadXlsxBtn">⬇ Download Excel workbook</button>
+        <button class="btn" id="publishBtn">📊 Update the cloud workbook</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Class lists</h2>
+      <p id="rosterNote">—</p>
+      <div class="row">
+        <button class="btn" id="rosterBtn">⬆ Load class lists</button>
+        <button class="btn dan" id="rosterClearBtn">Clear class lists</button>
+      </div>
+      <input type="file" id="rosterFile" accept=".json,application/json" hidden>
+      <div class="info">Names are never stored in this file — they live only in the results store.
+      Load <b>carnival-roster.json</b> once and every device picks them up.</div>
+    </div>
 
     <div class="card">
       <h2>Running late?</h2>
@@ -499,7 +534,7 @@
 </div>
 
 <script>
-const RACES = [{"id":"r001","no":1,"division":"Kindy","heat":1,"heats":4,"event":"50m","t":730,"students":[],"page":"races","mode":"order"},{"id":"r002","no":2,"division":"Kindy","heat":2,"heats":4,"event":"50m","t":732,"students":[],"page":"races","mode":"order"},{"id":"r003","no":3,"division":"Kindy","heat":3,"heats":4,"event":"50m","t":734,"students":[],"page":"races","mode":"order"},{"id":"r004","no":4,"division":"Kindy","heat":4,"heats":4,"event":"50m","t":736,"students":[],"page":"races","mode":"order"},{"id":"r005","no":5,"division":"PP1 Girls","heat":1,"heats":1,"event":"50m","t":738,"students":[{"id":"PP1 Girls|Luna Cugola","name":"Luna Cugola","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Girls|Jada Miller","name":"Jada Miller","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Girls|Biniarn Scott-Fatnowna","name":"Biniarn Scott-Fatnowna","house":"Red","room":"1","year":"PP"},{"id":"PP1 Girls|Wallis Kociuruba","name":"Wallis Kociuruba","house":"Yellow","room":"1","year":"PP"},{"id":"PP1 Girls|Harper Watson","name":"Harper Watson","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Girls|Matilda McKay","name":"Matilda McKay","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Girls|Manaia van der Hoorn","name":"Manaia van der Hoorn","house":"Blue","room":"1","year":"PP"},{"id":"PP1 Girls|Alaiah Mason","name":"Alaiah Mason","house":"Yellow","room":"1","year":"PP"},{"id":"PP1 Girls|Myla Milroy","name":"Myla Milroy","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Girls|Jean Grigg","name":"Jean Grigg","house":"Yellow","room":"1","year":"PP"},{"id":"PP1 Girls|Anna Merzi Firth","name":"Anna Merzi Firth","house":"Blue","room":"1","year":"PP"}],"page":"races","mode":"order"},{"id":"r006","no":6,"division":"PP2 Girls","heat":1,"heats":2,"event":"50m","t":740,"students":[{"id":"PP2 Girls|Billie van Leeuwen","name":"Billie van Leeuwen","house":"Yellow","room":"2","year":"PP"},{"id":"PP2 Girls|Isla Mathwin","name":"Isla Mathwin","house":"Red","room":"2","year":"PP"},{"id":"PP2 Girls|Elizabeth Champion","name":"Elizabeth Champion","house":"Blue","room":"2","year":"PP"},{"id":"PP2 Girls|Ola Wojcik","name":"Ola Wojcik","house":"Red","room":"2","year":"PP"},{"id":"PP2 Girls|Emily Armitage","name":"Emily Armitage","house":"Red","room":"2","year":"PP"},{"id":"PP2 Girls|Ivy Mullins","name":"Ivy Mullins","house":"Blue","room":"2","year":"PP"},{"id":"PP2 Girls|Kit Baxter","name":"Kit Baxter","house":"Red","room":"2","year":"PP"}],"page":"races","mode":"order"},{"id":"r007","no":7,"division":"PP2 Girls","heat":2,"heats":2,"event":"50m","t":742,"students":[{"id":"PP2 Girls|Lylah Holcroft","name":"Lylah Holcroft","house":"Blue","room":"2","year":"PP"},{"id":"PP2 Girls|Aubrey Oliver","name":"Aubrey Oliver","house":"Red","room":"2","year":"PP"},{"id":"PP2 Girls|Sage Harms","name":"Sage Harms","house":"Red","room":"2","year":"PP"},{"id":"PP2 Girls|Phoebe Portman","name":"Phoebe Portman","house":"Purple","room":"2","year":"PP"},{"id":"PP2 Girls|Freya Johnson","name":"Freya Johnson","house":"Purple","room":"2","year":"PP"},{"id":"PP2 Girls|Harriet Viola","name":"Harriet Viola","house":"Yellow","room":"2","year":"PP"},{"id":"PP2 Girls|Billie Wren","name":"Billie Wren","house":"Yellow","room":"2","year":"PP"}],"page":"races","mode":"order"},{"id":"r008","no":8,"division":"PP3 Girls","heat":1,"heats":2,"event":"50m","t":744,"students":[{"id":"PP3 Girls|Yara Alvarez","name":"Yara Alvarez","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Girls|Thea Shore","name":"Thea Shore","house":"Yellow","room":"3","year":"PP"},{"id":"PP3 Girls|Imogen Stone","name":"Imogen Stone","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Girls|Maggie Szabo","name":"Maggie Szabo","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Girls|Harlow Wilson","name":"Harlow Wilson","house":"Blue","room":"3","year":"PP"},{"id":"PP3 Girls|Nevaeh-Jay Hayward","name":"Nevaeh-Jay Hayward","house":"Red","room":"3","year":"PP"},{"id":"PP3 Girls|Cleo Jeancharles","name":"Cleo Jeancharles","house":"Yellow","room":"3","year":"PP"}],"page":"races","mode":"order"},{"id":"r009","no":9,"division":"PP3 Girls","heat":2,"heats":2,"event":"50m","t":746,"students":[{"id":"PP3 Girls|Taylor Grist","name":"Taylor Grist","house":"Blue","room":"3","year":"PP"},{"id":"PP3 Girls|Sage Kavanagh","name":"Sage Kavanagh","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Girls|Elisabeth Giraud","name":"Elisabeth Giraud","house":"Blue","room":"3","year":"PP"},{"id":"PP3 Girls|Evie Watts","name":"Evie Watts","house":"Blue","room":"3","year":"PP"},{"id":"PP3 Girls|Mabel Brennan","name":"Mabel Brennan","house":"Red","room":"3","year":"PP"},{"id":"PP3 Girls|Ava Lee","name":"Ava Lee","house":"Blue","room":"3","year":"PP"}],"page":"races","mode":"order"},{"id":"r010","no":10,"division":"PP1 Boys","heat":1,"heats":1,"event":"50m","t":748,"students":[{"id":"PP1 Boys|Mackenzie Griffiths","name":"Mackenzie Griffiths","house":"Yellow","room":"1","year":"PP"},{"id":"PP1 Boys|Bodhi Hollmer","name":"Bodhi Hollmer","house":"Yellow","room":"1","year":"PP"},{"id":"PP1 Boys|Noah Macdonald","name":"Noah Macdonald","house":"Red","room":"1","year":"PP"},{"id":"PP1 Boys|Eli Yorke","name":"Eli Yorke","house":"Blue","room":"1","year":"PP"},{"id":"PP1 Boys|Jude Lanfear","name":"Jude Lanfear","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Boys|Lachlan Brooks","name":"Lachlan Brooks","house":"Blue","room":"1","year":"PP"},{"id":"PP1 Boys|Hunter Winspear","name":"Hunter Winspear","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Boys|Roy Wiley","name":"Roy Wiley","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Boys|Harvey Hall","name":"Harvey Hall","house":"Purple","room":"1","year":"PP"},{"id":"PP1 Boys|Howel Ayre","name":"Howel Ayre","house":"Yellow","room":"1","year":"PP"},{"id":"PP1 Boys|Nils Pladdy","name":"Nils Pladdy","house":"Yellow","room":"1","year":"PP"}],"page":"races","mode":"order"},{"id":"r011","no":11,"division":"PP2 Boys","heat":1,"heats":1,"event":"50m","t":750,"students":[{"id":"PP2 Boys|Xavier Chrisp","name":"Xavier Chrisp","house":"Red","room":"2","year":"PP"},{"id":"PP2 Boys|Leon Sands","name":"Leon Sands","house":"Yellow","room":"2","year":"PP"},{"id":"PP2 Boys|Edward Heywood Sizer","name":"Edward Heywood Sizer","house":"Yellow","room":"2","year":"PP"},{"id":"PP2 Boys|Miles Charlton","name":"Miles Charlton","house":"Red","room":"2","year":"PP"},{"id":"PP2 Boys|Hamish Nailer","name":"Hamish Nailer","house":"Blue","room":"2","year":"PP"},{"id":"PP2 Boys|Eli Hodson Day","name":"Eli Hodson Day","house":"Purple","room":"2","year":"PP"},{"id":"PP2 Boys|Isaac McMahon","name":"Isaac McMahon","house":"Yellow","room":"2","year":"PP"},{"id":"PP2 Boys|Milo Abbott","name":"Milo Abbott","house":"Yellow","room":"2","year":"PP"},{"id":"PP2 Boys|Fox Gatica","name":"Fox Gatica","house":"Purple","room":"2","year":"PP"},{"id":"PP2 Boys|Callan Marshall","name":"Callan Marshall","house":"Blue","room":"2","year":"PP"},{"id":"PP2 Boys|Aiden Frater","name":"Aiden Frater","house":"Blue","room":"2","year":"PP"}],"page":"races","mode":"order"},{"id":"r012","no":12,"division":"PP3 Boys","heat":1,"heats":1,"event":"50m","t":752,"students":[{"id":"PP3 Boys|Toby Burnell","name":"Toby Burnell","house":"Red","room":"3","year":"PP"},{"id":"PP3 Boys|Tommy Sommerville","name":"Tommy Sommerville","house":"Red","room":"3","year":"PP"},{"id":"PP3 Boys|Felix Zapata","name":"Felix Zapata","house":"Yellow","room":"3","year":"PP"},{"id":"PP3 Boys|Felix Deane","name":"Felix Deane","house":"Red","room":"3","year":"PP"},{"id":"PP3 Boys|Auguste Lightly","name":"Auguste Lightly","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Boys|Finlay Arnold-Satar","name":"Finlay Arnold-Satar","house":"Yellow","room":"3","year":"PP"},{"id":"PP3 Boys|Otto Egling","name":"Otto Egling","house":"Blue","room":"3","year":"PP"},{"id":"PP3 Boys|Lucas Reading","name":"Lucas Reading","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Boys|Liam White","name":"Liam White","house":"Purple","room":"3","year":"PP"},{"id":"PP3 Boys|Milo Douglas","name":"Milo Douglas","house":"Red","room":"3","year":"PP"},{"id":"PP3 Boys|Rex Ridley-Lindgren","name":"Rex Ridley-Lindgren","house":"Blue","room":"3","year":"PP"}],"page":"races","mode":"order"},{"id":"r013","no":13,"division":"Year 1 Girls","heat":1,"heats":3,"event":"75m","students":[{"id":"Year 1 Girls|Emily Forbes","name":"Emily Forbes","house":"Red","room":"1","year":"1"},{"id":"Year 1 Girls|Esther Hutchinson","name":"Esther Hutchinson","house":"Red","room":"2","year":"1"},{"id":"Year 1 Girls|Elise Martyr","name":"Elise Martyr","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Girls|Lily Abbott","name":"Lily Abbott","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Girls|Maya Bresolin","name":"Maya Bresolin","house":"Purple","room":"1","year":"1"},{"id":"Year 1 Girls|Ellie Henderson","name":"Ellie Henderson","house":"Purple","room":"1","year":"1"},{"id":"Year 1 Girls|Matilda Davies","name":"Matilda Davies","house":"Purple","room":"2","year":"1"},{"id":"Year 1 Girls|Beatrice Bayati","name":"Beatrice Bayati","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Girls|Indigo Moore","name":"Indigo Moore","house":"Red","room":"1","year":"1"}],"t":754,"page":"races","mode":"order"},{"id":"r014","no":14,"division":"Year 1 Girls","heat":2,"heats":3,"event":"75m","students":[{"id":"Year 1 Girls|Frankie Heywood-Sizer","name":"Frankie Heywood-Sizer","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Girls|Laylarni Champion","name":"Laylarni Champion","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Girls|Jari Abbott","name":"Jari Abbott","house":"Blue","room":"2","year":"1"},{"id":"Year 1 Girls|Rosalie Zito","name":"Rosalie Zito","house":"Blue","room":"2","year":"1"},{"id":"Year 1 Girls|Elise Charles","name":"Elise Charles","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Girls|Matilda Jackson","name":"Matilda Jackson","house":"Purple","room":"2","year":"1"},{"id":"Year 1 Girls|Zelia Pottier","name":"Zelia Pottier","house":"Red","room":"2","year":"1"},{"id":"Year 1 Girls|Arlie Churchill","name":"Arlie Churchill","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Girls|Margot Williams","name":"Margot Williams","house":"Red","room":"1","year":"1"}],"t":756,"page":"races","mode":"order"},{"id":"r015","no":15,"division":"Year 1 Girls","heat":3,"heats":3,"event":"75m","students":[{"id":"Year 1 Girls|Willow Elsley","name":"Willow Elsley","house":"Red","room":"2","year":"1"},{"id":"Year 1 Girls|Poppy Percy","name":"Poppy Percy","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Girls|Layla Cabena","name":"Layla Cabena","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Girls|Eva Marijanovic","name":"Eva Marijanovic","house":"Yellow","room":"1","year":"1"},{"id":"Year 1 Girls|Frankie Greep","name":"Frankie Greep","house":"Yellow","room":"1","year":"1"},{"id":"Year 1 Girls|Jocelyn Ormond","name":"Jocelyn Ormond","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Girls|Luna Harms","name":"Luna Harms","house":"Red","room":"1","year":"1"},{"id":"Year 1 Girls|Poppy Krasenstein","name":"Poppy Krasenstein","house":"Yellow","room":"1","year":"1"},{"id":"Year 1 Girls|Pip Irvine-Brown","name":"Pip Irvine-Brown","house":"Yellow","room":"2","year":"1"}],"t":758,"page":"races","mode":"order"},{"id":"r016","no":16,"division":"Year 1 Boys","heat":1,"heats":2,"event":"75m","students":[{"id":"Year 1 Boys|Thomas Matan","name":"Thomas Matan","house":"Red","room":"2","year":"1"},{"id":"Year 1 Boys|Peter Jones","name":"Peter Jones","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Boys|Charlie Freeman","name":"Charlie Freeman","house":"Yellow","room":"1","year":"1"},{"id":"Year 1 Boys|Orlando Cutler","name":"Orlando Cutler","house":"Yellow","room":"1","year":"1"},{"id":"Year 1 Boys|Oliver Appel","name":"Oliver Appel","house":"Red","room":"1","year":"1"},{"id":"Year 1 Boys|Api Lam","name":"Api Lam","house":"Purple","room":"1","year":"1"},{"id":"Year 1 Boys|Preston Hart","name":"Preston Hart","house":"Purple","room":"2","year":"1"},{"id":"Year 1 Boys|Archie Craig","name":"Archie Craig","house":"Red","room":"2","year":"1"},{"id":"Year 1 Boys|Huon Lawson","name":"Huon Lawson","house":"Yellow","room":"2","year":"1"},{"id":"Year 1 Boys|Indi Bernard","name":"Indi Bernard","house":"Purple","room":"1","year":"1"}],"t":760,"page":"races","mode":"order"},{"id":"r017","no":17,"division":"Year 1 Boys","heat":2,"heats":2,"event":"75m","students":[{"id":"Year 1 Boys|Jack Embleton","name":"Jack Embleton","house":"Purple","room":"1","year":"1"},{"id":"Year 1 Boys|Mikhael Kirk","name":"Mikhael Kirk","house":"Red","room":"2","year":"1"},{"id":"Year 1 Boys|Jaskah Stone-Kaske","name":"Jaskah Stone-Kaske","house":"Blue","room":"2","year":"1"},{"id":"Year 1 Boys|Coa Connor-Middleton","name":"Coa Connor-Middleton","house":"Blue","room":"2","year":"1"},{"id":"Year 1 Boys|Jasper Mann","name":"Jasper Mann","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Boys|Sterling Lyall","name":"Sterling Lyall","house":"Purple","room":"2","year":"1"},{"id":"Year 1 Boys|Kipp Booth","name":"Kipp Booth","house":"Red","room":"2","year":"1"},{"id":"Year 1 Boys|Dylan Hegerty","name":"Dylan Hegerty","house":"Blue","room":"1","year":"1"},{"id":"Year 1 Boys|Joey Anderson","name":"Joey Anderson","house":"Blue","room":"1","year":"1"}],"t":762,"page":"races","mode":"order"},{"id":"r018","no":18,"division":"Year 2 Girls","heat":1,"heats":2,"event":"75m","students":[{"id":"Year 2 Girls|Lenni Hutchinson","name":"Lenni Hutchinson","house":"Red","room":"3","year":"2"},{"id":"Year 2 Girls|Maya Pellowe","name":"Maya Pellowe","house":"Purple","room":"3","year":"2"},{"id":"Year 2 Girls|Bree Maloney","name":"Bree Maloney","house":"Blue","room":"4","year":"2"},{"id":"Year 2 Girls|Avah Parker","name":"Avah Parker","house":"Blue","room":"4","year":"2"},{"id":"Year 2 Girls|Maeva Monaghan","name":"Maeva Monaghan","house":"Blue","room":"3","year":"2"},{"id":"Year 2 Girls|Hazel Caudwell","name":"Hazel Caudwell","house":"Red","room":"3","year":"2"},{"id":"Year 2 Girls|Cora Wolfe","name":"Cora Wolfe","house":"Red","room":"3","year":"2"},{"id":"Year 2 Girls|Violet Flynn","name":"Violet Flynn","house":"Red","room":"3","year":"2"},{"id":"Year 2 Girls|Adeline Austen","name":"Adeline Austen","house":"Blue","room":"4","year":"2"},{"id":"Year 2 Girls|Miyaak Scott-Fatnowna","name":"Miyaak Scott-Fatnowna","house":"Red","room":"5","year":"2"},{"id":"Year 2 Girls|Eryn Cainglet","name":"Eryn Cainglet","house":"Yellow","room":"4","year":"2"},{"id":"Year 2 Girls|Maylie Sands","name":"Maylie Sands","house":"Yellow","room":"4","year":"2"}],"t":764,"page":"races","mode":"order"},{"id":"r019","no":19,"division":"Year 2 Girls","heat":2,"heats":2,"event":"75m","students":[{"id":"Year 2 Girls|Emily Maple","name":"Emily Maple","house":"Red","room":"4","year":"2"},{"id":"Year 2 Girls|Lana Fryer","name":"Lana Fryer","house":"Blue","room":"5","year":"2"},{"id":"Year 2 Girls|Heidi Pegler","name":"Heidi Pegler","house":"Blue","room":"5","year":"2"},{"id":"Year 2 Girls|Sascha Morris-Laird","name":"Sascha Morris-Laird","house":"Yellow","room":"3","year":"2"},{"id":"Year 2 Girls|Marlie Flood","name":"Marlie Flood","house":"Purple","room":"3","year":"2"},{"id":"Year 2 Girls|Nora Van-Den-Einden","name":"Nora Van-Den-Einden","house":"Purple","room":"4","year":"2"},{"id":"Year 2 Girls|Harriet McKay","name":"Harriet McKay","house":"Purple","room":"4","year":"2"},{"id":"Year 2 Girls|Marlee Ugle","name":"Marlee Ugle","house":"Yellow","room":"4","year":"2"},{"id":"Year 2 Girls|Luna Robins","name":"Luna Robins","house":"Yellow","room":"3","year":"2"},{"id":"Year 2 Girls|Blake McCaw","name":"Blake McCaw","house":"Red","room":"5","year":"2"},{"id":"Year 2 Girls|Lily Rossiter","name":"Lily Rossiter","house":"Yellow","room":"4","year":"2"},{"id":"Year 2 Girls|Ayla Moloney","name":"Ayla Moloney","house":"Purple","room":"3","year":"2"}],"t":766,"page":"races","mode":"order"},{"id":"r020","no":20,"division":"Year 2 Boys","heat":1,"heats":3,"event":"75m","students":[{"id":"Year 2 Boys|Jasper Ross","name":"Jasper Ross","house":"Yellow","room":"5","year":"2"},{"id":"Year 2 Boys|Dexa Fauzi","name":"Dexa Fauzi","house":"Blue","room":"3","year":"2"},{"id":"Year 2 Boys|Alfie Sommerville","name":"Alfie Sommerville","house":"Red","room":"3","year":"2"},{"id":"Year 2 Boys|Noah Abdullah","name":"Noah Abdullah","house":"Red","room":"4","year":"2"},{"id":"Year 2 Boys|Wilco Johanson","name":"Wilco Johanson","house":"Blue","room":"3","year":"2"},{"id":"Year 2 Boys|Zedrick Seguisabal","name":"Zedrick Seguisabal","house":"Blue","room":"5","year":"2"},{"id":"Year 2 Boys|Alfie Hudson","name":"Alfie Hudson","house":"Yellow","room":"3","year":"2"},{"id":"Year 2 Boys|Ruairi Arthur","name":"Ruairi Arthur","house":"Blue","room":"4","year":"2"},{"id":"Year 2 Boys|Jett Dos-Santos","name":"Jett Dos-Santos","house":"Red","room":"5","year":"2"},{"id":"Year 2 Boys|Lars Yorke","name":"Lars Yorke","house":"Blue","room":"5","year":"2"}],"t":768,"page":"races","mode":"order"},{"id":"r021","no":21,"division":"Year 2 Boys","heat":2,"heats":3,"event":"75m","students":[{"id":"Year 2 Boys|Lennox Evans","name":"Lennox Evans","house":"Purple","room":"5","year":"2"},{"id":"Year 2 Boys|Freddy Hill","name":"Freddy Hill","house":"Yellow","room":"4","year":"2"},{"id":"Year 2 Boys|Eli Roy","name":"Eli Roy","house":"Yellow","room":"4","year":"2"},{"id":"Year 2 Boys|Danahi Pickett","name":"Danahi Pickett","house":"Blue","room":"4","year":"2"},{"id":"Year 2 Boys|Archie Myles","name":"Archie Myles","house":"Purple","room":"4","year":"2"},{"id":"Year 2 Boys|Ollie Hoyle","name":"Ollie Hoyle","house":"Purple","room":"3","year":"2"},{"id":"Year 2 Boys|Peter Smith","name":"Peter Smith","house":"Yellow","room":"3","year":"2"},{"id":"Year 2 Boys|Sonny Stack","name":"Sonny Stack","house":"Purple","room":"4","year":"2"},{"id":"Year 2 Boys|Hamish Mead","name":"Hamish Mead","house":"Purple","room":"3","year":"2"},{"id":"Year 2 Boys|Raf Delaney","name":"Raf Delaney","house":"Yellow","room":"4","year":"2"}],"t":770,"page":"races","mode":"order"},{"id":"r022","no":22,"division":"Year 2 Boys","heat":3,"heats":3,"event":"75m","students":[{"id":"Year 2 Boys|Tareeq Seif","name":"Tareeq Seif","house":"Yellow","room":"3","year":"2"},{"id":"Year 2 Boys|Jeremy Gosmann","name":"Jeremy Gosmann","house":"Purple","room":"3","year":"2"},{"id":"Year 2 Boys|Andrew Hume","name":"Andrew Hume","house":"Purple","room":"4","year":"2"},{"id":"Year 2 Boys|Setanta O'Brien","name":"Setanta O'Brien","house":"Red","room":"4","year":"2"},{"id":"Year 2 Boys|Hubert Downer","name":"Hubert Downer","house":"Red","room":"3","year":"2"},{"id":"Year 2 Boys|Rory Cowden-Duff","name":"Rory Cowden-Duff","house":"Blue","room":"5","year":"2"},{"id":"Year 2 Boys|Teddy Bennett","name":"Teddy Bennett","house":"Blue","room":"4","year":"2"},{"id":"Year 2 Boys|Lincoln McMahon","name":"Lincoln McMahon","house":"Yellow","room":"3","year":"2"},{"id":"Year 2 Boys|Archie Perry","name":"Archie Perry","house":"Yellow","room":"4","year":"2"}],"t":772,"page":"races","mode":"order"},{"id":"r023","no":23,"division":"Year 3 Girls","heat":1,"heats":2,"event":"75m","students":[{"id":"Year 3 Girls|Alexis Miller","name":"Alexis Miller","house":"Blue","room":"6","year":"3"},{"id":"Year 3 Girls|Minnie Kociuruba","name":"Minnie Kociuruba","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Girls|Annie Tromp","name":"Annie Tromp","house":"Red","room":"5","year":"3"},{"id":"Year 3 Girls|Matilda Lanfear","name":"Matilda Lanfear","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Girls|Aria Parker","name":"Aria Parker","house":"Blue","room":"5","year":"3"},{"id":"Year 3 Girls|Ida Monaghan","name":"Ida Monaghan","house":"Blue","room":"6","year":"3"},{"id":"Year 3 Girls|Indigo Cugola","name":"Indigo Cugola","house":"Purple","room":"5","year":"3"},{"id":"Year 3 Girls|Matilda Hudson","name":"Matilda Hudson","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Girls|Luna De-Decker","name":"Luna De-Decker","house":"Yellow","room":"5","year":"3"}],"t":774,"page":"races","mode":"order"},{"id":"r024","no":24,"division":"Year 3 Girls","heat":2,"heats":2,"event":"75m","students":[{"id":"Year 3 Girls|Chloe Soom","name":"Chloe Soom","house":"Red","room":"7","year":"3"},{"id":"Year 3 Girls|Beri Hobbs","name":"Beri Hobbs","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Girls|Nola Watson","name":"Nola Watson","house":"Purple","room":"5","year":"3"},{"id":"Year 3 Girls|Alice Di-Carlo","name":"Alice Di-Carlo","house":"Red","room":"7","year":"3"},{"id":"Year 3 Girls|Adison Frater","name":"Adison Frater","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Girls|Alice Murray","name":"Alice Murray","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Girls|Ava Bowler","name":"Ava Bowler","house":"Red","room":"7","year":"3"},{"id":"Year 3 Girls|Savannah-Rose Wright","name":"Savannah-Rose Wright","house":"Red","room":"6","year":"3"},{"id":"Year 3 Girls|Kailani Mutzl","name":"Kailani Mutzl","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Girls|Lara Miller","name":"Lara Miller","house":"Purple","room":"6","year":"3"}],"t":776,"page":"races","mode":"order"},{"id":"r025","no":25,"division":"Year 3 Boys","heat":1,"heats":3,"event":"75m","students":[{"id":"Year 3 Boys|Archer Brown","name":"Archer Brown","house":"Blue","room":"5","year":"3"},{"id":"Year 3 Boys|Thomas Harper","name":"Thomas Harper","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|William Wayne","name":"William Wayne","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Mason Winspear","name":"Mason Winspear","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Boys|Ahto Cole","name":"Ahto Cole","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Boys|Harrison Hems","name":"Harrison Hems","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Boys|Lukas Morris","name":"Lukas Morris","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Ari Stack","name":"Ari Stack","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Boys|Marlon Grigg","name":"Marlon Grigg","house":"Yellow","room":"5","year":"3"},{"id":"Year 3 Boys|Ari Davies","name":"Ari Davies","house":"Blue","room":"7","year":"3"}],"t":778,"page":"races","mode":"order"},{"id":"r026","no":26,"division":"Year 3 Boys","heat":2,"heats":3,"event":"75m","students":[{"id":"Year 3 Boys|August Handley","name":"August Handley","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Emilio Jimenez-Lozano","name":"Emilio Jimenez-Lozano","house":"Blue","room":"5","year":"3"},{"id":"Year 3 Boys|Ares Alvarez","name":"Ares Alvarez","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Boys|Brody McCormack","name":"Brody McCormack","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Boys|Cody Bradford","name":"Cody Bradford","house":"Red","room":"5","year":"3"},{"id":"Year 3 Boys|Gabriel Alexander","name":"Gabriel Alexander","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Boys|Tom Mackinnon","name":"Tom Mackinnon","house":"Red","room":"7","year":"3"},{"id":"Year 3 Boys|Dean Mpawenimana","name":"Dean Mpawenimana","house":"Yellow","room":"5","year":"3"},{"id":"Year 3 Boys|Odin McKay","name":"Odin McKay","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Aukan Vorkoeper-Marques","name":"Aukan Vorkoeper-Marques","house":"Blue","room":"6","year":"3"}],"t":780,"page":"races","mode":"order"},{"id":"r027","no":27,"division":"Year 3 Boys","heat":3,"heats":3,"event":"75m","students":[{"id":"Year 3 Boys|Jaiden Brooks","name":"Jaiden Brooks","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|Billy Clark","name":"Billy Clark","house":"Red","room":"7","year":"3"},{"id":"Year 3 Boys|Zac Metral","name":"Zac Metral","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|Luca Guilloteau","name":"Luca Guilloteau","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Sebastian Joyce","name":"Sebastian Joyce","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Archer Crum","name":"Archer Crum","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Nico Van-Leeuwen","name":"Nico Van-Leeuwen","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Boys|Enzo Gray","name":"Enzo Gray","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Rowan Kershaw","name":"Rowan Kershaw","house":"Blue","room":"6","year":"3"},{"id":"Year 3 Boys|Jack Moore","name":"Jack Moore","house":"Red","room":"5","year":"3"}],"t":782,"page":"races","mode":"order"},{"id":"r028","no":28,"division":"Year 4 Girls","heat":1,"heats":2,"event":"75m","students":[{"id":"Year 4 Girls|Bonnie McKenzie","name":"Bonnie McKenzie","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Malia Lam","name":"Malia Lam","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Maya Pottier","name":"Maya Pottier","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Ivy Simpson","name":"Ivy Simpson","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Vivienne Lightly","name":"Vivienne Lightly","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Maggie Gibbins","name":"Maggie Gibbins","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Lorelei Groen","name":"Lorelei Groen","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Asha Kelly","name":"Asha Kelly","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Ellis Gatica","name":"Ellis Gatica","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Ariziki Seif","name":"Ariziki Seif","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Girls|Zoe Smith","name":"Zoe Smith","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Kayla Ellis","name":"Kayla Ellis","house":"Red","room":"8","year":"4"}],"t":784,"page":"races","mode":"order"},{"id":"r029","no":29,"division":"Year 4 Girls","heat":2,"heats":2,"event":"75m","students":[{"id":"Year 4 Girls|Faith Ryder-Garlett","name":"Faith Ryder-Garlett","house":"Blue","room":"10","year":"4"},{"id":"Year 4 Girls|India Drake","name":"India Drake","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Kyandra Miller","name":"Kyandra Miller","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Girls|Layla Whelan","name":"Layla Whelan","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Lylah Zavec","name":"Lylah Zavec","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Malaika Johnstone","name":"Malaika Johnstone","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Sadie Fryer","name":"Sadie Fryer","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Aria Ham","name":"Aria Ham","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Lola Rishworth","name":"Lola Rishworth","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Girls|Penny Van-Leeuwen","name":"Penny Van-Leeuwen","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Roux Noden","name":"Roux Noden","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Maisie Taylor","name":"Maisie Taylor","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Arabella Embleton","name":"Arabella Embleton","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Girls|Agnes Alexander","name":"Agnes Alexander","house":"Yellow","room":"8","year":"4"}],"t":786,"page":"races","mode":"order"},{"id":"r030","no":30,"division":"Year 4 Boys","heat":1,"heats":2,"event":"75m","students":[{"id":"Year 4 Boys|Sam Stocker","name":"Sam Stocker","house":"Blue","room":"10","year":"4"},{"id":"Year 4 Boys|Edmund Downer","name":"Edmund Downer","house":"Red","room":"10","year":"4"},{"id":"Year 4 Boys|Skip Van-Den-Einden","name":"Skip Van-Den-Einden","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Boys|Michael Reading","name":"Michael Reading","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Boys|Toby Ross","name":"Toby Ross","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Boys|Ollie Cabena","name":"Ollie Cabena","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Boys|Noah Portman","name":"Noah Portman","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Boys|Brock Turoa-Francis-Jones","name":"Brock Turoa-Francis-Jones","house":"Yellow","room":"8","year":"4"}],"t":788,"page":"races","mode":"order"},{"id":"r031","no":31,"division":"Year 4 Boys","heat":2,"heats":2,"event":"75m","students":[{"id":"Year 4 Boys|Pip Ward","name":"Pip Ward","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Boys|Teddy Cutler","name":"Teddy Cutler","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Boys|Oliver Turner","name":"Oliver Turner","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Boys|Sully Purser","name":"Sully Purser","house":"Blue","room":"10","year":"4"},{"id":"Year 4 Boys|Leon Everett-Conti","name":"Leon Everett-Conti","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Boys|Aston McKenzie","name":"Aston McKenzie","house":"Red","room":"8","year":"4"},{"id":"Year 4 Boys|Archie Patience","name":"Archie Patience","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Boys|Luca Tonge","name":"Luca Tonge","house":"Purple","room":"10","year":"4"}],"t":790,"page":"races","mode":"order"},{"id":"r032","no":32,"division":"Year 4 Other","heat":1,"heats":1,"event":"75m","students":[{"id":"Year 4 Other|Eric Ormond","name":"Eric Ormond","house":"Yellow","room":"8","year":"4"}],"t":792,"page":"races","mode":"order"},{"id":"r033","no":33,"division":"Year 5 Girls","heat":1,"heats":3,"event":"100m","students":[{"id":"Year 5 Girls|Solene Carozzi","name":"Solene Carozzi","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Girls|Jemima Parish","name":"Jemima Parish","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Girls|Ellie Hume","name":"Ellie Hume","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Girls|Ari Dobosz","name":"Ari Dobosz","house":"Blue","room":"11","year":"5"},{"id":"Year 5 Girls|Matilda Smith","name":"Matilda Smith","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Girls|Lennon McKay","name":"Lennon McKay","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Girls|Apsari Ovens","name":"Apsari Ovens","house":"Yellow","room":"12","year":"5"},{"id":"Year 5 Girls|Darcy Atherton-Morrice","name":"Darcy Atherton-Morrice","house":"Yellow","room":"13","year":"5"},{"id":"Year 5 Girls|Camellia Maynard","name":"Camellia Maynard","house":"Yellow","room":"11","year":"5"}],"t":794,"page":"races","mode":"order"},{"id":"r034","no":34,"division":"Year 5 Girls","heat":2,"heats":3,"event":"100m","students":[{"id":"Year 5 Girls|Hannah Perkins","name":"Hannah Perkins","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Girls|Roisin Mofflin","name":"Roisin Mofflin","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Charlotte Morris","name":"Charlotte Morris","house":"Red","room":"13","year":"5"},{"id":"Year 5 Girls|Penelope Crum","name":"Penelope Crum","house":"Red","room":"13","year":"5"},{"id":"Year 5 Girls|Bridie de-Silva","name":"Bridie de-Silva","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Lila Megan","name":"Lila Megan","house":"Yellow","room":"13","year":"5"},{"id":"Year 5 Girls|Jocelyn Wearne","name":"Jocelyn Wearne","house":"Purple","room":"11","year":"5"},{"id":"Year 5 Girls|Stasa Petrovic","name":"Stasa Petrovic","house":"Red","room":"12","year":"5"},{"id":"Year 5 Girls|Lilou Rouxel","name":"Lilou Rouxel","house":"Red","room":"12","year":"5"}],"t":796,"page":"races","mode":"order"},{"id":"r035","no":35,"division":"Year 5 Girls","heat":3,"heats":3,"event":"100m","students":[{"id":"Year 5 Girls|Ivey Wade","name":"Ivey Wade","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Girls|Amelie Handley","name":"Amelie Handley","house":"Red","room":"13","year":"5"},{"id":"Year 5 Girls|Finja Stone-Kaske","name":"Finja Stone-Kaske","house":"Blue","room":"11","year":"5"},{"id":"Year 5 Girls|Phoebe Jaeger","name":"Phoebe Jaeger","house":"Red","room":"11","year":"5"},{"id":"Year 5 Girls|Delia Engstroem","name":"Delia Engstroem","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Nisse Rui","name":"Nisse Rui","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Elowyn Bryans","name":"Elowyn Bryans","house":"Purple","room":"11","year":"5"},{"id":"Year 5 Girls|Evie Myles","name":"Evie Myles","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Girls|Merlene Cole","name":"Merlene Cole","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Girls|Sofia Joyce","name":"Sofia Joyce","house":"Purple","room":"11","year":"5"}],"t":798,"page":"races","mode":"order"},{"id":"r036","no":36,"division":"Year 5 Boys","heat":1,"heats":2,"event":"100m","students":[{"id":"Year 5 Boys|Indy Austen","name":"Indy Austen","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Boys|Logan Portman","name":"Logan Portman","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Boys|Jordy Orchard","name":"Jordy Orchard","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Boys|Anton Burke-Klein","name":"Anton Burke-Klein","house":"Red","room":"11","year":"5"},{"id":"Year 5 Boys|Bodhi Jacka","name":"Bodhi Jacka","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Boys|Seb Delaney","name":"Seb Delaney","house":"Yellow","room":"13","year":"5"},{"id":"Year 5 Boys|Hugh French","name":"Hugh French","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Boys|Sebastian Gray","name":"Sebastian Gray","house":"Red","room":"13","year":"5"},{"id":"Year 5 Boys|Ziya Ferreira-Santana-Bispo","name":"Ziya Ferreira-Santana-Bispo","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Boys|Teo Fraser","name":"Teo Fraser","house":"Red","room":"12","year":"5"},{"id":"Year 5 Boys|Elliot Steinhart-Danks","name":"Elliot Steinhart-Danks","house":"Red","room":"11","year":"5"}],"t":800,"page":"races","mode":"order"},{"id":"r037","no":37,"division":"Year 5 Boys","heat":2,"heats":2,"event":"100m","students":[{"id":"Year 5 Boys|Theo Hill","name":"Theo Hill","house":"Red","room":"12","year":"5"},{"id":"Year 5 Boys|Buddy Thomson","name":"Buddy Thomson","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Boys|Ethan Cainglet","name":"Ethan Cainglet","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Boys|Geoffrey Turoa-Francis-Jones","name":"Geoffrey Turoa-Francis-Jones","house":"Yellow","room":"12","year":"5"},{"id":"Year 5 Boys|Jorden Whelan","name":"Jorden Whelan","house":"Blue","room":"11","year":"5"},{"id":"Year 5 Boys|Lewis Moloney","name":"Lewis Moloney","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Boys|Nikola Radovanovic","name":"Nikola Radovanovic","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Boys|Austin Sewell","name":"Austin Sewell","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Boys|Sonny Rowe","name":"Sonny Rowe","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Boys|Noa Mutzl","name":"Noa Mutzl","house":"Yellow","room":"12","year":"5"},{"id":"Year 5 Boys|Robert Miller","name":"Robert Miller","house":"Red","room":"12","year":"5"}],"t":802,"page":"races","mode":"order"},{"id":"r038","no":38,"division":"Year 6 Girls","heat":1,"heats":1,"event":"100m","students":[{"id":"Year 6 Girls|Nysh Watkins","name":"Nysh Watkins","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Girls|Willow Terry","name":"Willow Terry","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Girls|Sophie Drayton","name":"Sophie Drayton","house":"Red","room":"12","year":"6"},{"id":"Year 6 Girls|Charlotte Isabelle-Hardman","name":"Charlotte Isabelle-Hardman","house":"Red","room":"13","year":"6"},{"id":"Year 6 Girls|Rosie Johanson","name":"Rosie Johanson","house":"Blue","room":"13","year":"6"},{"id":"Year 6 Girls|Snow Mahon","name":"Snow Mahon","house":"Purple","room":"12","year":"6"},{"id":"Year 6 Girls|Zara Ward","name":"Zara Ward","house":"Yellow","room":"11","year":"6"},{"id":"Year 6 Girls|Lucia Bodlovich","name":"Lucia Bodlovich","house":"Yellow","room":"13","year":"6"},{"id":"Year 6 Girls|Harmony Eades","name":"Harmony Eades","house":"\u2014","room":"11","year":"6"},{"id":"Year 6 Girls|Tylor Purdie","name":"Tylor Purdie","house":"Red","room":"13","year":"6"},{"id":"Year 6 Girls|Kristina Egli","name":"Kristina Egli","house":"Blue","room":"12","year":"6"},{"id":"Year 6 Girls|Jade Granados-Watson","name":"Jade Granados-Watson","house":"Red","room":"11","year":"6"}],"t":804,"page":"races","mode":"order"},{"id":"r039","no":39,"division":"Year 6 Boys","heat":1,"heats":2,"event":"100m","students":[{"id":"Year 6 Boys|Conor Engel","name":"Conor Engel","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Boys|Marlin Robertson","name":"Marlin Robertson","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Boys|Billy Beel","name":"Billy Beel","house":"Purple","room":"12","year":"6"},{"id":"Year 6 Boys|Zac Granados-Watson","name":"Zac Granados-Watson","house":"Red","room":"12","year":"6"},{"id":"Year 6 Boys|Zaiden Heppener","name":"Zaiden Heppener","house":"Blue","room":"12","year":"6"},{"id":"Year 6 Boys|Raff O'Brien","name":"Raff O'Brien","house":"Red","room":"13","year":"6"},{"id":"Year 6 Boys|Teo Guilloteau","name":"Teo Guilloteau","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Boys|Felix Wearne","name":"Felix Wearne","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Boys|Arie Drage","name":"Arie Drage","house":"Blue","room":"11","year":"6"},{"id":"Year 6 Boys|Theo Hudson","name":"Theo Hudson","house":"Yellow","room":"12","year":"6"}],"t":806,"page":"races","mode":"order"},{"id":"r040","no":40,"division":"Year 6 Boys","heat":2,"heats":2,"event":"100m","students":[{"id":"Year 6 Boys|Khai Ellis","name":"Khai Ellis","house":"Red","room":"11","year":"6"},{"id":"Year 6 Boys|Rumi Mahon","name":"Rumi Mahon","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Boys|Otto McKay","name":"Otto McKay","house":"Blue","room":"13","year":"6"},{"id":"Year 6 Boys|Reuben Mobily","name":"Reuben Mobily","house":"Yellow","room":"12","year":"6"},{"id":"Year 6 Boys|Brayden Green","name":"Brayden Green","house":"Yellow","room":"11","year":"6"},{"id":"Year 6 Boys|Eddie Bradford","name":"Eddie Bradford","house":"Red","room":"12","year":"6"},{"id":"Year 6 Boys|Jaydee Gosmann","name":"Jaydee Gosmann","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Boys|Javier Jimenez-Lozano","name":"Javier Jimenez-Lozano","house":"Blue","room":"12","year":"6"},{"id":"Year 6 Boys|Ezra Powell","name":"Ezra Powell","house":"Blue","room":"11","year":"6"},{"id":"Year 6 Boys|Oscar Murray","name":"Oscar Murray","house":"Yellow","room":"13","year":"6"}],"t":808,"page":"races","mode":"order"},{"id":"r041","no":41,"division":"Year 3 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r023","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r042","no":42,"division":"Year 3 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r025","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r043","no":43,"division":"Year 4 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r028","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r044","no":44,"division":"Year 4 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r030","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r045","no":45,"division":"Year 4 Other","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r032","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r046","no":46,"division":"Year 5 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r033","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r047","no":47,"division":"Year 5 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r036","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r048","no":48,"division":"Year 6 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r038","topN":6,"students":[],"page":"races","mode":"order"},{"id":"r049","no":49,"division":"Year 6 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r039","topN":6,"students":[],"page":"races","mode":"order"},{"id":"e050","no":50,"division":"Year 3 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 3 Girls|Ava Bowler","name":"Ava Bowler","house":"Red","room":"7","year":"3"},{"id":"Year 3 Girls|Indigo Cugola","name":"Indigo Cugola","house":"Purple","room":"5","year":"3"},{"id":"Year 3 Girls|Luna De-Decker","name":"Luna De-Decker","house":"Yellow","room":"5","year":"3"},{"id":"Year 3 Girls|Alice Di-Carlo","name":"Alice Di-Carlo","house":"Red","room":"7","year":"3"},{"id":"Year 3 Girls|Adison Frater","name":"Adison Frater","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Girls|Beri Hobbs","name":"Beri Hobbs","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Girls|Matilda Hudson","name":"Matilda Hudson","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Girls|Minnie Kociuruba","name":"Minnie Kociuruba","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Girls|Matilda Lanfear","name":"Matilda Lanfear","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Girls|Alexis Miller","name":"Alexis Miller","house":"Blue","room":"6","year":"3"}]},{"id":"e051","no":51,"division":"Year 3 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 3 Girls|Lara Miller","name":"Lara Miller","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Girls|Ida Monaghan","name":"Ida Monaghan","house":"Blue","room":"6","year":"3"},{"id":"Year 3 Girls|Alice Murray","name":"Alice Murray","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Girls|Kailani Mutzl","name":"Kailani Mutzl","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Girls|Aria Parker","name":"Aria Parker","house":"Blue","room":"5","year":"3"},{"id":"Year 3 Girls|Chloe Soom","name":"Chloe Soom","house":"Red","room":"7","year":"3"},{"id":"Year 3 Girls|Annie Tromp","name":"Annie Tromp","house":"Red","room":"5","year":"3"},{"id":"Year 3 Girls|Nola Watson","name":"Nola Watson","house":"Purple","room":"5","year":"3"},{"id":"Year 3 Girls|Savannah-Rose Wright","name":"Savannah-Rose Wright","house":"Red","room":"6","year":"3"}]},{"id":"e052","no":52,"division":"Year 3 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 3 Boys|Gabriel Alexander","name":"Gabriel Alexander","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Boys|Ares Alvarez","name":"Ares Alvarez","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Boys|Cody Bradford","name":"Cody Bradford","house":"Red","room":"5","year":"3"},{"id":"Year 3 Boys|Jaiden Brooks","name":"Jaiden Brooks","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|Archer Brown","name":"Archer Brown","house":"Blue","room":"5","year":"3"},{"id":"Year 3 Boys|Billy Clark","name":"Billy Clark","house":"Red","room":"7","year":"3"},{"id":"Year 3 Boys|Ahto Cole","name":"Ahto Cole","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Boys|Archer Crum","name":"Archer Crum","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Ari Davies","name":"Ari Davies","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|Enzo Gray","name":"Enzo Gray","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Marlon Grigg","name":"Marlon Grigg","house":"Yellow","room":"5","year":"3"},{"id":"Year 3 Boys|Luca Guilloteau","name":"Luca Guilloteau","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|August Handley","name":"August Handley","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Thomas Harper","name":"Thomas Harper","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|Harrison Hems","name":"Harrison Hems","house":"Yellow","room":"6","year":"3"}]},{"id":"e053","no":53,"division":"Year 3 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 3 Boys|Emilio Jimenez-Lozano","name":"Emilio Jimenez-Lozano","house":"Blue","room":"5","year":"3"},{"id":"Year 3 Boys|Sebastian Joyce","name":"Sebastian Joyce","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Rowan Kershaw","name":"Rowan Kershaw","house":"Blue","room":"6","year":"3"},{"id":"Year 3 Boys|Tom Mackinnon","name":"Tom Mackinnon","house":"Red","room":"7","year":"3"},{"id":"Year 3 Boys|Brody McCormack","name":"Brody McCormack","house":"Yellow","room":"7","year":"3"},{"id":"Year 3 Boys|Odin McKay","name":"Odin McKay","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Zac Metral","name":"Zac Metral","house":"Blue","room":"7","year":"3"},{"id":"Year 3 Boys|Jack Moore","name":"Jack Moore","house":"Red","room":"5","year":"3"},{"id":"Year 3 Boys|Lukas Morris","name":"Lukas Morris","house":"Red","room":"6","year":"3"},{"id":"Year 3 Boys|Dean Mpawenimana","name":"Dean Mpawenimana","house":"Yellow","room":"5","year":"3"},{"id":"Year 3 Boys|Ari Stack","name":"Ari Stack","house":"Purple","room":"7","year":"3"},{"id":"Year 3 Boys|Nico Van-Leeuwen","name":"Nico Van-Leeuwen","house":"Yellow","room":"6","year":"3"},{"id":"Year 3 Boys|Aukan Vorkoeper-Marques","name":"Aukan Vorkoeper-Marques","house":"Blue","room":"6","year":"3"},{"id":"Year 3 Boys|William Wayne","name":"William Wayne","house":"Purple","room":"6","year":"3"},{"id":"Year 3 Boys|Mason Winspear","name":"Mason Winspear","house":"Purple","room":"7","year":"3"}]},{"id":"e054","no":54,"division":"Year 4 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 4 Girls|Agnes Alexander","name":"Agnes Alexander","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Girls|India Drake","name":"India Drake","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Kayla Ellis","name":"Kayla Ellis","house":"Red","room":"8","year":"4"},{"id":"Year 4 Girls|Arabella Embleton","name":"Arabella Embleton","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Girls|Sadie Fryer","name":"Sadie Fryer","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Ellis Gatica","name":"Ellis Gatica","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Maggie Gibbins","name":"Maggie Gibbins","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Lorelei Groen","name":"Lorelei Groen","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Aria Ham","name":"Aria Ham","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Malaika Johnstone","name":"Malaika Johnstone","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Asha Kelly","name":"Asha Kelly","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Malia Lam","name":"Malia Lam","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Girls|Vivienne Lightly","name":"Vivienne Lightly","house":"Purple","room":"8","year":"4"}]},{"id":"e055","no":55,"division":"Year 4 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 4 Girls|Bonnie McKenzie","name":"Bonnie McKenzie","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Kyandra Miller","name":"Kyandra Miller","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Girls|Roux Noden","name":"Roux Noden","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Maya Pottier","name":"Maya Pottier","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Lola Rishworth","name":"Lola Rishworth","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Girls|Faith Ryder-Garlett","name":"Faith Ryder-Garlett","house":"Blue","room":"10","year":"4"},{"id":"Year 4 Girls|Ariziki Seif","name":"Ariziki Seif","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Girls|Ivy Simpson","name":"Ivy Simpson","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Zoe Smith","name":"Zoe Smith","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Maisie Taylor","name":"Maisie Taylor","house":"Red","room":"10","year":"4"},{"id":"Year 4 Girls|Penny Van-Leeuwen","name":"Penny Van-Leeuwen","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Girls|Layla Whelan","name":"Layla Whelan","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Girls|Lylah Zavec","name":"Lylah Zavec","house":"Red","room":"10","year":"4"}]},{"id":"e056","no":56,"division":"Year 4 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 4 Boys|Ollie Cabena","name":"Ollie Cabena","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Boys|Teddy Cutler","name":"Teddy Cutler","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Boys|Edmund Downer","name":"Edmund Downer","house":"Red","room":"10","year":"4"},{"id":"Year 4 Boys|Leon Everett-Conti","name":"Leon Everett-Conti","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Boys|Aston McKenzie","name":"Aston McKenzie","house":"Red","room":"8","year":"4"},{"id":"Year 4 Boys|Archie Patience","name":"Archie Patience","house":"Blue","room":"8","year":"4"},{"id":"Year 4 Boys|Noah Portman","name":"Noah Portman","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Boys|Sully Purser","name":"Sully Purser","house":"Blue","room":"10","year":"4"}]},{"id":"e057","no":57,"division":"Year 4 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 4 Boys|Michael Reading","name":"Michael Reading","house":"Purple","room":"8","year":"4"},{"id":"Year 4 Boys|Toby Ross","name":"Toby Ross","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Boys|Sam Stocker","name":"Sam Stocker","house":"Blue","room":"10","year":"4"},{"id":"Year 4 Boys|Luca Tonge","name":"Luca Tonge","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Boys|Oliver Turner","name":"Oliver Turner","house":"Yellow","room":"10","year":"4"},{"id":"Year 4 Boys|Brock Turoa-Francis-Jones","name":"Brock Turoa-Francis-Jones","house":"Yellow","room":"8","year":"4"},{"id":"Year 4 Boys|Skip Van-Den-Einden","name":"Skip Van-Den-Einden","house":"Purple","room":"10","year":"4"},{"id":"Year 4 Boys|Pip Ward","name":"Pip Ward","house":"Yellow","room":"8","year":"4"}]},{"id":"e058","no":58,"division":"Year 4 Other","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 4 Other|Eric Ormond","name":"Eric Ormond","house":"Yellow","room":"8","year":"4"}]},{"id":"e059","no":59,"division":"Year 5 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 5 Girls|Darcy Atherton-Morrice","name":"Darcy Atherton-Morrice","house":"Yellow","room":"13","year":"5"},{"id":"Year 5 Girls|Elowyn Bryans","name":"Elowyn Bryans","house":"Purple","room":"11","year":"5"},{"id":"Year 5 Girls|Solene Carozzi","name":"Solene Carozzi","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Girls|Merlene Cole","name":"Merlene Cole","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Girls|Penelope Crum","name":"Penelope Crum","house":"Red","room":"13","year":"5"},{"id":"Year 5 Girls|Bridie de-Silva","name":"Bridie de-Silva","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Ari Dobosz","name":"Ari Dobosz","house":"Blue","room":"11","year":"5"},{"id":"Year 5 Girls|Delia Engstroem","name":"Delia Engstroem","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Amelie Handley","name":"Amelie Handley","house":"Red","room":"13","year":"5"},{"id":"Year 5 Girls|Ellie Hume","name":"Ellie Hume","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Girls|Phoebe Jaeger","name":"Phoebe Jaeger","house":"Red","room":"11","year":"5"},{"id":"Year 5 Girls|Sofia Joyce","name":"Sofia Joyce","house":"Purple","room":"11","year":"5"},{"id":"Year 5 Girls|Camellia Maynard","name":"Camellia Maynard","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Girls|Lennon McKay","name":"Lennon McKay","house":"Purple","room":"13","year":"5"}]},{"id":"e060","no":60,"division":"Year 5 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 5 Girls|Lila Megan","name":"Lila Megan","house":"Yellow","room":"13","year":"5"},{"id":"Year 5 Girls|Roisin Mofflin","name":"Roisin Mofflin","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Charlotte Morris","name":"Charlotte Morris","house":"Red","room":"13","year":"5"},{"id":"Year 5 Girls|Evie Myles","name":"Evie Myles","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Girls|Apsari Ovens","name":"Apsari Ovens","house":"Yellow","room":"12","year":"5"},{"id":"Year 5 Girls|Jemima Parish","name":"Jemima Parish","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Girls|Hannah Perkins","name":"Hannah Perkins","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Girls|Stasa Petrovic","name":"Stasa Petrovic","house":"Red","room":"12","year":"5"},{"id":"Year 5 Girls|Lilou Rouxel","name":"Lilou Rouxel","house":"Red","room":"12","year":"5"},{"id":"Year 5 Girls|Nisse Rui","name":"Nisse Rui","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Girls|Matilda Smith","name":"Matilda Smith","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Girls|Finja Stone-Kaske","name":"Finja Stone-Kaske","house":"Blue","room":"11","year":"5"},{"id":"Year 5 Girls|Ivey Wade","name":"Ivey Wade","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Girls|Jocelyn Wearne","name":"Jocelyn Wearne","house":"Purple","room":"11","year":"5"}]},{"id":"e061","no":61,"division":"Year 5 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 5 Boys|Indy Austen","name":"Indy Austen","house":"Blue","room":"13","year":"5"},{"id":"Year 5 Boys|Anton Burke-Klein","name":"Anton Burke-Klein","house":"Red","room":"11","year":"5"},{"id":"Year 5 Boys|Ethan Cainglet","name":"Ethan Cainglet","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Boys|Seb Delaney","name":"Seb Delaney","house":"Yellow","room":"13","year":"5"},{"id":"Year 5 Boys|Ziya Ferreira-Santana-Bispo","name":"Ziya Ferreira-Santana-Bispo","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Boys|Teo Fraser","name":"Teo Fraser","house":"Red","room":"12","year":"5"},{"id":"Year 5 Boys|Hugh French","name":"Hugh French","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Boys|Sebastian Gray","name":"Sebastian Gray","house":"Red","room":"13","year":"5"},{"id":"Year 5 Boys|Theo Hill","name":"Theo Hill","house":"Red","room":"12","year":"5"},{"id":"Year 5 Boys|Bodhi Jacka","name":"Bodhi Jacka","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Boys|Robert Miller","name":"Robert Miller","house":"Red","room":"12","year":"5"}]},{"id":"e062","no":62,"division":"Year 5 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 5 Boys|Lewis Moloney","name":"Lewis Moloney","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Boys|Noa Mutzl","name":"Noa Mutzl","house":"Yellow","room":"12","year":"5"},{"id":"Year 5 Boys|Jordy Orchard","name":"Jordy Orchard","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Boys|Logan Portman","name":"Logan Portman","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Boys|Nikola Radovanovic","name":"Nikola Radovanovic","house":"Yellow","room":"11","year":"5"},{"id":"Year 5 Boys|Sonny Rowe","name":"Sonny Rowe","house":"Blue","room":"12","year":"5"},{"id":"Year 5 Boys|Austin Sewell","name":"Austin Sewell","house":"Purple","room":"13","year":"5"},{"id":"Year 5 Boys|Elliot Steinhart-Danks","name":"Elliot Steinhart-Danks","house":"Red","room":"11","year":"5"},{"id":"Year 5 Boys|Buddy Thomson","name":"Buddy Thomson","house":"Purple","room":"12","year":"5"},{"id":"Year 5 Boys|Geoffrey Turoa-Francis-Jones","name":"Geoffrey Turoa-Francis-Jones","house":"Yellow","room":"12","year":"5"},{"id":"Year 5 Boys|Jorden Whelan","name":"Jorden Whelan","house":"Blue","room":"11","year":"5"}]},{"id":"e063","no":63,"division":"Year 6 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 6 Girls|Lucia Bodlovich","name":"Lucia Bodlovich","house":"Yellow","room":"13","year":"6"},{"id":"Year 6 Girls|Sophie Drayton","name":"Sophie Drayton","house":"Red","room":"12","year":"6"},{"id":"Year 6 Girls|Harmony Eades","name":"Harmony Eades","house":"\u2014","room":"11","year":"6"},{"id":"Year 6 Girls|Kristina Egli","name":"Kristina Egli","house":"Blue","room":"12","year":"6"},{"id":"Year 6 Girls|Jade Granados-Watson","name":"Jade Granados-Watson","house":"Red","room":"11","year":"6"},{"id":"Year 6 Girls|Charlotte Isabelle-Hardman","name":"Charlotte Isabelle-Hardman","house":"Red","room":"13","year":"6"}]},{"id":"e064","no":64,"division":"Year 6 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 6 Girls|Rosie Johanson","name":"Rosie Johanson","house":"Blue","room":"13","year":"6"},{"id":"Year 6 Girls|Snow Mahon","name":"Snow Mahon","house":"Purple","room":"12","year":"6"},{"id":"Year 6 Girls|Tylor Purdie","name":"Tylor Purdie","house":"Red","room":"13","year":"6"},{"id":"Year 6 Girls|Willow Terry","name":"Willow Terry","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Girls|Zara Ward","name":"Zara Ward","house":"Yellow","room":"11","year":"6"},{"id":"Year 6 Girls|Nysh Watkins","name":"Nysh Watkins","house":"Purple","room":"11","year":"6"}]},{"id":"e065","no":65,"division":"Year 6 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 6 Boys|Billy Beel","name":"Billy Beel","house":"Purple","room":"12","year":"6"},{"id":"Year 6 Boys|Eddie Bradford","name":"Eddie Bradford","house":"Red","room":"12","year":"6"},{"id":"Year 6 Boys|Arie Drage","name":"Arie Drage","house":"Blue","room":"11","year":"6"},{"id":"Year 6 Boys|Khai Ellis","name":"Khai Ellis","house":"Red","room":"11","year":"6"},{"id":"Year 6 Boys|Conor Engel","name":"Conor Engel","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Boys|Jaydee Gosmann","name":"Jaydee Gosmann","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Boys|Zac Granados-Watson","name":"Zac Granados-Watson","house":"Red","room":"12","year":"6"},{"id":"Year 6 Boys|Brayden Green","name":"Brayden Green","house":"Yellow","room":"11","year":"6"},{"id":"Year 6 Boys|Teo Guilloteau","name":"Teo Guilloteau","house":"Purple","room":"13","year":"6"},{"id":"Year 6 Boys|Zaiden Heppener","name":"Zaiden Heppener","house":"Blue","room":"12","year":"6"}]},{"id":"e066","no":66,"division":"Year 6 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"students":[{"id":"Year 6 Boys|Theo Hudson","name":"Theo Hudson","house":"Yellow","room":"12","year":"6"},{"id":"Year 6 Boys|Javier Jimenez-Lozano","name":"Javier Jimenez-Lozano","house":"Blue","room":"12","year":"6"},{"id":"Year 6 Boys|Rumi Mahon","name":"Rumi Mahon","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Boys|Otto McKay","name":"Otto McKay","house":"Blue","room":"13","year":"6"},{"id":"Year 6 Boys|Reuben Mobily","name":"Reuben Mobily","house":"Yellow","room":"12","year":"6"},{"id":"Year 6 Boys|Oscar Murray","name":"Oscar Murray","house":"Yellow","room":"13","year":"6"},{"id":"Year 6 Boys|Raff O'Brien","name":"Raff O'Brien","house":"Red","room":"13","year":"6"},{"id":"Year 6 Boys|Ezra Powell","name":"Ezra Powell","house":"Blue","room":"11","year":"6"},{"id":"Year 6 Boys|Marlin Robertson","name":"Marlin Robertson","house":"Purple","room":"11","year":"6"},{"id":"Year 6 Boys|Felix Wearne","name":"Felix Wearne","house":"Purple","room":"13","year":"6"}]},{"id":"e092","no":92,"division":"Year 3 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 3 Girls|Ava Bowler","name":"Ava Bowler","house":"Red","room":"7","year":"3","grp":1},{"id":"Year 3 Girls|Indigo Cugola","name":"Indigo Cugola","house":"Purple","room":"5","year":"3","grp":1},{"id":"Year 3 Girls|Luna De-Decker","name":"Luna De-Decker","house":"Yellow","room":"5","year":"3","grp":1},{"id":"Year 3 Girls|Alice Di-Carlo","name":"Alice Di-Carlo","house":"Red","room":"7","year":"3","grp":1},{"id":"Year 3 Girls|Adison Frater","name":"Adison Frater","house":"Blue","room":"7","year":"3","grp":1},{"id":"Year 3 Girls|Beri Hobbs","name":"Beri Hobbs","house":"Blue","room":"7","year":"3","grp":1},{"id":"Year 3 Girls|Matilda Hudson","name":"Matilda Hudson","house":"Yellow","room":"6","year":"3","grp":1},{"id":"Year 3 Girls|Minnie Kociuruba","name":"Minnie Kociuruba","house":"Yellow","room":"7","year":"3","grp":1},{"id":"Year 3 Girls|Matilda Lanfear","name":"Matilda Lanfear","house":"Purple","room":"7","year":"3","grp":1},{"id":"Year 3 Girls|Alexis Miller","name":"Alexis Miller","house":"Blue","room":"6","year":"3","grp":1},{"id":"Year 3 Girls|Lara Miller","name":"Lara Miller","house":"Purple","room":"6","year":"3","grp":2},{"id":"Year 3 Girls|Ida Monaghan","name":"Ida Monaghan","house":"Blue","room":"6","year":"3","grp":2},{"id":"Year 3 Girls|Alice Murray","name":"Alice Murray","house":"Yellow","room":"6","year":"3","grp":2},{"id":"Year 3 Girls|Kailani Mutzl","name":"Kailani Mutzl","house":"Yellow","room":"6","year":"3","grp":2},{"id":"Year 3 Girls|Aria Parker","name":"Aria Parker","house":"Blue","room":"5","year":"3","grp":2},{"id":"Year 3 Girls|Chloe Soom","name":"Chloe Soom","house":"Red","room":"7","year":"3","grp":2},{"id":"Year 3 Girls|Annie Tromp","name":"Annie Tromp","house":"Red","room":"5","year":"3","grp":2},{"id":"Year 3 Girls|Nola Watson","name":"Nola Watson","house":"Purple","room":"5","year":"3","grp":2},{"id":"Year 3 Girls|Savannah-Rose Wright","name":"Savannah-Rose Wright","house":"Red","room":"6","year":"3","grp":2}]},{"id":"e093","no":93,"division":"Year 3 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 3 Boys|Gabriel Alexander","name":"Gabriel Alexander","house":"Yellow","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Ares Alvarez","name":"Ares Alvarez","house":"Purple","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Cody Bradford","name":"Cody Bradford","house":"Red","room":"5","year":"3","grp":1},{"id":"Year 3 Boys|Jaiden Brooks","name":"Jaiden Brooks","house":"Blue","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Archer Brown","name":"Archer Brown","house":"Blue","room":"5","year":"3","grp":1},{"id":"Year 3 Boys|Billy Clark","name":"Billy Clark","house":"Red","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Ahto Cole","name":"Ahto Cole","house":"Yellow","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Archer Crum","name":"Archer Crum","house":"Red","room":"6","year":"3","grp":1},{"id":"Year 3 Boys|Ari Davies","name":"Ari Davies","house":"Blue","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Enzo Gray","name":"Enzo Gray","house":"Red","room":"6","year":"3","grp":1},{"id":"Year 3 Boys|Marlon Grigg","name":"Marlon Grigg","house":"Yellow","room":"5","year":"3","grp":1},{"id":"Year 3 Boys|Luca Guilloteau","name":"Luca Guilloteau","house":"Purple","room":"6","year":"3","grp":1},{"id":"Year 3 Boys|August Handley","name":"August Handley","house":"Red","room":"6","year":"3","grp":1},{"id":"Year 3 Boys|Thomas Harper","name":"Thomas Harper","house":"Blue","room":"7","year":"3","grp":1},{"id":"Year 3 Boys|Harrison Hems","name":"Harrison Hems","house":"Yellow","room":"6","year":"3","grp":1},{"id":"Year 3 Boys|Emilio Jimenez-Lozano","name":"Emilio Jimenez-Lozano","house":"Blue","room":"5","year":"3","grp":2},{"id":"Year 3 Boys|Sebastian Joyce","name":"Sebastian Joyce","house":"Purple","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|Rowan Kershaw","name":"Rowan Kershaw","house":"Blue","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|Tom Mackinnon","name":"Tom Mackinnon","house":"Red","room":"7","year":"3","grp":2},{"id":"Year 3 Boys|Brody McCormack","name":"Brody McCormack","house":"Yellow","room":"7","year":"3","grp":2},{"id":"Year 3 Boys|Odin McKay","name":"Odin McKay","house":"Purple","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|Zac Metral","name":"Zac Metral","house":"Blue","room":"7","year":"3","grp":2},{"id":"Year 3 Boys|Jack Moore","name":"Jack Moore","house":"Red","room":"5","year":"3","grp":2},{"id":"Year 3 Boys|Lukas Morris","name":"Lukas Morris","house":"Red","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|Dean Mpawenimana","name":"Dean Mpawenimana","house":"Yellow","room":"5","year":"3","grp":2},{"id":"Year 3 Boys|Ari Stack","name":"Ari Stack","house":"Purple","room":"7","year":"3","grp":2},{"id":"Year 3 Boys|Nico Van-Leeuwen","name":"Nico Van-Leeuwen","house":"Yellow","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|Aukan Vorkoeper-Marques","name":"Aukan Vorkoeper-Marques","house":"Blue","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|William Wayne","name":"William Wayne","house":"Purple","room":"6","year":"3","grp":2},{"id":"Year 3 Boys|Mason Winspear","name":"Mason Winspear","house":"Purple","room":"7","year":"3","grp":2}]},{"id":"e094","no":94,"division":"Year 4 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 4 Girls|Agnes Alexander","name":"Agnes Alexander","house":"Yellow","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|India Drake","name":"India Drake","house":"Red","room":"10","year":"4","grp":1},{"id":"Year 4 Girls|Kayla Ellis","name":"Kayla Ellis","house":"Red","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Arabella Embleton","name":"Arabella Embleton","house":"Purple","room":"10","year":"4","grp":1},{"id":"Year 4 Girls|Sadie Fryer","name":"Sadie Fryer","house":"Blue","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Ellis Gatica","name":"Ellis Gatica","house":"Purple","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Maggie Gibbins","name":"Maggie Gibbins","house":"Purple","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Lorelei Groen","name":"Lorelei Groen","house":"Yellow","room":"10","year":"4","grp":1},{"id":"Year 4 Girls|Aria Ham","name":"Aria Ham","house":"Blue","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Malaika Johnstone","name":"Malaika Johnstone","house":"Yellow","room":"10","year":"4","grp":1},{"id":"Year 4 Girls|Asha Kelly","name":"Asha Kelly","house":"Blue","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Malia Lam","name":"Malia Lam","house":"Purple","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Vivienne Lightly","name":"Vivienne Lightly","house":"Purple","room":"8","year":"4","grp":1},{"id":"Year 4 Girls|Bonnie McKenzie","name":"Bonnie McKenzie","house":"Yellow","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Kyandra Miller","name":"Kyandra Miller","house":"Purple","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Roux Noden","name":"Roux Noden","house":"Red","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Maya Pottier","name":"Maya Pottier","house":"Red","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Lola Rishworth","name":"Lola Rishworth","house":"Yellow","room":"8","year":"4","grp":2},{"id":"Year 4 Girls|Faith Ryder-Garlett","name":"Faith Ryder-Garlett","house":"Blue","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Ariziki Seif","name":"Ariziki Seif","house":"Yellow","room":"8","year":"4","grp":2},{"id":"Year 4 Girls|Ivy Simpson","name":"Ivy Simpson","house":"Red","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Zoe Smith","name":"Zoe Smith","house":"Blue","room":"8","year":"4","grp":2},{"id":"Year 4 Girls|Maisie Taylor","name":"Maisie Taylor","house":"Red","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Penny Van-Leeuwen","name":"Penny Van-Leeuwen","house":"Yellow","room":"10","year":"4","grp":2},{"id":"Year 4 Girls|Layla Whelan","name":"Layla Whelan","house":"Blue","room":"8","year":"4","grp":2},{"id":"Year 4 Girls|Lylah Zavec","name":"Lylah Zavec","house":"Red","room":"10","year":"4","grp":2}]},{"id":"e095","no":95,"division":"Year 4 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 4 Boys|Ollie Cabena","name":"Ollie Cabena","house":"Blue","room":"8","year":"4","grp":1},{"id":"Year 4 Boys|Teddy Cutler","name":"Teddy Cutler","house":"Yellow","room":"8","year":"4","grp":1},{"id":"Year 4 Boys|Edmund Downer","name":"Edmund Downer","house":"Red","room":"10","year":"4","grp":1},{"id":"Year 4 Boys|Leon Everett-Conti","name":"Leon Everett-Conti","house":"Blue","room":"8","year":"4","grp":1},{"id":"Year 4 Boys|Aston McKenzie","name":"Aston McKenzie","house":"Red","room":"8","year":"4","grp":1},{"id":"Year 4 Boys|Archie Patience","name":"Archie Patience","house":"Blue","room":"8","year":"4","grp":1},{"id":"Year 4 Boys|Noah Portman","name":"Noah Portman","house":"Purple","room":"10","year":"4","grp":1},{"id":"Year 4 Boys|Sully Purser","name":"Sully Purser","house":"Blue","room":"10","year":"4","grp":1},{"id":"Year 4 Boys|Michael Reading","name":"Michael Reading","house":"Purple","room":"8","year":"4","grp":2},{"id":"Year 4 Boys|Toby Ross","name":"Toby Ross","house":"Yellow","room":"8","year":"4","grp":2},{"id":"Year 4 Boys|Sam Stocker","name":"Sam Stocker","house":"Blue","room":"10","year":"4","grp":2},{"id":"Year 4 Boys|Luca Tonge","name":"Luca Tonge","house":"Purple","room":"10","year":"4","grp":2},{"id":"Year 4 Boys|Oliver Turner","name":"Oliver Turner","house":"Yellow","room":"10","year":"4","grp":2},{"id":"Year 4 Boys|Brock Turoa-Francis-Jones","name":"Brock Turoa-Francis-Jones","house":"Yellow","room":"8","year":"4","grp":2},{"id":"Year 4 Boys|Skip Van-Den-Einden","name":"Skip Van-Den-Einden","house":"Purple","room":"10","year":"4","grp":2},{"id":"Year 4 Boys|Pip Ward","name":"Pip Ward","house":"Yellow","room":"8","year":"4","grp":2}]},{"id":"e096","no":96,"division":"Year 4 Other","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 4 Other|Eric Ormond","name":"Eric Ormond","house":"Yellow","room":"8","year":"4","grp":1}]},{"id":"e097","no":97,"division":"Year 5 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 5 Girls|Darcy Atherton-Morrice","name":"Darcy Atherton-Morrice","house":"Yellow","room":"13","year":"5","grp":1},{"id":"Year 5 Girls|Elowyn Bryans","name":"Elowyn Bryans","house":"Purple","room":"11","year":"5","grp":1},{"id":"Year 5 Girls|Solene Carozzi","name":"Solene Carozzi","house":"Blue","room":"12","year":"5","grp":1},{"id":"Year 5 Girls|Merlene Cole","name":"Merlene Cole","house":"Yellow","room":"11","year":"5","grp":1},{"id":"Year 5 Girls|Penelope Crum","name":"Penelope Crum","house":"Red","room":"13","year":"5","grp":1},{"id":"Year 5 Girls|Bridie de-Silva","name":"Bridie de-Silva","house":"Blue","room":"13","year":"5","grp":1},{"id":"Year 5 Girls|Ari Dobosz","name":"Ari Dobosz","house":"Blue","room":"11","year":"5","grp":1},{"id":"Year 5 Girls|Delia Engstroem","name":"Delia Engstroem","house":"Blue","room":"13","year":"5","grp":1},{"id":"Year 5 Girls|Amelie Handley","name":"Amelie Handley","house":"Red","room":"13","year":"5","grp":1},{"id":"Year 5 Girls|Ellie Hume","name":"Ellie Hume","house":"Purple","room":"12","year":"5","grp":1},{"id":"Year 5 Girls|Phoebe Jaeger","name":"Phoebe Jaeger","house":"Red","room":"11","year":"5","grp":1},{"id":"Year 5 Girls|Sofia Joyce","name":"Sofia Joyce","house":"Purple","room":"11","year":"5","grp":1},{"id":"Year 5 Girls|Camellia Maynard","name":"Camellia Maynard","house":"Yellow","room":"11","year":"5","grp":1},{"id":"Year 5 Girls|Lennon McKay","name":"Lennon McKay","house":"Purple","room":"13","year":"5","grp":1},{"id":"Year 5 Girls|Lila Megan","name":"Lila Megan","house":"Yellow","room":"13","year":"5","grp":2},{"id":"Year 5 Girls|Roisin Mofflin","name":"Roisin Mofflin","house":"Blue","room":"13","year":"5","grp":2},{"id":"Year 5 Girls|Charlotte Morris","name":"Charlotte Morris","house":"Red","room":"13","year":"5","grp":2},{"id":"Year 5 Girls|Evie Myles","name":"Evie Myles","house":"Purple","room":"12","year":"5","grp":2},{"id":"Year 5 Girls|Apsari Ovens","name":"Apsari Ovens","house":"Yellow","room":"12","year":"5","grp":2},{"id":"Year 5 Girls|Jemima Parish","name":"Jemima Parish","house":"Purple","room":"12","year":"5","grp":2},{"id":"Year 5 Girls|Hannah Perkins","name":"Hannah Perkins","house":"Blue","room":"12","year":"5","grp":2},{"id":"Year 5 Girls|Stasa Petrovic","name":"Stasa Petrovic","house":"Red","room":"12","year":"5","grp":2},{"id":"Year 5 Girls|Lilou Rouxel","name":"Lilou Rouxel","house":"Red","room":"12","year":"5","grp":2},{"id":"Year 5 Girls|Nisse Rui","name":"Nisse Rui","house":"Blue","room":"13","year":"5","grp":2},{"id":"Year 5 Girls|Matilda Smith","name":"Matilda Smith","house":"Yellow","room":"11","year":"5","grp":2},{"id":"Year 5 Girls|Finja Stone-Kaske","name":"Finja Stone-Kaske","house":"Blue","room":"11","year":"5","grp":2},{"id":"Year 5 Girls|Ivey Wade","name":"Ivey Wade","house":"Purple","room":"13","year":"5","grp":2},{"id":"Year 5 Girls|Jocelyn Wearne","name":"Jocelyn Wearne","house":"Purple","room":"11","year":"5","grp":2}]},{"id":"e098","no":98,"division":"Year 5 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 5 Boys|Indy Austen","name":"Indy Austen","house":"Blue","room":"13","year":"5","grp":1},{"id":"Year 5 Boys|Anton Burke-Klein","name":"Anton Burke-Klein","house":"Red","room":"11","year":"5","grp":1},{"id":"Year 5 Boys|Ethan Cainglet","name":"Ethan Cainglet","house":"Yellow","room":"11","year":"5","grp":1},{"id":"Year 5 Boys|Seb Delaney","name":"Seb Delaney","house":"Yellow","room":"13","year":"5","grp":1},{"id":"Year 5 Boys|Ziya Ferreira-Santana-Bispo","name":"Ziya Ferreira-Santana-Bispo","house":"Purple","room":"13","year":"5","grp":1},{"id":"Year 5 Boys|Teo Fraser","name":"Teo Fraser","house":"Red","room":"12","year":"5","grp":1},{"id":"Year 5 Boys|Hugh French","name":"Hugh French","house":"Blue","room":"12","year":"5","grp":1},{"id":"Year 5 Boys|Sebastian Gray","name":"Sebastian Gray","house":"Red","room":"13","year":"5","grp":1},{"id":"Year 5 Boys|Theo Hill","name":"Theo Hill","house":"Red","room":"12","year":"5","grp":1},{"id":"Year 5 Boys|Bodhi Jacka","name":"Bodhi Jacka","house":"Yellow","room":"11","year":"5","grp":1},{"id":"Year 5 Boys|Robert Miller","name":"Robert Miller","house":"Red","room":"12","year":"5","grp":1},{"id":"Year 5 Boys|Lewis Moloney","name":"Lewis Moloney","house":"Purple","room":"12","year":"5","grp":2},{"id":"Year 5 Boys|Noa Mutzl","name":"Noa Mutzl","house":"Yellow","room":"12","year":"5","grp":2},{"id":"Year 5 Boys|Jordy Orchard","name":"Jordy Orchard","house":"Purple","room":"13","year":"5","grp":2},{"id":"Year 5 Boys|Logan Portman","name":"Logan Portman","house":"Purple","room":"12","year":"5","grp":2},{"id":"Year 5 Boys|Nikola Radovanovic","name":"Nikola Radovanovic","house":"Yellow","room":"11","year":"5","grp":2},{"id":"Year 5 Boys|Sonny Rowe","name":"Sonny Rowe","house":"Blue","room":"12","year":"5","grp":2},{"id":"Year 5 Boys|Austin Sewell","name":"Austin Sewell","house":"Purple","room":"13","year":"5","grp":2},{"id":"Year 5 Boys|Elliot Steinhart-Danks","name":"Elliot Steinhart-Danks","house":"Red","room":"11","year":"5","grp":2},{"id":"Year 5 Boys|Buddy Thomson","name":"Buddy Thomson","house":"Purple","room":"12","year":"5","grp":2},{"id":"Year 5 Boys|Geoffrey Turoa-Francis-Jones","name":"Geoffrey Turoa-Francis-Jones","house":"Yellow","room":"12","year":"5","grp":2},{"id":"Year 5 Boys|Jorden Whelan","name":"Jorden Whelan","house":"Blue","room":"11","year":"5","grp":2}]},{"id":"e099","no":99,"division":"Year 6 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 6 Girls|Lucia Bodlovich","name":"Lucia Bodlovich","house":"Yellow","room":"13","year":"6","grp":1},{"id":"Year 6 Girls|Sophie Drayton","name":"Sophie Drayton","house":"Red","room":"12","year":"6","grp":1},{"id":"Year 6 Girls|Harmony Eades","name":"Harmony Eades","house":"\u2014","room":"11","year":"6","grp":1},{"id":"Year 6 Girls|Kristina Egli","name":"Kristina Egli","house":"Blue","room":"12","year":"6","grp":1},{"id":"Year 6 Girls|Jade Granados-Watson","name":"Jade Granados-Watson","house":"Red","room":"11","year":"6","grp":1},{"id":"Year 6 Girls|Charlotte Isabelle-Hardman","name":"Charlotte Isabelle-Hardman","house":"Red","room":"13","year":"6","grp":1},{"id":"Year 6 Girls|Rosie Johanson","name":"Rosie Johanson","house":"Blue","room":"13","year":"6","grp":2},{"id":"Year 6 Girls|Snow Mahon","name":"Snow Mahon","house":"Purple","room":"12","year":"6","grp":2},{"id":"Year 6 Girls|Tylor Purdie","name":"Tylor Purdie","house":"Red","room":"13","year":"6","grp":2},{"id":"Year 6 Girls|Willow Terry","name":"Willow Terry","house":"Purple","room":"13","year":"6","grp":2},{"id":"Year 6 Girls|Zara Ward","name":"Zara Ward","house":"Yellow","room":"11","year":"6","grp":2},{"id":"Year 6 Girls|Nysh Watkins","name":"Nysh Watkins","house":"Purple","room":"11","year":"6","grp":2}]},{"id":"e100","no":100,"division":"Year 6 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"students":[{"id":"Year 6 Boys|Billy Beel","name":"Billy Beel","house":"Purple","room":"12","year":"6","grp":1},{"id":"Year 6 Boys|Eddie Bradford","name":"Eddie Bradford","house":"Red","room":"12","year":"6","grp":1},{"id":"Year 6 Boys|Arie Drage","name":"Arie Drage","house":"Blue","room":"11","year":"6","grp":1},{"id":"Year 6 Boys|Khai Ellis","name":"Khai Ellis","house":"Red","room":"11","year":"6","grp":1},{"id":"Year 6 Boys|Conor Engel","name":"Conor Engel","house":"Purple","room":"13","year":"6","grp":1},{"id":"Year 6 Boys|Jaydee Gosmann","name":"Jaydee Gosmann","house":"Purple","room":"11","year":"6","grp":1},{"id":"Year 6 Boys|Zac Granados-Watson","name":"Zac Granados-Watson","house":"Red","room":"12","year":"6","grp":1},{"id":"Year 6 Boys|Brayden Green","name":"Brayden Green","house":"Yellow","room":"11","year":"6","grp":1},{"id":"Year 6 Boys|Teo Guilloteau","name":"Teo Guilloteau","house":"Purple","room":"13","year":"6","grp":1},{"id":"Year 6 Boys|Zaiden Heppener","name":"Zaiden Heppener","house":"Blue","room":"12","year":"6","grp":1},{"id":"Year 6 Boys|Theo Hudson","name":"Theo Hudson","house":"Yellow","room":"12","year":"6","grp":2},{"id":"Year 6 Boys|Javier Jimenez-Lozano","name":"Javier Jimenez-Lozano","house":"Blue","room":"12","year":"6","grp":2},{"id":"Year 6 Boys|Rumi Mahon","name":"Rumi Mahon","house":"Purple","room":"11","year":"6","grp":2},{"id":"Year 6 Boys|Otto McKay","name":"Otto McKay","house":"Blue","room":"13","year":"6","grp":2},{"id":"Year 6 Boys|Reuben Mobily","name":"Reuben Mobily","house":"Yellow","room":"12","year":"6","grp":2},{"id":"Year 6 Boys|Oscar Murray","name":"Oscar Murray","house":"Yellow","room":"13","year":"6","grp":2},{"id":"Year 6 Boys|Raff O'Brien","name":"Raff O'Brien","house":"Red","room":"13","year":"6","grp":2},{"id":"Year 6 Boys|Ezra Powell","name":"Ezra Powell","house":"Blue","room":"11","year":"6","grp":2},{"id":"Year 6 Boys|Marlin Robertson","name":"Marlin Robertson","house":"Purple","room":"11","year":"6","grp":2},{"id":"Year 6 Boys|Felix Wearne","name":"Felix Wearne","house":"Purple","room":"13","year":"6","grp":2}]},{"id":"e101","no":101,"division":"Kindy","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e102","no":102,"division":"Kindy","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e103","no":103,"division":"Kindy","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e104","no":104,"division":"Kindy","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e105","no":105,"division":"Pre-Primary","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e106","no":106,"division":"Pre-Primary","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e107","no":107,"division":"Pre-Primary","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e108","no":108,"division":"Pre-Primary","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e109","no":109,"division":"Year 1","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e110","no":110,"division":"Year 1","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e111","no":111,"division":"Year 1","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e112","no":112,"division":"Year 1","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e113","no":113,"division":"Year 2","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e114","no":114,"division":"Year 2","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e115","no":115,"division":"Year 2","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e116","no":116,"division":"Year 2","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e117","no":117,"division":"Year 3","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e118","no":118,"division":"Year 3","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e119","no":119,"division":"Year 3","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e120","no":120,"division":"Year 3","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e121","no":121,"division":"Year 4","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e122","no":122,"division":"Year 4","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e123","no":123,"division":"Year 4","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e124","no":124,"division":"Year 4","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e125","no":125,"division":"Year 5","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e126","no":126,"division":"Year 5","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e127","no":127,"division":"Year 5","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e128","no":128,"division":"Year 5","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e129","no":129,"division":"Year 6","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e130","no":130,"division":"Year 6","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e131","no":131,"division":"Year 6","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]},{"id":"e132","no":132,"division":"Year 6","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"students":[]}];
+const RACES = [{"id":"r001","no":1,"division":"Kindy","heat":1,"heats":4,"event":"50m","t":730,"page":"races","mode":"order","count":0},{"id":"r002","no":2,"division":"Kindy","heat":2,"heats":4,"event":"50m","t":732,"page":"races","mode":"order","count":0},{"id":"r003","no":3,"division":"Kindy","heat":3,"heats":4,"event":"50m","t":734,"page":"races","mode":"order","count":0},{"id":"r004","no":4,"division":"Kindy","heat":4,"heats":4,"event":"50m","t":736,"page":"races","mode":"order","count":0},{"id":"r005","no":5,"division":"PP1 Girls","heat":1,"heats":1,"event":"50m","t":738,"page":"races","mode":"order","count":11},{"id":"r006","no":6,"division":"PP2 Girls","heat":1,"heats":2,"event":"50m","t":740,"page":"races","mode":"order","count":7},{"id":"r007","no":7,"division":"PP2 Girls","heat":2,"heats":2,"event":"50m","t":742,"page":"races","mode":"order","count":7},{"id":"r008","no":8,"division":"PP3 Girls","heat":1,"heats":2,"event":"50m","t":744,"page":"races","mode":"order","count":7},{"id":"r009","no":9,"division":"PP3 Girls","heat":2,"heats":2,"event":"50m","t":746,"page":"races","mode":"order","count":6},{"id":"r010","no":10,"division":"PP1 Boys","heat":1,"heats":1,"event":"50m","t":748,"page":"races","mode":"order","count":11},{"id":"r011","no":11,"division":"PP2 Boys","heat":1,"heats":1,"event":"50m","t":750,"page":"races","mode":"order","count":11},{"id":"r012","no":12,"division":"PP3 Boys","heat":1,"heats":1,"event":"50m","t":752,"page":"races","mode":"order","count":11},{"id":"r013","no":13,"division":"Year 1 Girls","heat":1,"heats":3,"event":"75m","t":754,"page":"races","mode":"order","count":9},{"id":"r014","no":14,"division":"Year 1 Girls","heat":2,"heats":3,"event":"75m","t":756,"page":"races","mode":"order","count":9},{"id":"r015","no":15,"division":"Year 1 Girls","heat":3,"heats":3,"event":"75m","t":758,"page":"races","mode":"order","count":9},{"id":"r016","no":16,"division":"Year 1 Boys","heat":1,"heats":2,"event":"75m","t":760,"page":"races","mode":"order","count":10},{"id":"r017","no":17,"division":"Year 1 Boys","heat":2,"heats":2,"event":"75m","t":762,"page":"races","mode":"order","count":9},{"id":"r018","no":18,"division":"Year 2 Girls","heat":1,"heats":2,"event":"75m","t":764,"page":"races","mode":"order","count":12},{"id":"r019","no":19,"division":"Year 2 Girls","heat":2,"heats":2,"event":"75m","t":766,"page":"races","mode":"order","count":12},{"id":"r020","no":20,"division":"Year 2 Boys","heat":1,"heats":3,"event":"75m","t":768,"page":"races","mode":"order","count":10},{"id":"r021","no":21,"division":"Year 2 Boys","heat":2,"heats":3,"event":"75m","t":770,"page":"races","mode":"order","count":10},{"id":"r022","no":22,"division":"Year 2 Boys","heat":3,"heats":3,"event":"75m","t":772,"page":"races","mode":"order","count":9},{"id":"r023","no":23,"division":"Year 3 Girls","heat":1,"heats":2,"event":"75m","t":774,"page":"races","mode":"order","count":9},{"id":"r024","no":24,"division":"Year 3 Girls","heat":2,"heats":2,"event":"75m","t":776,"page":"races","mode":"order","count":10},{"id":"r025","no":25,"division":"Year 3 Boys","heat":1,"heats":3,"event":"75m","t":778,"page":"races","mode":"order","count":10},{"id":"r026","no":26,"division":"Year 3 Boys","heat":2,"heats":3,"event":"75m","t":780,"page":"races","mode":"order","count":10},{"id":"r027","no":27,"division":"Year 3 Boys","heat":3,"heats":3,"event":"75m","t":782,"page":"races","mode":"order","count":10},{"id":"r028","no":28,"division":"Year 4 Girls","heat":1,"heats":2,"event":"75m","t":784,"page":"races","mode":"order","count":12},{"id":"r029","no":29,"division":"Year 4 Girls","heat":2,"heats":2,"event":"75m","t":786,"page":"races","mode":"order","count":14},{"id":"r030","no":30,"division":"Year 4 Boys","heat":1,"heats":2,"event":"75m","t":788,"page":"races","mode":"order","count":8},{"id":"r031","no":31,"division":"Year 4 Boys","heat":2,"heats":2,"event":"75m","t":790,"page":"races","mode":"order","count":8},{"id":"r032","no":32,"division":"Year 4 Other","heat":1,"heats":1,"event":"75m","t":792,"page":"races","mode":"order","count":1},{"id":"r033","no":33,"division":"Year 5 Girls","heat":1,"heats":3,"event":"100m","t":794,"page":"races","mode":"order","count":9},{"id":"r034","no":34,"division":"Year 5 Girls","heat":2,"heats":3,"event":"100m","t":796,"page":"races","mode":"order","count":9},{"id":"r035","no":35,"division":"Year 5 Girls","heat":3,"heats":3,"event":"100m","t":798,"page":"races","mode":"order","count":10},{"id":"r036","no":36,"division":"Year 5 Boys","heat":1,"heats":2,"event":"100m","t":800,"page":"races","mode":"order","count":11},{"id":"r037","no":37,"division":"Year 5 Boys","heat":2,"heats":2,"event":"100m","t":802,"page":"races","mode":"order","count":11},{"id":"r038","no":38,"division":"Year 6 Girls","heat":1,"heats":1,"event":"100m","t":804,"page":"races","mode":"order","count":12},{"id":"r039","no":39,"division":"Year 6 Boys","heat":1,"heats":2,"event":"100m","t":806,"page":"races","mode":"order","count":10},{"id":"r040","no":40,"division":"Year 6 Boys","heat":2,"heats":2,"event":"100m","t":808,"page":"races","mode":"order","count":10},{"id":"r041","no":41,"division":"Year 3 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r023","topN":6,"page":"races","mode":"order","count":0},{"id":"r042","no":42,"division":"Year 3 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r025","topN":6,"page":"races","mode":"order","count":0},{"id":"r043","no":43,"division":"Year 4 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r028","topN":6,"page":"races","mode":"order","count":0},{"id":"r044","no":44,"division":"Year 4 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r030","topN":6,"page":"races","mode":"order","count":0},{"id":"r045","no":45,"division":"Year 4 Other","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r032","topN":6,"page":"races","mode":"order","count":0},{"id":"r046","no":46,"division":"Year 5 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r033","topN":6,"page":"races","mode":"order","count":0},{"id":"r047","no":47,"division":"Year 5 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r036","topN":6,"page":"races","mode":"order","count":0},{"id":"r048","no":48,"division":"Year 6 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r038","topN":6,"page":"races","mode":"order","count":0},{"id":"r049","no":49,"division":"Year 6 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r039","topN":6,"page":"races","mode":"order","count":0},{"id":"e050","no":50,"division":"Year 3 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":10},{"id":"e051","no":51,"division":"Year 3 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":9},{"id":"e052","no":52,"division":"Year 3 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":15},{"id":"e053","no":53,"division":"Year 3 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":15},{"id":"e054","no":54,"division":"Year 4 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":13},{"id":"e055","no":55,"division":"Year 4 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":13},{"id":"e056","no":56,"division":"Year 4 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":8},{"id":"e057","no":57,"division":"Year 4 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":8},{"id":"e058","no":58,"division":"Year 4 Other","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":1},{"id":"e059","no":59,"division":"Year 5 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":14},{"id":"e060","no":60,"division":"Year 5 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":14},{"id":"e061","no":61,"division":"Year 5 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":11},{"id":"e062","no":62,"division":"Year 5 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":11},{"id":"e063","no":63,"division":"Year 6 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":6},{"id":"e064","no":64,"division":"Year 6 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":6},{"id":"e065","no":65,"division":"Year 6 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":10},{"id":"e066","no":66,"division":"Year 6 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":10},{"id":"e092","no":92,"division":"Year 3 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":19},{"id":"e093","no":93,"division":"Year 3 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":30},{"id":"e094","no":94,"division":"Year 4 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":26},{"id":"e095","no":95,"division":"Year 4 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":16},{"id":"e096","no":96,"division":"Year 4 Other","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":1},{"id":"e097","no":97,"division":"Year 5 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":28},{"id":"e098","no":98,"division":"Year 5 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":22},{"id":"e099","no":99,"division":"Year 6 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":12},{"id":"e100","no":100,"division":"Year 6 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":20},{"id":"e101","no":101,"division":"Kindy","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e102","no":102,"division":"Kindy","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e103","no":103,"division":"Kindy","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e104","no":104,"division":"Kindy","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e105","no":105,"division":"Pre-Primary","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e106","no":106,"division":"Pre-Primary","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e107","no":107,"division":"Pre-Primary","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e108","no":108,"division":"Pre-Primary","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e109","no":109,"division":"Year 1","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e110","no":110,"division":"Year 1","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e111","no":111,"division":"Year 1","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e112","no":112,"division":"Year 1","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e113","no":113,"division":"Year 2","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e114","no":114,"division":"Year 2","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e115","no":115,"division":"Year 2","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e116","no":116,"division":"Year 2","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e117","no":117,"division":"Year 3","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e118","no":118,"division":"Year 3","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e119","no":119,"division":"Year 3","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e120","no":120,"division":"Year 3","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e121","no":121,"division":"Year 4","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e122","no":122,"division":"Year 4","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e123","no":123,"division":"Year 4","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e124","no":124,"division":"Year 4","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e125","no":125,"division":"Year 5","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e126","no":126,"division":"Year 5","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e127","no":127,"division":"Year 5","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e128","no":128,"division":"Year 5","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e129","no":129,"division":"Year 6","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e130","no":130,"division":"Year 6","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e131","no":131,"division":"Year 6","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e132","no":132,"division":"Year 6","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0}];
 
 const HOUSE_COLORS = {Blue:'var(--h-blue)',Yellow:'var(--h-yellow)',Red:'var(--h-red)',Purple:'var(--h-purple)','—':'var(--faint)'};
 
@@ -576,9 +611,195 @@ function applyColors(el,div,heat,heats){
 // iPads recording at once converge instead of overwriting each other.
 // Point this at your own deployment for the carnival's own sheet.
 // =====================================================
+// ---- Google Apps Script (current setup) ----
 const API_URL='https://script.google.com/macros/s/AKfycbwlJfWWZ62ZKLIDVjazdU7aBR2cJg3c6Q75v9JdUBmvA_bQ4P2TkluFe1JjTgG82a_C/exec';
+
+// ---- Microsoft 365 (fill these in and it takes over automatically) -------
+// Ask IT for an Entra app registration: SPA platform, this organisation only,
+// delegated Graph scopes User.Read + Files.ReadWrite.All, admin consent granted.
+const MS = {
+  CLIENT_ID:'',                       // Application (client) ID
+  TENANT_ID:'',                       // Directory (tenant) ID
+  // Where the results workbook lives. Leave SITE blank to use your own OneDrive.
+  SITE:'',                            // e.g. 'hiltonps.sharepoint.com:/sites/Sport:'
+  FILE:'Carnival 2026 Results.xlsx',  // created automatically the first time
+  TABLE:'Actions'
+};
+const USE_MS = !!(MS.CLIENT_ID && MS.TENANT_ID);
 const POLL_MS=4000;
 const STORE='carnival2026-v1';
+
+
+// =====================================================
+// BACKEND ADAPTER
+// Two interchangeable stores behind one interface: the existing Apps Script
+// sheet, or a Microsoft 365 workbook reached through Graph with a department
+// login. Both are append-only action logs, so the replay code doesn't care
+// which one is in use.
+// =====================================================
+const Backend = (function(){
+
+  // ---------- Google Apps Script ----------
+  const gas = {
+    name:'Google Sheet',
+    needsSignIn:false,
+    async signIn(){},
+    async fetchActions(){
+      const r=await fetch(API_URL,{method:'GET'});
+      const d=await r.json();
+      if(!d||!d.ok) throw new Error('bad response');
+      return d.actions||[];
+    },
+    async postAction(a){
+      await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({raceId:a.RaceId,action:a.Action,payload:JSON.parse(a.Payload),judge:'Carnival'})});
+    },
+    async writeSheet(name,rows){
+      const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action:'write_sheet',sheet:name,rows})});
+      const d=await r.json().catch(()=>null);
+      if(d&&d.ok===false) throw new Error(d.error||'sheet write failed');
+    }
+  };
+
+  function colLetter(n){
+    let s='';
+    while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); }
+    return s;
+  }
+
+  // ---------- Microsoft 365 / Graph ----------
+  const GRAPH='https://graph.microsoft.com/v1.0';
+  let msal=null, account=null, itemId=null, tableReady=false;
+
+  async function loadMsal(){
+    if(window.msal) return;
+    await new Promise((res,rej)=>{
+      const sc=document.createElement('script');
+      // Microsoft's own CDN, so it passes the same filtering as the login page
+      sc.src='https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+      sc.onload=res; sc.onerror=()=>rej(new Error('Could not load the Microsoft sign-in library'));
+      document.head.appendChild(sc);
+    });
+  }
+  async function token(){
+    const req={scopes:['User.Read','Files.ReadWrite.All'],account};
+    try{ return (await msal.acquireTokenSilent(req)).accessToken; }
+    catch(e){ return (await msal.acquireTokenPopup(req)).accessToken; }
+  }
+  async function api(path,opts={}){
+    const t=await token();
+    const r=await fetch(GRAPH+path,Object.assign({},opts,{
+      headers:Object.assign({Authorization:'Bearer '+t,'Content-Type':'application/json'},opts.headers||{})
+    }));
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error('Graph '+r.status+' '+(await r.text()).slice(0,180));
+    return r.status===204?null:r.json();
+  }
+  const drivePath = ()=> MS.SITE ? '/sites/'+MS.SITE+'/drive' : '/me/drive';
+
+  // The workbook itself is created by hand (a blank Excel file in the Team).
+  // Shipping a fabricated .xlsx blob to auto-create it is fragile and would
+  // fail differently on every tenant, so we ask for it explicitly instead.
+  async function ensureWorkbook(){
+    if(itemId&&tableReady) return;
+    const enc=encodeURIComponent(MS.FILE);
+    const item=await api(drivePath()+'/root:/'+enc);
+    if(!item) throw new Error('NOFILE');
+    itemId=item.id;
+    const tables=await api(drivePath()+'/items/'+itemId+'/workbook/tables');
+    if(!tables||!(tables.value||[]).some(t=>t.name===MS.TABLE)){
+      await api(drivePath()+'/items/'+itemId+"/workbook/worksheets('Sheet1')/range(address='A1:E1')",
+        {method:'PATCH',body:JSON.stringify({values:[['Timestamp','RaceId','Action','Payload','Judge']]})});
+      const tb=await api(drivePath()+'/items/'+itemId+'/workbook/tables/add',
+        {method:'POST',body:JSON.stringify({address:'Sheet1!A1:E1',hasHeaders:true})});
+      if(tb&&tb.name!==MS.TABLE)
+        await api(drivePath()+'/items/'+itemId+'/workbook/tables/'+tb.id,
+          {method:'PATCH',body:JSON.stringify({name:MS.TABLE})});
+    }
+    tableReady=true;
+  }
+
+  const ms = {
+    name:'Microsoft 365',
+    needsSignIn:true,
+    signedIn(){ return !!account; },
+    who(){ return account?(account.username||account.name):''; },
+    async signIn(){
+      await loadMsal();
+      if(!msal){
+        msal=new window.msal.PublicClientApplication({
+          auth:{ clientId:MS.CLIENT_ID,
+                 authority:'https://login.microsoftonline.com/'+MS.TENANT_ID,
+                 redirectUri:location.origin+location.pathname },
+          cache:{ cacheLocation:'localStorage' }   // survives a Safari reload on iPad
+        });
+        if(msal.initialize) await msal.initialize();
+        const redirect=await msal.handleRedirectPromise();
+        if(redirect&&redirect.account) account=redirect.account;
+      }
+      if(!account){
+        const existing=msal.getAllAccounts();
+        if(existing.length) account=existing[0];
+      }
+      if(!account){
+        const res=await msal.loginPopup({scopes:['User.Read','Files.ReadWrite.All']});
+        account=res.account;
+      }
+      msal.setActiveAccount(account);
+      await ensureWorkbook();
+    },
+    async signOut(){
+      account=null; itemId=null; tableReady=false;
+      if(msal) await msal.logoutPopup();
+    },
+    async fetchActions(){
+      await ensureWorkbook();
+      const d=await api(drivePath()+'/items/'+itemId+'/workbook/tables/'+MS.TABLE+'/rows');
+      // A 404 here means the workbook moved or was deleted. Returning an empty
+      // list would look identical to "nothing recorded yet" and would blank the
+      // whole carnival on screen, so treat it as an error and keep the cache.
+      if(d===null){ itemId=null; tableReady=false; throw new Error('NOFILE'); }
+      return ((d&&d.value)||[]).map(r=>{
+        const v=(r.values&&r.values[0])||[];
+        return {Timestamp:v[0],RaceId:v[1],Action:v[2],Payload:v[3],Judge:v[4]};
+      });
+    },
+    async postAction(a){
+      await ensureWorkbook();
+      await api(drivePath()+'/items/'+itemId+'/workbook/tables/'+MS.TABLE+'/rows/add',
+        {method:'POST',body:JSON.stringify({values:[[a.Timestamp,a.RaceId,a.Action,a.Payload,'Carnival']]})});
+    },
+    // Overwrite a named sheet with a plain 2D block. Deliberately a whole-sheet
+    // rewrite rather than an incremental update — it's idempotent, so two people
+    // hitting the button can't interleave into a half-written sheet.
+    async writeSheet(name,rows){
+      await ensureWorkbook();
+      const base=drivePath()+'/items/'+itemId+'/workbook';
+      const sheets=await api(base+'/worksheets');
+      if(!(sheets&&(sheets.value||[]).some(w=>w.name===name)))
+        await api(base+'/worksheets/add',{method:'POST',body:JSON.stringify({name})});
+      else
+        await api(base+"/worksheets('"+encodeURIComponent(name)+"')/usedRange/clear",
+          {method:'POST',body:JSON.stringify({applyTo:'contents'})});
+      if(!rows.length) return;
+      const cols=Math.max(...rows.map(r=>r.length));
+      const pad=rows.map(r=>{ const c=r.slice(); while(c.length<cols) c.push(''); return c; });
+      const addr='A1:'+colLetter(cols)+pad.length;
+      // Graph caps how much can go in one PATCH, so send it in blocks of rows
+      const BLOCK=200;
+      for(let i=0;i<pad.length;i+=BLOCK){
+        const part=pad.slice(i,i+BLOCK);
+        const a1='A'+(i+1)+':'+colLetter(cols)+(i+part.length);
+        await api(base+"/worksheets('"+encodeURIComponent(name)+"')/range(address='"+a1+"')",
+          {method:'PATCH',body:JSON.stringify({values:part})});
+      }
+    }
+  };
+
+  return USE_MS ? ms : gas;
+})();
+
 
 // ---------------- state ----------------
 let LOG=[];            // actions confirmed by the sheet
@@ -593,6 +814,13 @@ let overrides={};      // division -> {scheme, partPts}
 let evOverrides={};    // event type -> {scheme, partPts}
 let timeOffset=0;      // minutes the whole programme has slipped
 let tabScheme=[10,8,6,4];  // house points for a tabloid placing
+// The roster is the ONLY place names exist. It is held on this device and is
+// never sent to the results store — the store sees opaque ids like s0147, so a
+// leak of it discloses nothing without a school device.
+const ROSTER_KEY='carnival2026-roster';
+let people={};         // studentId -> {name,house,room,year}
+let rosterRaces={};    // raceId -> [studentId]
+let roster={};         // raceId -> [student]  (resolved locally for the rest of the app)
 let marks={};          // eventId -> {studentId: number}  (jumps)
 let ties={};           // eventId -> [bool]  true = shares the place above (throws)
 let curPage='races';
@@ -617,6 +845,22 @@ function loadCache(){
   }catch(e){}
 }
 
+function resolveRoster(){
+  roster={};
+  Object.entries(rosterRaces).forEach(([rid,ids])=>{
+    roster[rid]=ids.map(id=>Object.assign({id},people[id]||{name:'('+id+')',house:'—',room:'—'}));
+  });
+}
+function loadRoster(){
+  try{
+    const d=JSON.parse(localStorage.getItem(ROSTER_KEY)||'null');
+    if(d){ people=d.students||{}; rosterRaces=d.races||{}; }
+  }catch(e){}
+  resolveRoster();
+}
+function saveRoster(){
+  try{ localStorage.setItem(ROSTER_KEY,JSON.stringify({students:people,races:rosterRaces})); }catch(e){}
+}
 function rebuild(){
   results={}; extra={}; removed={}; marks={}; ties={};
   RACES.forEach(r=>{ results[r.id]=[]; extra[r.id]=[]; removed[r.id]=new Set(); marks[r.id]={}; ties[r.id]=[]; });
@@ -669,13 +913,13 @@ async function send(action,payload){
            Action:action,Payload:JSON.stringify(Object.assign({},payload||{},{_aid:aid})),_aid:aid,_sent:false};
   pending.push(a);
   rebuild(); cache(); render();
+  if(Backend.needsSignIn && !Backend.signedIn()){ setSync('signin'); return; }
   setSync('busy');
   try{
-    await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({raceId:a.RaceId,action,payload:JSON.parse(a.Payload),judge:'Carnival'})});
+    await Backend.postAction(a);
     a._sent=true; cache();
     lastSynced=new Date(); everSynced=true; setSync('ok');
-  }catch(e){ setSync('offline'); }   // stays queued; poll() retries it
+  }catch(e){ setSync(e.message==='NOFILE'?'nofile':'offline'); }   // stays queued; poll() retries
 }
 function saveRace(id){ send('cn_result',{raceId:id,order:results[id]||[],ties:ties[id]||[]}); }
 function saveSettings(){
@@ -687,39 +931,36 @@ function saveSettings(){
 // on the action id, so a POST that actually landed won't be counted twice.
 async function flushPending(){
   for(const a of pending.slice()){
-    if(a._sent) continue;               // already reached the sheet, just not read back yet
-    await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({raceId:a.RaceId,action:a.Action,payload:JSON.parse(a.Payload),judge:'Carnival'})});
+    if(a._sent) continue;               // already reached the store, just not read back yet
+    await Backend.postAction(a);
     a._sent=true;
   }
 }
 
 let seq=0;
 async function poll(){
+  if(Backend.needsSignIn && !Backend.signedIn()){ setSync('signin'); return; }
   const n=++seq;
   try{
     if(pending.some(a=>!a._sent)) await flushPending();
-    const res=await fetch(API_URL,{method:'GET'});
-    const d=await res.json();
+    const actions=await Backend.fetchActions();
     if(n!==seq) return;
-    if(d&&d.ok){
-      const seen=new Set();
-      LOG=(d.actions||[]).filter(x=>{
-        const id=aidOf(x); if(!id) return true;
-        if(seen.has(id)) return false; seen.add(id); return true;
-      });
-      // only drop a pending action once the sheet actually shows it back
-      pending=pending.filter(x=>!seen.has(x._aid));
-      lastSynced=new Date(); everSynced=true;
-      rebuild(); cache();
-      setSync('ok');
-      renderIfChanged();
-    }
-  }catch(e){ if(n===seq) setSync('offline'); }
+    const seen=new Set();
+    LOG=actions.filter(x=>{
+      const id=aidOf(x); if(!id) return true;
+      if(seen.has(id)) return false; seen.add(id); return true;
+    });
+    // only drop a pending action once the store actually shows it back
+    pending=pending.filter(x=>!seen.has(x._aid));
+    lastSynced=new Date(); everSynced=true;
+    rebuild(); cache();
+    setSync('ok');
+    renderIfChanged();
+  }catch(e){ if(n===seq) setSync(e.message==='NOFILE'?'nofile':'offline'); }
 }
 
 function stateHash(){
-  return JSON.stringify([results,marks,ties,Object.keys(extra).map(k=>extra[k].length),
+  return JSON.stringify([results,marks,ties,Object.keys(roster).length,Object.keys(extra).map(k=>extra[k].length),
     Object.keys(removed).map(k=>[...removed[k]].length),scheme,partPts,topHeatOnly,
     overrides,evOverrides,timeOffset,tabScheme]);
 }
@@ -735,13 +976,15 @@ function setSync(st){
   syncState=st;
   const chip=$('saveChip'), txt=$('saveTxt');
   if(!chip) return;
-  const cls={ok:'ok',busy:'busy',offline:'bad',nostore:'bad',idle:''}[st]||'';
+  const cls={ok:'ok',busy:'busy',offline:'bad',nostore:'bad',signin:'busy',nofile:'bad',idle:''}[st]||'';
   chip.className='savechip '+cls;
   const n=recordedCount();
   txt.textContent =
     st==='busy'    ? 'Saving…' :
     st==='offline' ? 'Offline' :
     st==='nostore' ? 'NOT SAVED' :
+    st==='signin'  ? 'Sign in' :
+    st==='nofile'  ? 'Workbook missing' :
     st==='idle'    ? 'Connecting…' :
                      'Synced · '+n+' race'+(n===1?'':'s');
 }
@@ -761,22 +1004,39 @@ function derivedField(r){
   const need=Math.min(r.topN||6, fieldFor(src).length);
   return (results[src.id]||[]).slice(0,need).map(sid=>studentIn(src,sid)).filter(Boolean);
 }
+function studentsOf(r){ return roster[r.id]||[]; }
 function fieldFor(r){
   const rm=removed[r.id]||new Set();
-  const base=r.derivedFrom ? derivedField(r) : r.students;
+  let base=r.derivedFrom ? derivedField(r) : studentsOf(r);
+  // If the roster is missing, fall back to whoever has been recorded so the
+  // event still shows its results. Resolved directly rather than via studentIn,
+  // which would call back into here.
+  if(!base.length && (results[r.id]||[]).length){
+    const ix=allStudents();
+    base=(results[r.id]||[]).map(id=>ix[id]||{id,name:'('+id+')',house:'—',room:'—',unknown:true});
+  }
   return base.filter(s=>!rm.has(s.id)).concat(extra[r.id]||[]);
 }
+function rosterLoaded(){ return Object.keys(roster).length>0; }
 // Global index so an already-recorded runner still renders even if the field
 // behind them changes — e.g. correcting a Division 1 order after the 200m has
 // been run would otherwise drop them out of the 200m result silently.
-const ALL_STUDENTS={};
-RACES.forEach(r=>r.students.forEach(s=>{ ALL_STUDENTS[s.id]=s; }));
+function allStudents(){
+  const ix={};
+  Object.values(roster).forEach(list=>list.forEach(s=>{ ix[s.id]=s; }));
+  Object.values(extra).forEach(list=>(list||[]).forEach(s=>{ ix[s.id]=s; }));
+  return ix;
+}
 function studentIn(r,id){
   return fieldFor(r).find(s=>s.id===id)
       || (extra[r.id]||[]).find(s=>s.id===id)
-      || ALL_STUDENTS[id];
+      || allStudents()[id]
+      // No class list on this device: show the code rather than nothing, so a
+      // missing roster reads as "load the list", not "the results are gone".
+      || {id,name:'('+id+')',house:'—',room:'—',unknown:true};
 }
 function ord(n){ const s=['th','st','nd','rd'],v=n%100; return (s[(v-20)%10]||s[v]||s[0]); }
+function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 // Years 3-6 split into Divisions by ability; Years 1-2 are just numbered Races.
 function groupWord(div){
@@ -809,7 +1069,7 @@ function groupLabel(r){
 }
 // Lane = position in the race as drawn. Fixed, so it matches the marshalling sheet.
 function laneOf(race,sid){
-  const base=race.derivedFrom ? derivedField(race) : race.students;
+  const base=race.derivedFrom ? derivedField(race) : studentsOf(race);
   const i=base.findIndex(s=>s.id===sid);
   if(i>-1) return i+1;                        // 200m lanes follow qualifying order
   const j=(extra[race.id]||[]).findIndex(s=>s.id===sid);
@@ -866,14 +1126,14 @@ function countedIn(r){
 }
 function expectedIn(r){
   if(r.mode==='houses') return (r.houses||[]).length;
-  if(r.mode==='places') return Math.min(r.topN||3, fieldFor(r).length);
-  return fieldFor(r).length;
+  if(r.mode==='places') return Math.min(r.topN||3, fieldFor(r).length||r.count||0);
+  return fieldFor(r).length || (rosterLoaded()?0:(r.count||0));
 }
 function eventStarted(r){ return countedIn(r)>0; }
 function eventDone(r){ const t=expectedIn(r); return t>0 && countedIn(r)>=t; }
 function divisions(){ return [...new Set(RACES.map(r=>r.division))]; }
 function houses(){
-  const a=RACES.flatMap(r=>fieldFor(r).map(s=>s.house));
+  const a=Object.values(roster).flat().map(s=>s.house);
   const b=RACES.filter(r=>r.houses).flatMap(r=>r.houses);
   return [...new Set(a.concat(b))].filter(h=>h&&h!=='—').sort();
 }
@@ -1162,6 +1422,7 @@ function renderRace(){
       ? '200m · top '+fieldFor(r).length+' from Division 1'
       : groupLabel(r)+' · '+fieldFor(r).length+' runners')
     +(topHeatOnly&&r.heat>1&&r.event!=='200m'?(' · placings not scored ('+groupWord(r.division)+' 1 only)'):'');
+  $('noRoster').hidden = Object.keys(people).length>0 || r.mode==='houses';
   const notReady = !derivedReady(r);
   $('notReady').hidden=!notReady;
   if(notReady){
@@ -1393,7 +1654,7 @@ function renderHouses(r){
 
 // ---------------- points ----------------
 function renderPoints(){
-  renderOffset();
+  renderStore(); renderRoster(); renderOffset();
   const tb=$('ptsBody'); tb.innerHTML='';
   scheme.forEach((v,i)=>{
     const tr=document.createElement('tr');
@@ -1457,6 +1718,76 @@ function renderPoints(){
     ov.appendChild(row);
   });
 }
+function renderStore(){
+  const note=$('storeNote'), row=$('storeRow');
+  row.innerHTML='';
+  if(!Backend.needsSignIn){
+    note.innerHTML='Results sync to the <b>Google Sheet</b> backend. No sign-in required.';
+    return;
+  }
+  if(Backend.signedIn()){
+    note.innerHTML='Signed in to <b>Microsoft 365</b> as '+esc(Backend.who())+
+      '. Results are stored in <b>'+esc(MS.FILE)+'</b>, inside your school\u2019s tenant.';
+    const b=document.createElement('button');
+    b.className='btn'; b.textContent='Sign out';
+    b.addEventListener('click',async()=>{ await Backend.signOut(); render(); });
+    row.appendChild(b);
+  } else {
+    note.innerHTML='Sign in with your <b>department account</b> to reach the results workbook.';
+    const b=document.createElement('button');
+    b.className='btn pri'; b.textContent='Sign in with Microsoft';
+    b.addEventListener('click',async()=>{
+      try{ await Backend.signIn(); setSync('idle'); render(); poll(); }
+      catch(e){
+        alert(e.message==='NOFILE'
+          ? 'Signed in, but the workbook wasn\u2019t found.\n\nCreate a blank Excel file called "'+MS.FILE+
+            '" in the right folder, then try again.'
+          : 'Sign-in failed: '+(e.message||e));
+        render();
+      }
+    });
+    row.appendChild(b);
+  }
+}
+function renderRoster(){
+  const n=Object.keys(people).length;
+  $('rosterNote').innerHTML = n
+    ? '<b>'+n+' students</b> on this device, across '+Object.keys(rosterRaces).length+' events.<br>'+
+      'Names are stored here only — the results store sees codes.'
+    : '<b>No class list on this device.</b> Events will run, but everyone shows as a code '+
+      'until you load <b>carnival-roster.json</b>.';
+  $('rosterClearBtn').disabled=!n;
+}
+$('downloadXlsxBtn').addEventListener('click',downloadXlsx);
+$('publishBtn').addEventListener('click',publishWorkbook);
+$('rosterBtn').addEventListener('click',()=>$('rosterFile').click());
+$('rosterFile').addEventListener('change',e=>{
+  const f=e.target.files[0]; e.target.value='';
+  if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let data;
+    try{ data=JSON.parse(String(rd.result)); }
+    catch(err){ alert('That file isn\u2019t valid JSON.'); return; }
+    if(!data.students||!data.races){
+      alert('That doesn\u2019t look like a class list file.\n\nExpecting the carnival-roster.json with "students" and "races" in it.');
+      return;
+    }
+    people=data.students; rosterRaces=data.races;
+    saveRoster(); resolveRoster(); render();
+    alert('Loaded '+Object.keys(people).length+' students on THIS device.\n\n'+
+      'Names stay here — the results store only ever sees codes like s0147.\n\n'+
+      'Load this same file on every device that needs to see names.');
+  };
+  rd.readAsText(f);
+});
+$('rosterClearBtn').addEventListener('click',()=>{
+  if(!confirm('Remove the class list from this device? Recorded results stay, but names will show as codes until you load it again.')) return;
+  people={}; rosterRaces={};
+  try{ localStorage.removeItem(ROSTER_KEY); }catch(e){}
+  resolveRoster(); render();
+});
+
 function renderOffset(){
   $('offsetIn').value=timeOffset;
   const timed=RACES.filter(r=>r.t!=null);
@@ -1772,6 +2103,241 @@ function paintPrinterBar(bar){
 }
 
 
+
+// =====================================================
+// READABLE WORKBOOK SHEETS
+// The action log is how devices stay in sync, but it's unreadable. These build
+// plain Results and Standings sheets so the workbook stands on its own — open
+// it next week with no app and everything is there, sortable and shareable.
+// =====================================================
+function resultRows(){
+  const out=[['Event','Time','Type','Division','Group','Discipline','Place','Lane',
+              'Name','House','Room','Result','Points']];
+  const grp=r=> r.mode==='houses' ? ''
+    : r.event==='200m' ? 'Final'
+    : r.mode==='measure' ? 'Group '+r.heat+' of '+r.heats
+    : r.heats>1 ? groupWord(r.division)+' '+r.heat+' of '+r.heats
+    : 'Single '+groupWord(r.division).toLowerCase();
+
+  RACES.forEach(r=>{
+    const base=[r.no, r.t==null?'':timeLabel(r), r.page, r.division, grp(r), r.event];
+    if(r.mode==='houses'){
+      (results[r.id]||[]).forEach((h,i)=>
+        out.push(base.concat([i+1,'',h,h,'','',tabPoints(i)])));
+    } else if(r.mode==='measure'){
+      // scored once per division, so only write it out from the first group
+      const first=RACES.find(x=>x.division===r.division&&x.event===r.event&&x.heat===1);
+      if(first&&first.id!==r.id) return;
+      measureRanking(r.division,r.event).forEach((row,i)=>
+        out.push([r.no, '', r.page, r.division, 'Combined', r.event, i+1, '',
+                  row.student.name,row.student.house,row.student.room,
+                  row.value.toFixed(2)+(r.unit||'m'), pointsFor(r,i)]));
+    } else if(r.mode==='places'){
+      const pn=placeNumbers(r);
+      (results[r.id]||[]).forEach((sid,i)=>{
+        const st=studentIn(r,sid); if(!st) return;
+        const tied=pn.filter(x=>x===pn[i]).length>1;
+        out.push(base.concat([(tied?'=':'')+pn[i],'',st.name,st.house,st.room,'',pointsFor(r,pn[i]-1)]));
+      });
+    } else {
+      (results[r.id]||[]).forEach((sid,i)=>{
+        const st=studentIn(r,sid); if(!st) return;
+        out.push(base.concat([i+1, laneOf(r,sid), st.name, st.house, st.room, '', pointsFor(r,i)]));
+      });
+    }
+  });
+  return out;
+}
+function standingRows(){
+  const t=tally(), ht=houseTotals();
+  const out=[['Section','Place','Name','House','Division','Points']];
+  Object.entries(ht).sort((a,b)=>b[1]-a[1]).forEach(([h,p],i)=>
+    out.push(['House total',i+1,h,h,'',p]));
+  out.push(['','','','','','']);
+  divisions().forEach(d=>{
+    Object.values(t).filter(x=>x.div===d).sort((a,b)=>b.pts-a.pts).slice(0,3)
+      .forEach((x,i)=>out.push(['Division champion',i+1,x.name,x.house,d,x.pts]));
+  });
+  out.push(['','','','','','']);
+  Object.values(t).sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name))
+    .forEach((x,i)=>out.push(['All students',i+1,x.name,x.house,x.div,x.pts]));
+  return out;
+}
+function programmeRows(){
+  const out=[['Event','Time','Type','Division','Group','Discipline','Entered','Recorded','Complete']];
+  RACES.forEach(r=>out.push([r.no, r.t==null?'':timeLabel(r), r.page, r.division,
+    r.mode==='houses'?'':(r.heats>1?r.heat+' of '+r.heats:'1 of 1'),
+    r.event, expectedIn(r), countedIn(r), eventDone(r)?'Yes':'']));
+  return out;
+}
+
+let publishing=false;
+async function publishWorkbook(){
+  if(publishing) return;
+  if(Object.keys(people).length && !confirm(
+      'This writes full names into the shared workbook.\n\n'+
+      'Right now the store only holds codes, so a leak would disclose nothing. '+
+      'Publishing puts real names there.\n\n'+
+      'Use "Download Excel workbook" instead if you want the names to stay on this device.\n\n'+
+      'Continue anyway?')) return;
+  if(!Backend.writeSheet){
+    alert('The current results store can\u2019t build readable sheets.\n\n'+
+      'This writes Results, Standings and Programme sheets into the Excel workbook, '+
+      'so it needs the Microsoft 365 store to be configured.');
+    return;
+  }
+  publishing=true;
+  const btn=$('publishBtn'); const was=btn?btn.textContent:'';
+  try{
+    const jobs=[['Results',resultRows()],['Standings',standingRows()],['Programme',programmeRows()]];
+    for(let i=0;i<jobs.length;i++){
+      if(btn) btn.textContent='Writing '+jobs[i][0]+'… ('+(i+1)+'/'+jobs.length+')';
+      await Backend.writeSheet(jobs[i][0],jobs[i][1]);
+    }
+    if(btn) btn.textContent='✓ Workbook updated';
+    setTimeout(()=>{ if(btn) btn.textContent=was; },2500);
+  }catch(e){
+    if(btn) btn.textContent=was;
+    alert('Could not update the workbook: '+(e.message||e));
+  }finally{ publishing=false; }
+}
+
+
+// =====================================================
+// XLSX WRITER — self-contained
+// An .xlsx is just a zip of XML. Written by hand rather than pulling in a
+// library so the app keeps working with no CDN, offline, on a locked-down
+// network. Uses stored (uncompressed) zip entries, so no deflate needed.
+// =====================================================
+const CRC_TABLE=(function(){
+  const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c=n;
+    for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1;
+    t[n]=c>>>0;
+  }
+  return t;
+})();
+function crc32(buf){
+  let c=0xFFFFFFFF;
+  for(let i=0;i<buf.length;i++) c=CRC_TABLE[(c^buf[i])&0xFF]^(c>>>8);
+  return (c^0xFFFFFFFF)>>>0;
+}
+function zipStore(files){          // files: [{name, data:Uint8Array}]
+  const enc=new TextEncoder();
+  const chunks=[], central=[];
+  let offset=0;
+  files.forEach(f=>{
+    const name=enc.encode(f.name), data=f.data, crc=crc32(data);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0,true);
+    lh.setUint16(8,0,true);                       // method 0 = stored
+    lh.setUint16(10,0,true); lh.setUint16(12,0,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,data.length,true); lh.setUint32(22,data.length,true);
+    lh.setUint16(26,name.length,true); lh.setUint16(28,0,true);
+    chunks.push(new Uint8Array(lh.buffer),name,data);
+
+    const cd=new DataView(new ArrayBuffer(46));
+    cd.setUint32(0,0x02014b50,true); cd.setUint16(4,20,true); cd.setUint16(6,20,true);
+    cd.setUint16(8,0,true); cd.setUint16(10,0,true);
+    cd.setUint16(12,0,true); cd.setUint16(14,0,true);
+    cd.setUint32(16,crc,true); cd.setUint32(20,data.length,true); cd.setUint32(24,data.length,true);
+    cd.setUint16(28,name.length,true); cd.setUint16(30,0,true); cd.setUint16(32,0,true);
+    cd.setUint16(34,0,true); cd.setUint16(36,0,true); cd.setUint32(38,0,true);
+    cd.setUint32(42,offset,true);
+    central.push(new Uint8Array(cd.buffer),name);
+    offset += 30+name.length+data.length;
+  });
+  const cdStart=offset;
+  let cdSize=0; central.forEach(c=>cdSize+=c.length);
+  const end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true);
+  end.setUint16(8,files.length,true); end.setUint16(10,files.length,true);
+  end.setUint32(12,cdSize,true); end.setUint32(16,cdStart,true); end.setUint16(20,0,true);
+  const all=chunks.concat(central,[new Uint8Array(end.buffer)]);
+  let total=0; all.forEach(a=>total+=a.length);
+  const out=new Uint8Array(total); let o=0;
+  all.forEach(a=>{ out.set(a,o); o+=a.length; });
+  return out;
+}
+function xmlEsc(v){
+  return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]))
+                  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+}
+function colRef(n){
+  let s='';
+  while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); }
+  return s;
+}
+function sheetXml(rows){
+  let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  rows.forEach((row,ri)=>{
+    x+='<row r="'+(ri+1)+'">';
+    row.forEach((v,ci)=>{
+      if(v===''||v==null) return;
+      const ref=colRef(ci+1)+(ri+1);
+      // keep points and counts as real numbers so Excel can sum and pivot them
+      if(typeof v==='number'&&isFinite(v)) x+='<c r="'+ref+'"><v>'+v+'</v></c>';
+      else x+='<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(v)+'</t></is></c>';
+    });
+    x+='</row>';
+  });
+  return x+'</sheetData></worksheet>';
+}
+function buildXlsx(sheets){          // sheets: [{name, rows}]
+  const enc=new TextEncoder(), f=[];
+  const add=(n,str)=>f.push({name:n,data:enc.encode(str)});
+  add('[Content_Types].xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+    '<Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+    sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+
+    '</Types>');
+  add('_rels/.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
+    '</Relationships>');
+  add('xl/workbook.xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+
+    sheets.map((s,i)=>'<sheet name="'+xmlEsc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+
+    '</sheets></workbook>');
+  add('xl/_rels/workbook.xml.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+
+    '</Relationships>');
+  sheets.forEach((s,i)=>add('xl/worksheets/sheet'+(i+1)+'.xml',sheetXml(s.rows)));
+  return zipStore(f);
+}
+function numeric(rows){
+  // turn anything that's really a number into one, so Excel treats it as such
+  return rows.map((r,i)=>i===0?r:r.map(v=>{
+    if(typeof v==='number') return v;
+    if(typeof v==='string'&&v!==''&&/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+    return v;
+  }));
+}
+function downloadXlsx(){
+  const sheets=[
+    {name:'Results',rows:numeric(resultRows())},
+    {name:'Standings',rows:numeric(standingRows())},
+    {name:'Programme',rows:numeric(programmeRows())}
+  ];
+  const bytes=buildXlsx(sheets);
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Carnival 2026 Results.xlsx';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
 // ---------------- print / export ----------------
 function today(){ return new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}); }
 function head(sub){ return '<h1>Hilton Primary School</h1><h2>Sports Carnival — '+sub+' · '+today()+'</h2>'+offsetNote(); }
@@ -1902,8 +2468,15 @@ function render(){
   else if(view==='points') renderPoints();
   else if(view==='stand') renderStand();
 }
-loadCache(); rebuild(); setSync('idle'); render(); lastHash=stateHash();
-poll(); setInterval(poll,POLL_MS);
+loadRoster(); loadCache(); rebuild(); render(); lastHash=stateHash();
+(async()=>{
+  if(Backend.needsSignIn){
+    setSync('signin'); render();
+    try{ await Backend.signIn(); }catch(e){ /* user signs in from Settings */ }
+  }
+  setSync('idle'); render();
+  poll(); setInterval(poll,POLL_MS);
+})();
 </script>
 </body>
 </html>
