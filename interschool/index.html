@@ -1,1 +1,1647 @@
-interschool/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Interschool Carnival</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#ffffff; --panel-2:#f2f5f9; --border:#d7dee7;
+    --text:#171c24; --dim:#445061; --faint:#7c8899;
+    --accent:#b57a00; --accent-dim:#f5e3bd; --on-accent:#ffffff;
+    --danger:#c8362a; --danger-dim:#fadcd8; --green:#239450; --green-dim:#d6f0e0;
+    --gold:#e0a800; --gold-t:#2b1e00; --silver:#9aa6b4; --silver-t:#fff;
+    --bronze:#c07a45; --bronze-t:#fff;
+    --radius:14px;
+  }
+  html[data-theme="dark"]{
+    --bg:#10131a; --panel:#1a1f28; --panel-2:#212834; --border:#2c3442;
+    --text:#f4f6f8; --dim:#94a1b3; --faint:#5c6779;
+    --accent:#ffb020; --accent-dim:#4a3a1a; --on-accent:#241a00;
+    --danger:#ff5b4c; --danger-dim:#3a2320; --green:#3dbb6c; --green-dim:#12331f;
+    --gold:#ffc53d; --gold-t:#2b1e00; --silver:#c9d1dc; --silver-t:#1c222b;
+    --bronze:#d99361; --bronze-t:#2b1608;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  button{font-family:inherit}
+  button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  [hidden]{display:none !important}
+  .app{max-width:1240px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+  .bar{padding:14px 18px 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    font-weight:800;font-size:15px;color:var(--dim)}
+  .icon-sq{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+    background:var(--panel);font-size:14px;cursor:pointer;display:flex;align-items:center;
+    justify-content:center;flex:none}
+  .savechip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:100px;
+    border:1px solid var(--border);background:var(--panel);font-size:12px;font-weight:800;
+    color:var(--dim);cursor:pointer;white-space:nowrap}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+  .savechip.ok{color:var(--green);border-color:var(--green-dim);background:var(--green-dim)}
+  .savechip.ok .sdot{background:var(--green)}
+  .savechip.bad{color:var(--danger);border-color:var(--danger-dim);background:var(--danger-dim)}
+  .savechip.bad .sdot{background:var(--danger)}
+  .tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+  .tab{border:1px solid var(--border);background:var(--panel);color:var(--dim);
+    padding:8px 14px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+  .screen{padding:6px 18px 34px;flex:1}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--accent)}
+  h1{margin:4px 0 2px;font-size:clamp(21px,4vw,30px);font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
+  .sub{margin:0 0 16px;color:var(--dim);font-size:14.5px;font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+  .card h2{margin:0 0 4px;font-size:15px;font-weight:800}
+  .card p{margin:0 0 12px;font-size:13px;color:var(--dim);line-height:1.5}
+  .row{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .btn{border-radius:12px;border:1px solid var(--border);padding:12px 16px;
+    font-size:14px;font-weight:800;cursor:pointer;background:var(--panel-2);color:var(--text)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .btn.dan{background:var(--danger-dim);color:var(--danger);border-color:var(--danger-dim)}
+  .btn:disabled{opacity:.4;cursor:default}
+  .back{background:none;border:none;color:var(--accent);font-weight:800;font-size:14px;cursor:pointer;padding:8px 0 10px}
+
+  /* schools */
+  .school-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:11px}
+  .school{background:var(--panel);border:1px solid var(--border);border-left:7px solid var(--sc);
+    border-radius:var(--radius);padding:14px}
+  .school h3{margin:0;font-size:16.5px;font-weight:800}
+  .school .cnt{font-size:13px;color:var(--dim);font-weight:600;margin-top:3px}
+  .school .st{margin-top:9px;font-size:12.5px;font-weight:700}
+  .school .st.in{color:var(--green)}
+  .school .st.out{color:var(--faint)}
+
+  .drop{border:2px dashed var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;
+    color:var(--dim);cursor:pointer;background:var(--panel-2)}
+  .drop.over{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+  .drop b{display:block;font-size:16px;color:var(--text);margin-bottom:4px}
+
+  /* events */
+  .toolrow{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+  .toolrow .chips{flex:1;margin-bottom:0}
+  .findbtn{margin-left:auto;flex:none}
+  .findbtn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .finder{position:relative;margin-bottom:14px}
+  .finder .search{margin-bottom:0}
+  .findclear{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:8px;
+    border:1px solid var(--border);background:var(--panel-2);color:var(--dim);font-size:13px;cursor:pointer}
+  .suggest{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    box-shadow:0 10px 28px rgba(0,0,0,.22);overflow:hidden;max-height:330px;overflow-y:auto}
+  .sg{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;
+    border:none;border-bottom:1px solid var(--border);padding:11px 13px;cursor:pointer;color:var(--text)}
+  .sg:last-child{border-bottom:none}
+  .sg.on{background:var(--panel-2)}
+  .sg .nm{flex:1;font-size:15px;font-weight:700;min-width:0}
+  .sg .dv{font-size:12.5px;color:var(--dim);flex:none}
+  .sg mark{background:var(--accent-dim);color:var(--accent);border-radius:3px;padding:0 1px}
+  .sg .hd{width:10px;height:10px;border-radius:50%;background:var(--sc);flex:none}
+  .found{background:var(--panel);border:1px solid var(--border);border-left:7px solid var(--sc);
+    border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .found h3{margin:0;font-size:21px;font-weight:800}
+  .found .who{font-size:13.5px;color:var(--dim);font-weight:600;margin-top:3px}
+  .fr{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel-2);
+    border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-top:9px;
+    cursor:pointer;color:var(--text)}
+  .fr .ev{font-size:12px;font-weight:800;color:var(--dim);width:66px;flex:none}
+  .fr .in{flex:1;min-width:0}
+  .fr .in .a{font-size:14.5px;font-weight:700}
+  .fr .in .b{font-size:12.5px;color:var(--dim);margin-top:2px}
+  .fr .st{font-size:12.5px;font-weight:800;flex:none;text-align:right}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{border:1px solid var(--border);background:var(--panel);color:var(--dim);
+    padding:8px 14px;border-radius:100px;font-weight:700;font-size:13px;cursor:pointer}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:11px}
+  .ev-card{display:flex;flex-direction:column;gap:9px;text-align:left;background:var(--panel);
+    border:1px solid var(--border);border-left:7px solid var(--ec);border-radius:var(--radius);
+    padding:14px 15px;cursor:pointer;color:var(--text)}
+  .ev-card:hover{background:var(--panel-2)}
+  .ev-no{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--ec)}
+  .ev-name{font-size:17px;font-weight:800}
+  .ev-meta{font-size:12.5px;color:var(--dim);font-weight:600}
+  .ev-status{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--dim)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+  .dot.part{background:var(--accent)} .dot.done{background:var(--green)}
+
+  /* recording */
+  .col-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  .col-head h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;font-weight:800;color:var(--dim);margin:0}
+  .count{font-size:13px;font-weight:800;color:var(--text);background:var(--panel-2);
+    border:1px solid var(--border);padding:2px 9px;border-radius:100px}
+  .hint{font-size:12.5px;color:var(--faint);margin:0 0 11px}
+  .board{display:grid;grid-template-columns:1fr auto 1fr;gap:0;padding:8px 0 4px;align-items:start}
+  .col{padding:4px 14px;min-width:0}
+  .finish{width:3px;align-self:stretch;opacity:.35;background-size:3px 40px;
+    background-image:repeating-linear-gradient(to bottom,var(--text) 0 10px,transparent 10px 20px)}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .runner{display:flex;align-items:stretch;gap:4px;background:var(--panel);border:1px solid var(--border);
+    border-left:5px solid var(--sc);border-radius:var(--radius);padding:4px}
+  .runner-tap{flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:transparent;border:none;color:var(--text);text-align:left;padding:9px 10px;
+    cursor:pointer;border-radius:10px;min-width:0}
+  .rn{font-size:16px;font-weight:700;flex:1;min-width:0}
+  .sc-chip{font-size:10.5px;font-weight:800;text-transform:uppercase;color:var(--sc);flex:none;text-align:right}
+  .res-row{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--border);
+    border-left:5px solid var(--sc);border-radius:var(--radius);padding:9px 10px}
+  .place{flex:none;width:48px;height:48px;border-radius:10px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:var(--panel-2);font-weight:900;line-height:1}
+  .place .n{font-size:19px;font-variant-numeric:tabular-nums}
+  .place .s{font-size:8.5px;letter-spacing:.05em;opacity:.75}
+  .place.p1{background:var(--gold);color:var(--gold-t)}
+  .place.p2{background:var(--silver);color:var(--silver-t)}
+  .place.p3{background:var(--bronze);color:var(--bronze-t)}
+  .ri{flex:1;min-width:0}
+  .ri .n{font-size:15.5px;font-weight:700}
+  .ri .m{font-size:12px;color:var(--faint);margin-top:2px}
+  .pts{flex:none;font-size:13px;font-weight:800;color:var(--accent);min-width:44px;text-align:right}
+  .ctrls{display:flex;gap:5px;flex:none}
+  .ib{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--panel-2);
+    color:var(--dim);font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .ib:disabled{opacity:.3;cursor:default}
+  .ib.rm{color:var(--danger);border-color:var(--danger-dim)}
+  .mrow{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--border);
+    border-left:5px solid var(--sc);border-radius:var(--radius);padding:9px 11px}
+  .mrow .who{flex:1;min-width:0}
+  .mrow .who .n{font-size:15.5px;font-weight:700}
+  .mrow .who .m{font-size:12px;color:var(--faint);margin-top:2px}
+  .mrow input{width:112px;flex:none;background:var(--panel-2);border:1px solid var(--border);
+    border-radius:9px;padding:11px;color:var(--text);font-size:17px;font-weight:700;text-align:right;
+    font-variant-numeric:tabular-nums}
+  .mrow .unit{width:22px;flex:none;font-size:13px;color:var(--faint);font-weight:700}
+  .hrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);
+    border:1px solid var(--border);border-left:7px solid var(--sc);border-radius:var(--radius);
+    padding:15px 14px;cursor:pointer;color:var(--text);font-size:18px;font-weight:800}
+  .hrow .pl{width:46px;height:46px;border-radius:10px;background:var(--panel-2);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900}
+  .hrow .pl.p1{background:var(--gold);color:var(--gold-t)}
+  .hrow .pl.p2{background:var(--silver);color:var(--silver-t)}
+  .hrow .pl.p3{background:var(--bronze);color:var(--bronze-t)}
+  .hrow .pts{margin-left:auto;font-size:14px;font-weight:800;color:var(--accent)}
+  .empty{text-align:center;padding:28px 12px;color:var(--faint);font-size:14px;font-weight:600;
+    border:1px dashed var(--border);border-radius:var(--radius)}
+  .prnbar{display:flex;align-items:center;gap:9px;margin:16px 0 0;padding:10px 13px;
+    border:1px solid var(--border);border-radius:11px;background:var(--panel-2);
+    font-size:13px;font-weight:700;color:var(--dim)}
+  .prnbar .pdot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+  .prnbar.on{border-color:var(--green-dim);background:var(--green-dim);color:var(--green)}
+  .prnbar.on .pdot{background:var(--green)}
+  .prnbar.off{opacity:.7}
+  .actions{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:9px;
+    padding:11px 18px calc(13px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--bg)}
+  .actions .btn{flex:1 1 130px}
+
+  /* standings */
+  .lad{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .lad .pos{width:34px;font-weight:900;font-size:18px;text-align:center;flex:none}
+  .lad .nm{width:150px;font-weight:800;font-size:15px;color:var(--sc);flex:none}
+  .bar-wrap{flex:1;height:30px;background:var(--panel-2);border-radius:8px;overflow:hidden;
+    border:1px solid var(--border);display:block;min-width:0}
+  .bar-fill{display:block;height:100%;min-width:2px;background:var(--sc);border-radius:7px;transition:width .35s ease}
+  .lad .pt{width:70px;text-align:right;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+  table.rank{width:100%;border-collapse:collapse;font-size:14px}
+  table.rank th,table.rank td{padding:8px 7px;text-align:left;border-bottom:1px solid var(--border)}
+  table.rank th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+  table.rank td.p{width:44px;font-weight:800}
+  .m1{color:var(--gold)} .m2{color:var(--silver)} .m3{color:var(--bronze)}
+  input.search{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+    padding:12px 14px;color:var(--text);font-size:15px;margin-bottom:12px}
+  .ptable{width:100%;border-collapse:collapse}
+  .ptable th,.ptable td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--border)}
+  .ptable th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+  .ptable input{width:74px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:8px;color:var(--text);font-size:14px}
+
+  .print-sheet{display:none}
+  @media print{
+    body *{visibility:hidden}
+    .print-sheet,.print-sheet *{visibility:visible}
+    .print-sheet{display:block;position:absolute;top:0;left:0;width:100%;background:#fff}
+    @page{margin:1.4cm}
+  }
+  .print-sheet,.print-sheet *{color:#000;background:#fff;font-family:-apple-system,Arial,sans-serif}
+  .print-sheet h1{font-size:21px;margin:0}
+  .print-sheet h2{font-size:15px;font-weight:600;color:#333;margin:3px 0 14px}
+  .print-sheet h3{font-size:20px;margin:18px 0 8px}
+  .print-sheet table{width:100%;border-collapse:collapse;font-size:16px;page-break-inside:avoid}
+  .print-sheet th,.print-sheet td{border:1px solid #777;padding:7px 10px;text-align:left}
+  .print-sheet th{background:#e8e8e8;font-size:12px;text-transform:uppercase}
+  .print-sheet td.blank{height:30px}
+  .print-sheet .pb{page-break-after:always}
+  .print-sheet .pb:last-child{page-break-after:auto}
+
+  @media (max-width:900px){
+    .board{grid-template-columns:1fr;gap:16px}
+    .finish{width:auto;height:3px;background-size:40px 3px;
+      background-image:repeating-linear-gradient(to right,var(--text) 0 10px,transparent 10px 20px)}
+    .col{padding:0}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <span>🏫 Interschool Carnival</span>
+    <span class="savechip" id="saveChip"><span class="sdot"></span><span id="saveTxt">—</span></span>
+    <div class="tabs" id="tabs"></div>
+    <button class="icon-sq" id="themeBtn" aria-label="Light or dark mode">🌙</button>
+  </div>
+
+  <div class="print-sheet" id="printSheet"></div>
+
+  <!-- ============ ENTRIES ============ -->
+  <section class="screen" id="scrEntries">
+    <div class="eyebrow">SETUP</div>
+    <h1>Entries</h1>
+    <p class="sub" id="entrySub">—</p>
+
+    <div class="card">
+      <h2>Upload a school's entry list</h2>
+      <p>Each school sends one spreadsheet. Drop them in one at a time — a school can be re-uploaded to replace its entries.</p>
+      <div class="drop" id="drop">
+        <b>Drop a CSV here, or tap to choose</b>
+        Columns: School, Name, Year, Gender, Event
+      </div>
+      <input type="file" id="file" accept=".csv,text/csv" multiple hidden>
+      <div class="row">
+        <button class="btn" id="tplBtn">⬇ Blank template</button>
+        <button class="btn" id="demoBtn">Load demo entries</button>
+        <button class="btn dan" id="clearBtn">Clear everything</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Names on this device</h2>
+      <p id="namesNote">—</p>
+      <div class="row">
+        <button class="btn" id="namesExportBtn">⬇ Save names file</button>
+        <button class="btn" id="namesImportBtn">⬆ Load names file</button>
+        <button class="btn dan" id="resetDeviceBtn">🧹 Clear this device</button>
+      </div>
+      <input type="file" id="namesFile" accept=".json,application/json" hidden>
+      <div class="info">Competitor names are stored on this device only — the results store sees codes.
+      Whichever device uploaded the entry lists holds the names; save the file from there and load it
+      on the other devices so they can show names too.</div>
+    </div>
+
+    <div class="school-grid" id="schoolGrid"></div>
+  </section>
+
+  <!-- ============ PROGRAMME ============ -->
+  <section class="screen" id="scrProg" hidden>
+    <div class="eyebrow">PROGRAMME</div>
+    <h1>Events</h1>
+    <p class="sub" id="progSub">—</p>
+    <div class="toolrow">
+      <div class="chips" id="filterChips"></div>
+      <button class="icon-sq findbtn" id="findToggle" aria-label="Find a competitor" title="Find a competitor">🔍</button>
+    </div>
+    <div class="finder" id="finder" hidden>
+      <input class="search" id="findInput" placeholder="Find a competitor — type a name…" autocomplete="off">
+      <button class="findclear" id="findClear" hidden aria-label="Clear">✕</button>
+      <div class="suggest" id="suggest" hidden></div>
+    </div>
+    <div id="findResult" hidden></div>
+    <div class="row" style="margin:0 0 14px">
+      <button class="btn" id="printListBtn" style="flex:0 1 auto">🖨 Event list</button>
+      <button class="btn" id="printFieldsBtn" style="flex:0 1 auto">🖨 All fields</button>
+    </div>
+    <div class="grid" id="evGrid"></div>
+    <div class="empty" id="noEvents" hidden>
+      No events yet.<br>Load the schools' entry lists from the <b>Entries</b> tab and the programme builds itself.
+      <div class="row" style="justify-content:center"><button class="btn pri" id="goEntries">Go to Entries</button></div>
+    </div>
+  </section>
+
+  <!-- ============ EVENT ============ -->
+  <section class="screen" id="scrEvent" hidden>
+    <button class="back" data-goto="prog">← Programme</button>
+    <div class="eyebrow" id="evNo">—</div>
+    <h1 id="evTitle">—</h1>
+    <p class="sub" id="evSub">—</p>
+
+    <div id="trackWrap">
+      <div class="board">
+        <div class="col">
+          <div class="col-head"><h2>To finish</h2><span class="count" id="poolCount">0</span></div>
+          <p class="hint">Listed by lane · tap each as they cross the line</p>
+          <div class="list" id="poolList"></div>
+          <div class="empty" id="poolEmpty" hidden>🏁 Everyone has finished.</div>
+        </div>
+        <div class="finish"></div>
+        <div class="col">
+          <div class="col-head"><h2>Finish order</h2><span class="count" id="resCount">0</span></div>
+          <p class="hint">▲▼ to fix · ✕ to send back</p>
+          <div class="list" id="resList"></div>
+          <div class="empty" id="resEmpty">No finishers yet — the first tap is 1st.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="teamWrap" hidden>
+      <div class="board">
+        <div class="col">
+          <div class="col-head"><h2>Still to place</h2><span class="count" id="teamPoolCount">0</span></div>
+          <p class="hint">Tap each school as they finish</p>
+          <div class="list" id="teamPool"></div>
+          <div class="empty" id="teamPoolEmpty" hidden>🏁 All six schools placed.</div>
+        </div>
+        <div class="finish"></div>
+        <div class="col">
+          <div class="col-head"><h2>Finish order</h2><span class="count" id="teamOrderCount">0</span></div>
+          <p class="hint">▲▼ to fix · ✕ to send back</p>
+          <div class="list" id="teamOrder"></div>
+          <div class="empty" id="teamOrderEmpty">Nothing placed yet — the first tap is 1st.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fieldWrap" hidden>
+      <p class="hint" id="fieldHint">—</p>
+      <div class="list" id="fieldList"></div>
+      <div class="card" style="margin-top:14px">
+        <h2>Standing</h2>
+        <p>Best distance first — this is what scores.</p>
+        <table class="rank"><thead><tr><th class="p">#</th><th>Name</th><th>School</th><th>Distance</th><th>Points</th></tr></thead>
+          <tbody id="fieldRank"></tbody></table>
+      </div>
+    </div>
+
+    <div class="prnbar" id="prnBar"></div>
+
+    <div class="actions">
+      <button class="btn" id="undoBtn" disabled>↩ Undo last</button>
+      <button class="btn" id="receiptBtn">🧾 Receipt</button>
+      <button class="btn" id="printFieldBtn">🖨 Print field</button>
+      <button class="btn dan" id="resetBtn">Reset event</button>
+    </div>
+  </section>
+
+  <!-- ============ STANDINGS ============ -->
+  <section class="screen" id="scrStand" hidden>
+    <div class="eyebrow">STANDINGS</div>
+    <h1>Shield</h1>
+    <p class="sub" id="standSub">—</p>
+
+    <div class="card">
+      <h2>School ladder</h2>
+      <div id="ladder" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Points</h2>
+      <p>Points per place, used for every event.</p>
+      <table class="ptable"><thead><tr><th>Place</th><th>Points</th></tr></thead><tbody id="ptsBody"></tbody></table>
+      <div class="row">
+        <button class="btn" id="addPlace">+ Score one more place</button>
+        <button class="btn" id="rmPlace">− One fewer</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Team game points</h2>
+      <p>Tunnelball, Leaderball and Passball — awarded straight to the school.</p>
+      <table class="ptable"><thead><tr><th>Place</th><th>Points</th></tr></thead><tbody id="tabBody"></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>Individuals</h2>
+      <input class="search" id="stuSearch" placeholder="Search a name or school…">
+      <table class="rank"><thead><tr><th class="p">#</th><th>Name</th><th>School</th><th>Year</th><th>Points</th></tr></thead>
+        <tbody id="stuBody"></tbody></table>
+    </div>
+
+    <div class="prnbar" id="prnBar2"></div>
+
+    <div class="actions">
+      <button class="btn" id="receiptLadderBtn">🧾 Receipt</button>
+      <button class="btn" id="printStandBtn">🖨 Print standings</button>
+      <button class="btn" id="exportBtn">⬇ Export CSV</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const SCHOOLS=['Hilton','North Fremantle','Fremantle','White Gum Valley','Winterfold','East Hamilton Hill'];
+// the schools' own colours
+const SCHOOL_COLOR={
+  'Hilton':'#0c990c',
+  'Fremantle':'#009bfd',
+  'North Fremantle':'#000000',
+  'Winterfold':'#a82828',
+  'White Gum Valley':'#dd0b0b',
+  'East Hamilton Hill':'#4ecd16'
+};
+const TRACK=['100m','200m'];
+const JUMPS=['Long Jump','High Jump','Triple Jump'];
+const TABLOIDS=['Tunnelball','Leaderball','Passball'];
+const THROWS=['Shot Put','Discus','Javelin','Vortex','Ball Throw'];
+const FIELD_UNITS={'Long Jump':'m','Shot Put':'m','Discus':'m','Javelin':'m','Vortex':'m'};
+const EVENT_ORDER=['100m','200m','Long Jump','Shot Put','Discus','Javelin','Vortex'];
+// =====================================================
+// SYNC — this carnival has its OWN Apps Script deployment and its own
+// spreadsheet. Paste the /exec URL from your deployment below. Leave it
+// blank and the app still works, saving to this device only.
+// =====================================================
+const API_URL='';        // <-- paste your interschool deployment URL here
+const POLL_MS=4000;
+const STORE='interschool-v1';
+
+let LOG=[];              // actions confirmed by the sheet
+let pending=[];          // our own actions not yet seen back
+// Names live ONLY on this device. The results store sees an opaque id, the
+// school, and the event — never a name. The id is derived from a salt that
+// never leaves the device, so the same person keeps the same id when a school
+// re-sends a corrected list, but the cloud data can't be reversed into names.
+const NAMES_KEY='interschool-names';
+let salt='';            // local secret, shared between devices via the names file
+let names={};           // entryId -> name
+let entries=[];          // {id,school,year,gender,event}  — no name
+let results={};          // eventKey -> [entryId]
+let marks={};            // eventKey -> {entryId:number}
+let scheme=[10,8,6,5,4,3,2,1];
+let tabScheme=[12,10,8,6,4,2];   // team-game points, straight to the school
+let view='prog', curEv=null, filter='all', stuQuery='';
+let syncState='idle', lastSynced=null, everSynced=false;
+
+const $=id=>document.getElementById(id);
+function hex2rgb(h){
+  h=h.replace('#','');
+  if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16));
+}
+function lum(rgb){
+  const f=c=>{c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};
+  return 0.2126*f(rgb[0])+0.7152*f(rgb[1])+0.0722*f(rgb[2]);
+}
+function mix(rgb,target,amt){ return rgb.map((c,i)=>Math.round(c+(target[i]-c)*amt)); }
+const rgb2css=r=>'rgb('+r.join(',')+')';
+// North Fremantle's black disappears on a dark background, so lift very dark
+// colours just enough to stay visible without losing the school's identity.
+function schoolColor(s){
+  const raw=SCHOOL_COLOR[s]||'#667';
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  let c=hex2rgb(raw), L=lum(c);
+  if(dark){
+    if(L<0.05) c=mix(c,[255,255,255],0.60);        // black needs real lifting
+    else if(L<0.14) c=mix(c,[255,255,255],0.22);   // deep reds just need a nudge
+  } else if(L>0.62) c=mix(c,[0,0,0],0.22);
+  return rgb2css(c);
+}
+function isTabloid(ev){ return TABLOIDS.includes(ev); }
+function isTrack(ev){ return !isTabloid(ev)&&(TRACK.includes(ev)||/^\d+m$/.test(ev)); }
+function isJump(ev){ return !isTabloid(ev)&&(JUMPS.includes(ev)||/jump/i.test(ev)); }
+function isThrow(ev){ return !isTabloid(ev)&&!isTrack(ev)&&(THROWS.includes(ev)||!isJump(ev)); }
+function evKind(ev){ return isTabloid(ev)?'Tabloids':isTrack(ev)?'Track':isJump(ev)?'Jumps':'Throws'; }
+function unitFor(ev){ return FIELD_UNITS[ev]||'m'; }
+function ord(n){ const s=['th','st','nd','rd'],v=n%100; return (s[(v-20)%10]||s[v]||s[0]); }
+function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+const SYNC_ON=!!API_URL;
+function uid(){ return 'a'+Date.now()+'-'+Math.random().toString(36).slice(2,7); }
+function aidOf(a){
+  try{ const p=typeof a.Payload==='string'?JSON.parse(a.Payload||'{}'):(a.Payload||{}); return p._aid||null; }
+  catch(e){ return null; }
+}
+// Keep a local copy of the log so the app still works with no signal.
+function cache(){
+  try{ localStorage.setItem(STORE,JSON.stringify({LOG,pending})); }catch(e){ setSync('nostore'); }
+}
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem(STORE)||'null'); if(!d) return;
+    LOG=d.LOG||[]; pending=d.pending||[];
+  }catch(e){}
+}
+function rebuild(){
+  entries=[]; results={}; marks={}; scheme=[10,8,6,5,4,3,2,1]; tabScheme=[12,10,8,6,4,2];
+  const buf={};
+  LOG.concat(pending).forEach(a=>{
+    let p={};
+    try{ p=typeof a.Payload==='string'?JSON.parse(a.Payload||'{}'):(a.Payload||{}); }catch(e){ return; }
+    switch(a.Action){
+      case 'is_school':{
+        // a school's list arrives in chunks; apply once the last one lands
+        const b=buf[p.uploadId]=buf[p.uploadId]||{chunks:{},of:p.of,school:p.school};
+        b.chunks[p.chunk]=p.entries||[];
+        if(Object.keys(b.chunks).length>=b.of){
+          entries=entries.filter(e=>e.school!==b.school);
+          for(let i=0;i<b.of;i++) (b.chunks[i]||[]).forEach(e=>entries.push(e));
+        }
+        break;
+      }
+      case 'is_result': if(p.key&&Array.isArray(p.order)) results[p.key]=p.order.slice(); break;
+      case 'is_mark':
+        if(p.key&&p.entryId){
+          marks[p.key]=marks[p.key]||{};
+          if(p.value==null||p.value==='') delete marks[p.key][p.entryId];
+          else marks[p.key][p.entryId]=Number(p.value);
+        }
+        break;
+      case 'is_settings':
+        if(Array.isArray(p.scheme)) scheme=p.scheme.slice();
+        if(Array.isArray(p.tabScheme)) tabScheme=p.tabScheme.slice();
+        break;
+      case 'is_clear': entries=[]; results={}; marks={}; break;
+    }
+  });
+}
+async function send(action,payload){
+  const aid=uid();
+  const a={Timestamp:new Date().toISOString(),RaceId:(payload&&payload.key)||'',
+           Action:action,Payload:JSON.stringify(Object.assign({},payload||{},{_aid:aid})),_aid:aid,_sent:false};
+  pending.push(a);
+  rebuild(); cache(); render();
+  if(!SYNC_ON){ a._sent=true; setSync('local'); return; }
+  setSync('busy');
+  try{
+    await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({raceId:a.RaceId,action,payload:JSON.parse(a.Payload),judge:'Interschool'})});
+    a._sent=true; cache(); lastSynced=new Date(); everSynced=true; setSync('ok');
+  }catch(e){ setSync('offline'); }
+}
+async function flushPending(){
+  for(const a of pending.slice()){
+    if(a._sent) continue;
+    await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({raceId:a.RaceId,action:a.Action,payload:JSON.parse(a.Payload),judge:'Interschool'})});
+    a._sent=true;
+  }
+}
+let seq=0;
+async function poll(){
+  if(!SYNC_ON) return;
+  const n=++seq;
+  try{
+    if(pending.some(a=>!a._sent)) await flushPending();
+    const res=await fetch(API_URL,{method:'GET'});
+    const d=await res.json();
+    if(n!==seq) return;
+    if(d&&d.ok){
+      const seen=new Set();
+      LOG=(d.actions||[]).filter(x=>{
+        const id=aidOf(x); if(!id) return true;
+        if(seen.has(id)) return false; seen.add(id); return true;
+      });
+      pending=pending.filter(x=>!seen.has(x._aid));
+      lastSynced=new Date(); everSynced=true;
+      rebuild(); cache(); setSync('ok'); renderIfChanged();
+    }
+  }catch(e){ if(n===seq) setSync('offline'); }
+}
+function stateHash(){ return JSON.stringify([entries.length,results,marks,scheme,tabScheme]); }
+let lastHash='';
+function renderIfChanged(){
+  const h=stateHash();
+  if(h===lastHash) return;
+  lastHash=h; render();
+}
+function setSync(st){
+  syncState=st;
+  const c=$('saveChip'); if(!c) return;
+  const cls={ok:'ok',local:'ok',busy:'',offline:'bad',nostore:'bad',idle:''}[st]||'';
+  c.className='savechip '+cls;
+  $('saveTxt').textContent =
+    st==='busy'    ? 'Saving…' :
+    st==='offline' ? 'Offline' :
+    st==='nostore' ? 'NOT SAVED' :
+    st==='local'   ? 'Saved on this device' :
+    st==='idle'    ? (SYNC_ON?'Connecting…':'Saved on this device') :
+                     (SYNC_ON?'Synced · '+entries.length+' entries':'Saved · '+entries.length+' entries');
+}
+// keep the old call sites working
+function loadNames(){
+  try{
+    const d=JSON.parse(localStorage.getItem(NAMES_KEY)||'null');
+    if(d){ salt=d.salt||''; names=d.names||{}; }
+  }catch(e){}
+  if(!salt){
+    salt=sha256hex(String(Date.now())+Math.random()+navigator.userAgent).slice(0,32);
+    saveNames();
+  }
+}
+function saveNames(){
+  try{ localStorage.setItem(NAMES_KEY,JSON.stringify({salt,names})); }catch(e){}
+}
+// SHA-256, written out rather than using crypto.subtle — that needs a secure
+// context, so it's unavailable if the file is opened straight off the iPad.
+const K256=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+function sha256hex(str){
+  const utf=unescape(encodeURIComponent(str));
+  const len=utf.length;
+  const words=[];
+  for(let i=0;i<len;i++) words[i>>2]=(words[i>>2]||0)|(utf.charCodeAt(i)<<(24-(i%4)*8));
+  words[len>>2]=(words[len>>2]||0)|(0x80<<(24-(len%4)*8));
+  const total=(((len+8)>>6)+1)*16;
+  while(words.length<total) words.push(0);
+  words[total-1]=len*8;
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w=new Array(64);
+  const rr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let i=0;i<total;i+=16){
+    for(let t=0;t<16;t++) w[t]=words[i+t]|0;
+    for(let t=16;t<64;t++){
+      const s0=rr(w[t-15],7)^rr(w[t-15],18)^(w[t-15]>>>3);
+      const s1=rr(w[t-2],17)^rr(w[t-2],19)^(w[t-2]>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)|0;
+    }
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let t=0;t<64;t++){
+      const S1=rr(e,6)^rr(e,11)^rr(e,25);
+      const ch=(e&f)^(~e&g);
+      const t1=(h+S1+ch+K256[t]+w[t])|0;
+      const S0=rr(a,2)^rr(a,13)^rr(a,22);
+      const maj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+maj)|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+    }
+    H=[(H[0]+a)|0,(H[1]+b)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];
+  }
+  return H.map(x=>(x>>>0).toString(16).padStart(8,'0')).join('');
+}
+// Stable for the same person, and useless to anyone without the salt.
+function entryId(school,name,year,event){
+  return 'c'+sha256hex(salt+'|'+school+'|'+name.trim().toLowerCase()+'|'+year+'|'+event).slice(0,12);
+}
+function nameOf(id){ return names[id]||'('+String(id).slice(0,7)+')'; }
+function namesLoaded(){ return Object.keys(names).length>0; }
+
+function save(){ /* superseded by send() */ }
+
+// ---------- events derived from whoever has been entered ----------
+function evKey(e){ return e.year+'|'+e.gender+'|'+e.event; }
+function tabloidYears(){
+  const ys=[...new Set(entries.map(e=>e.year))].filter(Boolean).sort((a,b)=>a-b);
+  return ys.length?ys:[3,4,5,6];
+}
+function allEvents(){
+  const m={};
+  entries.forEach(e=>{
+    const k=evKey(e);
+    (m[k]=m[k]||{key:k,year:e.year,gender:e.gender,event:e.event,entries:[]}).entries.push(e);
+  });
+  const list=Object.values(m).sort((a,b)=>
+    a.year-b.year ||
+    a.gender.localeCompare(b.gender) ||
+    EVENT_ORDER.indexOf(a.event)-EVENT_ORDER.indexOf(b.event));
+  // Team games are school-vs-school, so they exist whether or not anyone has
+  // been nominated individually.
+  tabloidYears().forEach(y=>TABLOIDS.forEach(t=>{
+    list.push({key:'tab|'+y+'|'+t,year:y,gender:'Mixed',event:t,entries:[],team:true});
+  }));
+  return list.map((ev,i)=>Object.assign(ev,{no:i+1}));
+}
+function evById(k){ return allEvents().find(e=>e.key===k); }
+function evName(ev){
+  return ev.team ? 'Year '+ev.year+' · '+ev.event
+                 : 'Year '+ev.year+' '+ev.gender+' · '+ev.event;
+}
+// lanes are drawn so schools are spread across the track rather than clumped
+function laneOrder(ev){
+  const bySchool={};
+  ev.entries.forEach(e=>(bySchool[e.school]=bySchool[e.school]||[]).push(e));
+  Object.values(bySchool).forEach(l=>l.sort((a,b)=>nameOf(a.id).localeCompare(nameOf(b.id))));
+  const out=[]; let more=true, i=0;
+  while(more){
+    more=false;
+    SCHOOLS.forEach(s=>{
+      const l=bySchool[s];
+      if(l&&l[i]){ out.push(l[i]); more=true; }
+    });
+    i++;
+  }
+  return out;
+}
+function fieldRanking(ev){
+  const mk=marks[ev.key]||{};
+  return ev.entries.filter(e=>mk[e.id]!=null&&!isNaN(mk[e.id]))
+    .map(e=>({entry:e,value:Number(mk[e.id])}))
+    .sort((a,b)=>b.value-a.value||nameOf(a.entry.id).localeCompare(nameOf(b.entry.id)));
+}
+function counted(ev){
+  if(ev.team||isTrack(ev.event)) return (results[ev.key]||[]).length;
+  return Object.keys(marks[ev.key]||{}).length;
+}
+function expected(ev){ return ev.team ? SCHOOLS.length : ev.entries.length; }
+function tabPoints(i){ return i<tabScheme.length?tabScheme[i]:0; }
+function pointsFor(i){ return i<scheme.length?scheme[i]:0; }
+
+// An athlete is one person across every event they enter, so aggregate on the
+// person rather than the entry — the entry id carries the event with it.
+function athleteKey(e){ return e.school+'|'+e.id.slice(0,7)+'|'+e.year; }
+function tally(){
+  const t={};
+  allEvents().forEach(ev=>{
+    const add=(e,i)=>{
+      const k=athleteKey(e);
+      if(!t[k]) t[k]={name:nameOf(e.id),school:e.school,year:e.year,pts:0,events:0};
+      t[k].pts+=pointsFor(i); t[k].events++;
+    };
+    if(ev.team) return;                       // team games score to the school, not individuals
+    if(isTrack(ev.event)) (results[ev.key]||[]).forEach((id,i)=>{
+      const e=ev.entries.find(x=>x.id===id); if(e) add(e,i);
+    });
+    else fieldRanking(ev).forEach((r,i)=>add(r.entry,i));
+  });
+  return t;
+}
+function tabloidPoints(){
+  const s={};
+  allEvents().filter(ev=>ev.team).forEach(ev=>{
+    (results[ev.key]||[]).forEach((school,i)=>{ s[school]=(s[school]||0)+tabPoints(i); });
+  });
+  return s;
+}
+function schoolTotals(){
+  const s={}; SCHOOLS.forEach(x=>s[x]=0);
+  Object.values(tally()).forEach(a=>{ if(a.school in s) s[a.school]+=a.pts; });
+  Object.entries(tabloidPoints()).forEach(([k,v])=>{ s[k]=(s[k]||0)+v; });
+  return s;
+}
+
+// ---------- CSV in ----------
+function parseCSV(text){
+  const rows=[]; let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}
+      else if(c==='"') q=false;
+      else cell+=c;
+    } else if(c==='"') q=true;
+    else if(c===','){row.push(cell);cell='';}
+    else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+    else if(c!=='\r') cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return rows.filter(r=>r.some(x=>x.trim()));
+}
+async function importCSV(text,fallbackSchool){
+  const rows=parseCSV(text);
+  if(!rows.length) return {added:0,schools:[],skipped:0};
+  const head=rows[0].map(h=>h.trim().toLowerCase());
+  const col=n=>head.findIndex(h=>h===n||h.startsWith(n));
+  const ci={school:col('school'),name:col('name'),year:col('year'),gender:col('gender'),event:col('event')};
+  if(ci.name<0||ci.event<0) return {added:0,schools:[],skipped:0,bad:true};
+  const found=new Set(), out=[]; let skipped=0;
+  rows.slice(1).forEach(r=>{
+    const name=(r[ci.name]||'').trim();
+    const event=(r[ci.event]||'').trim();
+    if(!name||!event){ skipped++; return; }
+    let school=(ci.school>-1?(r[ci.school]||'').trim():'')||fallbackSchool||'';
+    const match=SCHOOLS.find(s=>s.toLowerCase()===school.toLowerCase());
+    school=match||school;
+    if(!school){ skipped++; return; }
+    const yearRaw=(r[ci.year]||'').trim();
+    const year=parseInt((yearRaw.match(/\d+/)||[0])[0],10)||0;
+    let g=(r[ci.gender]||'').trim().toLowerCase();
+    const gender=g.startsWith('f')||g.startsWith('g')?'Girls':g.startsWith('m')||g.startsWith('b')?'Boys':'Mixed';
+    found.add(school);
+    out.push({name,school,year,gender,
+              event:EVENT_ORDER.find(e=>e.toLowerCase()===event.toLowerCase())||event});
+  });
+  // Names are stripped here: they go into the local table, and only the id and
+  // the non-identifying bits are published.
+  for(const e of out){
+    e.id=await entryId(e.school,e.name,e.year,e.event);
+    names[e.id]=e.name;
+  }
+  saveNames();
+
+  let added=0;
+  for(const school of [...found]){
+    const mine=[], seen=new Set();
+    out.forEach(e=>{
+      if(e.school===school && !seen.has(e.id)){
+        seen.add(e.id);
+        mine.push({id:e.id,school:e.school,year:e.year,gender:e.gender,event:e.event});
+      }
+    });
+    added+=mine.length;
+    const CH=100, of=Math.max(1,Math.ceil(mine.length/CH)), uploadId=uid();
+    for(let i=0;i<of;i++)
+      send('is_school',{school,uploadId,chunk:i,of,entries:mine.slice(i*CH,(i+1)*CH)});
+  }
+  return {added,schools:[...found],skipped};
+}
+
+// ---------- entries screen ----------
+function renderEntries(){
+  const bySchool={};
+  entries.forEach(e=>(bySchool[e.school]=bySchool[e.school]||[]).push(e));
+  const inCount=SCHOOLS.filter(s=>bySchool[s]).length;
+  $('entrySub').textContent = entries.length
+    ? entries.length+' entries · '+inCount+' of '+SCHOOLS.length+' schools in · '+allEvents().length+' events'
+    : 'No entries yet.';
+  const g=$('schoolGrid'); g.innerHTML='';
+  SCHOOLS.forEach(s=>{
+    const list=bySchool[s]||[];
+    const athletes=new Set(list.map(e=>e.id)).size;
+    const d=document.createElement('div');
+    d.className='school'; d.style.setProperty('--sc',schoolColor(s));
+    d.innerHTML='<h3>'+esc(s)+'</h3>'+
+      '<div class="cnt">'+(list.length?athletes+' athletes · '+list.length+' entries':'—')+'</div>'+
+      '<div class="st '+(list.length?'in':'out')+'">'+(list.length?'✓ List received':'Waiting on their list')+'</div>';
+    g.appendChild(d);
+  });
+}
+function handleFiles(files){
+  const notes=[];
+  let pending=files.length;
+  [...files].forEach(f=>{
+    const rd=new FileReader();
+    rd.onload=async()=>{
+      const guess=SCHOOLS.find(s=>f.name.toLowerCase().replace(/[^a-z]/g,'')
+        .includes(s.toLowerCase().replace(/[^a-z]/g,'')));
+      const r=await importCSV(String(rd.result),guess);
+      notes.push(r.bad ? f.name+': needs Name and Event columns'
+        : r.schools.join(', ')+': '+r.added+' entries'+(r.skipped?' ('+r.skipped+' rows skipped)':''));
+      if(--pending===0){ render(); alert('Entries loaded\n\n'+notes.join('\n')); }
+    };
+    rd.readAsText(f);
+  });
+}
+$('drop').addEventListener('click',()=>$('file').click());
+$('file').addEventListener('change',e=>{ handleFiles(e.target.files); e.target.value=''; });
+['dragenter','dragover'].forEach(t=>$('drop').addEventListener(t,e=>{e.preventDefault();$('drop').classList.add('over');}));
+['dragleave','drop'].forEach(t=>$('drop').addEventListener(t,e=>{e.preventDefault();$('drop').classList.remove('over');}));
+$('drop').addEventListener('drop',e=>{ if(e.dataTransfer&&e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+function renderNames(){
+  const n=Object.keys(names).length;
+  $('namesNote').innerHTML = n
+    ? '<b>'+n+' names</b> on this device. The results store holds codes only.'
+    : '<b>No names on this device.</b> Competitors will show as codes until you load a names file '+
+      '(or upload the entry lists here).';
+  $('namesExportBtn').disabled=!n;
+}
+$('namesExportBtn').addEventListener('click',()=>{
+  const b=new Blob([JSON.stringify({salt,names},null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download='interschool-names.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+});
+$('namesImportBtn').addEventListener('click',()=>$('namesFile').click());
+$('namesFile').addEventListener('change',e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(String(rd.result));
+      if(!d.names){ alert('That doesn\u2019t look like a names file.'); return; }
+      names=d.names; if(d.salt) salt=d.salt;
+      saveNames(); render();
+      alert('Loaded '+Object.keys(names).length+' names onto this device.');
+    }catch(err){ alert('That file isn\u2019t valid JSON.'); }
+  };
+  rd.readAsText(f);
+});
+$('resetDeviceBtn').addEventListener('click',()=>{
+  if(!confirm('Clear everything stored on this device?\n\n'+
+     '· '+(LOG.length+pending.length)+' cached actions\n'+
+     '· '+Object.keys(names).length+' names\n\n'+
+     'The shared results store is NOT touched.')) return;
+  try{ localStorage.removeItem(STORE); localStorage.removeItem(NAMES_KEY); }catch(e){}
+  LOG=[]; pending=[]; names={}; salt='';
+  loadNames(); rebuild(); lastHash='';
+  alert('Device cleared.');
+  render();
+});
+$('tplBtn').addEventListener('click',()=>{
+  const csv='School,Name,Year,Gender,Event\nYour School,Jane Citizen,5,Girls,100m\n';
+  const b=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download='entries-template.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+$('clearBtn').addEventListener('click',()=>{
+  if(!confirm('Remove every entry and all recorded results?')) return;
+  send('is_clear',{});
+});
+$('demoBtn').addEventListener('click',async()=>{
+  const rows=[];
+  for(const r of DEMO){
+    const id=await entryId(r.School,r.Name,r.Year,r.Event);
+    names[id]=r.Name;
+    rows.push({id,school:r.School,year:r.Year,gender:r.Gender,event:r.Event});
+  }
+  saveNames();
+  for(const school of SCHOOLS){
+    const mine=rows.filter(e=>e.school===school);
+    if(!mine.length) continue;
+    const CH=100, of=Math.max(1,Math.ceil(mine.length/CH)), uploadId=uid();
+    for(let i=0;i<of;i++)
+      send('is_school',{school,uploadId,chunk:i,of,entries:mine.slice(i*CH,(i+1)*CH)});
+  }
+});
+
+// ---------- programme ----------
+function renderProg(){
+  const evs=allEvents();
+  $('noEvents').hidden=evs.length>0;
+  const done=evs.filter(ev=>counted(ev)>=ev.entries.length&&ev.entries.length).length;
+  $('progSub').textContent=evs.length?evs.length+' events · '+done+' complete':'—';
+
+  const kinds=['all','Track','Field','Jumps','Throws','Tabloids',
+    ...[...new Set(evs.map(e=>'Year '+e.year))].sort()];
+  const ch=$('filterChips'); ch.innerHTML='';
+  kinds.forEach(k=>{
+    const b=document.createElement('button');
+    b.className='chip'+(filter===k?' on':'');
+    b.textContent=k==='all'?'All':k;
+    b.addEventListener('click',()=>{ filter=k; renderProg(); });
+    ch.appendChild(b);
+  });
+
+  const list=evs.filter(ev=>filter==='all'?true
+    :filter==='Track'?isTrack(ev.event)
+    :filter==='Field'?(!isTrack(ev.event)&&!isTabloid(ev.event))
+    :filter==='Jumps'?isJump(ev.event)
+    :filter==='Throws'?isThrow(ev.event)
+    :filter==='Tabloids'?isTabloid(ev.event)
+    :('Year '+ev.year)===filter);
+
+  const g=$('evGrid'); g.innerHTML='';
+  list.forEach(ev=>{
+    const n=counted(ev), tot=expected(ev);
+    let cls='',txt='Not started';
+    if(n>0&&n<tot){cls='part';txt=n+'/'+tot+' recorded';}
+    else if(n>0&&n>=tot){cls='done';txt='Complete';}
+    const schools=new Set(ev.entries.map(e=>e.school)).size;
+    const c=document.createElement('button');
+    c.className='ev-card';
+    const kind=evKind(ev.event);
+    c.style.setProperty('--ec',kind==='Track'?'hsl(212 72% 42%)':kind==='Jumps'?'hsl(150 62% 34%)'
+      :kind==='Throws'?'hsl(28 78% 40%)':'hsl(280 55% 45%)');
+    c.innerHTML='<div class="ev-no">EVENT '+String(ev.no).padStart(2,'0')+' · '+kind.toUpperCase()+'</div>'+
+      '<div><div class="ev-name">'+esc(evName(ev))+'</div>'+
+      '<div class="ev-meta">'+(ev.team?SCHOOLS.length+' schools · team game'
+        :tot+' competitors · '+schools+' schools')+'</div></div>'+
+      '<div class="ev-status"><span class="dot '+cls+'"></span>'+txt+'</div>';
+    c.addEventListener('click',()=>{ curEv=ev.key; view='event'; render(); window.scrollTo(0,0); });
+    g.appendChild(c);
+  });
+}
+
+// ---------- competitor finder ----------
+let findQuery='', findPick=null, findHi=0, findOpen=false;
+function athleteIndex(){
+  const ix={};
+  allEvents().filter(ev=>!ev.team).forEach(ev=>ev.entries.forEach(e=>{
+    const k=athleteKey(e);
+    const a=ix[k]||(ix[k]={key:k,name:nameOf(e.id),school:e.school,year:e.year,rows:[]});
+    a.rows.push({ev,entry:e});
+  }));
+  return ix;
+}
+function findMatches(q){
+  const n=q.trim().toLowerCase();
+  if(n.length<2) return [];
+  return Object.values(athleteIndex())
+    .filter(a=>a.name.toLowerCase().includes(n)||a.school.toLowerCase().includes(n))
+    .sort((a,b)=>{
+      const aw=a.name.toLowerCase().split(/\s+/).some(w=>w.startsWith(n));
+      const bw=b.name.toLowerCase().split(/\s+/).some(w=>w.startsWith(n));
+      if(aw!==bw) return aw?-1:1;
+      return a.name.localeCompare(b.name);
+    }).slice(0,8);
+}
+function hilite(name,q){
+  const i=name.toLowerCase().indexOf(q.trim().toLowerCase());
+  if(i<0) return esc(name);
+  const n=q.trim().length;
+  return esc(name.slice(0,i))+'<mark>'+esc(name.slice(i,i+n))+'</mark>'+esc(name.slice(i+n));
+}
+function renderFinder(){
+  const box=$('suggest'), out=$('findResult');
+  if(!findOpen){ box.hidden=true; out.hidden=true; out.innerHTML=''; return; }
+  $('findClear').hidden=!findQuery;
+  const list=findPick?[]:findMatches(findQuery);
+  box.hidden=list.length===0; box.innerHTML='';
+  list.forEach((a,i)=>{
+    const b=document.createElement('button');
+    b.className='sg'+(i===findHi?' on':'');
+    b.style.setProperty('--sc',schoolColor(a.school));
+    b.innerHTML='<span class="hd"></span><span class="nm">'+hilite(a.name,findQuery)+'</span>'+
+      '<span class="dv">'+esc(a.school)+' · Yr '+a.year+'</span>';
+    b.addEventListener('click',()=>{ findPick=a.key; renderFinder(); });
+    box.appendChild(b);
+  });
+
+  if(!findPick){ out.hidden=true; out.innerHTML=''; return; }
+  const a=athleteIndex()[findPick];
+  if(!a){ findPick=null; out.hidden=true; return; }
+  out.hidden=false;
+  const t=tally()[a.key];
+  const card=document.createElement('div');
+  card.className='found'; card.style.setProperty('--sc',schoolColor(a.school));
+  card.innerHTML='<h3>'+esc(a.name)+'</h3><div class="who">'+esc(a.school)+' · Year '+a.year+
+    ' · '+a.rows.length+' event'+(a.rows.length===1?'':'s')+
+    (t?' · '+t.pts+' point'+(t.pts===1?'':'s'):'')+'</div>';
+  a.rows.forEach(({ev,entry})=>{
+    let status='not run', col='var(--faint)';
+    if(isTrack(ev.event)){
+      const i=(results[ev.key]||[]).indexOf(entry.id);
+      if(i>-1){ status=(i+1)+ord(i+1)+' · '+pointsFor(i)+' pts'; col='var(--green)'; }
+    } else {
+      const rank=fieldRanking(ev), i=rank.findIndex(r=>r.entry.id===entry.id);
+      if(i>-1){ status=rank[i].value.toFixed(2)+unitFor(ev.event)+' · '+(i+1)+ord(i+1)+' · '+pointsFor(i)+' pts'; col='var(--green)'; }
+    }
+    const row=document.createElement('button');
+    row.className='fr';
+    row.innerHTML='<span class="ev">EVENT '+String(ev.no).padStart(2,'0')+'</span>'+
+      '<span class="in"><span class="a">'+esc(evName(ev))+'</span>'+
+      '<span class="b">'+evKind(ev.event)+' · '+ev.entries.length+' competitors</span></span>'+
+      '<span class="st" style="color:'+col+'">'+status+'</span>';
+    row.addEventListener('click',()=>{ curEv=ev.key; view='event'; render(); window.scrollTo(0,0); });
+    card.appendChild(row);
+  });
+  out.innerHTML=''; out.appendChild(card);
+}
+function setFindOpen(open){
+  findOpen=open;
+  $('finder').hidden=!open;
+  $('findToggle').classList.toggle('on',open);
+  if(open) $('findInput').focus();
+  else { findQuery=''; findPick=null; $('findInput').value=''; }
+  renderFinder();
+}
+$('findToggle').addEventListener('click',()=>setFindOpen(!findOpen));
+$('findInput').addEventListener('input',e=>{ findQuery=e.target.value; findPick=null; findHi=0; renderFinder(); });
+$('findInput').addEventListener('keydown',e=>{
+  const list=findPick?[]:findMatches(findQuery);
+  if(e.key==='ArrowDown'){ e.preventDefault(); findHi=Math.min(findHi+1,list.length-1); renderFinder(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); findHi=Math.max(findHi-1,0); renderFinder(); }
+  else if(e.key==='Enter'&&list.length){ e.preventDefault(); findPick=list[findHi].key; renderFinder(); }
+  else if(e.key==='Escape'){ setFindOpen(false); }
+});
+$('findClear').addEventListener('click',()=>{
+  findQuery=''; findPick=null; $('findInput').value=''; renderFinder(); $('findInput').focus();
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('.finder')) $('suggest').hidden=true; });
+
+// ---------- event ----------
+function renderEvent(){
+  const ev=evById(curEv); if(!ev){ view='prog'; return render(); }
+  const team=!!ev.team, track=!team&&isTrack(ev.event);
+  $('teamWrap').hidden=!team;
+  $('trackWrap').hidden=team||!track;
+  $('fieldWrap').hidden=team||track;
+  $('undoBtn').hidden=!(track||team);
+  $('evNo').textContent='EVENT '+String(ev.no).padStart(2,'0')+' · '+evKind(ev.event).toUpperCase();
+  $('evTitle').textContent=evName(ev);
+  $('evSub').textContent=team
+    ? 'Team game · place the '+SCHOOLS.length+' schools'
+    : ev.entries.length+' competitors from '+
+      new Set(ev.entries.map(e=>e.school)).size+' schools'+(track?'':' · distances in '+unitFor(ev.event));
+  if(team) return renderTeam(ev);
+  track?renderTrack(ev):renderField(ev);
+}
+function renderTrack(ev){
+  const order=results[ev.key]||[];
+  const placed=new Set(order);
+  const lanes=laneOrder(ev);
+  const pool=lanes.filter(e=>!placed.has(e.id));
+  $('poolCount').textContent=pool.length;
+  $('poolEmpty').hidden=pool.length>0;
+  const pl=$('poolList'); pl.innerHTML='';
+  pool.forEach(e=>{
+    const lane=lanes.indexOf(e)+1;
+    const d=document.createElement('div');
+    d.className='runner'; d.style.setProperty('--sc',schoolColor(e.school));
+    d.innerHTML='<button class="runner-tap"><span class="rn">'+lane+'. '+esc(nameOf(e.id))+'</span>'+
+      '<span class="sc-chip">'+esc(e.school)+'</span></button>';
+    d.querySelector('button').addEventListener('click',()=>{
+      send('is_result',{key:ev.key,order:(results[ev.key]||[]).concat([e.id])});
+    });
+    pl.appendChild(d);
+  });
+  $('resCount').textContent=order.length;
+  $('resEmpty').style.display=order.length?'none':'block';
+  const rl=$('resList'); rl.innerHTML='';
+  order.forEach((id,i)=>{
+    const e=ev.entries.find(x=>x.id===id); if(!e) return;
+    const place=i+1, medal=place===1?' p1':place===2?' p2':place===3?' p3':'';
+    const row=document.createElement('div');
+    row.className='res-row'; row.style.setProperty('--sc',schoolColor(e.school));
+    row.innerHTML='<div class="place'+medal+'"><span class="n">'+place+'</span><span class="s">'+ord(place)+'</span></div>'+
+      '<div class="ri"><div class="n">'+esc(nameOf(e.id))+'</div><div class="m">'+esc(e.school)+'</div></div>'+
+      '<div class="pts">'+pointsFor(i)+' pts</div>'+
+      '<div class="ctrls">'+
+        '<button class="ib" data-a="up"'+(i===0?' disabled':'')+'>▲</button>'+
+        '<button class="ib" data-a="dn"'+(i===order.length-1?' disabled':'')+'>▼</button>'+
+        '<button class="ib rm" data-a="x">✕</button></div>';
+    row.querySelector('[data-a=up]').addEventListener('click',()=>{
+      const o=order.slice(); [o[i-1],o[i]]=[o[i],o[i-1]]; send('is_result',{key:ev.key,order:o}); });
+    row.querySelector('[data-a=dn]').addEventListener('click',()=>{
+      const o=order.slice(); [o[i+1],o[i]]=[o[i],o[i+1]]; send('is_result',{key:ev.key,order:o}); });
+    row.querySelector('[data-a=x]').addEventListener('click',()=>{
+      send('is_result',{key:ev.key,order:order.filter(x=>x!==id)}); });
+    rl.appendChild(row);
+  });
+  $('undoBtn').disabled=order.length===0;
+}
+function renderTeam(ev){
+  const order=results[ev.key]||[];
+  const pool=SCHOOLS.filter(s=>!order.includes(s));
+
+  $('teamPoolCount').textContent=pool.length;
+  $('teamPoolEmpty').hidden=pool.length>0;
+  const pl=$('teamPool'); pl.innerHTML='';
+  pool.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='hrow'; b.style.setProperty('--sc',schoolColor(s));
+    b.innerHTML='<span class="pl">—</span><span>'+esc(s)+'</span>';
+    b.addEventListener('click',()=>send('is_result',{key:ev.key,order:order.concat([s])}));
+    pl.appendChild(b);
+  });
+
+  $('teamOrderCount').textContent=order.length;
+  $('teamOrderEmpty').style.display=order.length?'none':'block';
+  const ol=$('teamOrder'); ol.innerHTML='';
+  order.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.className='res-row'; row.style.setProperty('--sc',schoolColor(s));
+    const medal=i===0?' p1':i===1?' p2':i===2?' p3':'';
+    row.innerHTML='<div class="place'+medal+'"><span class="n">'+(i+1)+'</span><span class="s">'+ord(i+1)+'</span></div>'+
+      '<div class="ri"><div class="n">'+esc(s)+'</div></div>'+
+      '<div class="pts">'+tabPoints(i)+' pts</div>'+
+      '<div class="ctrls">'+
+        '<button class="ib" data-a="up"'+(i===0?' disabled':'')+'>▲</button>'+
+        '<button class="ib" data-a="dn"'+(i===order.length-1?' disabled':'')+'>▼</button>'+
+        '<button class="ib rm" data-a="x">✕</button></div>';
+    row.querySelector('[data-a=up]').addEventListener('click',()=>{
+      const o=order.slice(); [o[i-1],o[i]]=[o[i],o[i-1]]; send('is_result',{key:ev.key,order:o}); });
+    row.querySelector('[data-a=dn]').addEventListener('click',()=>{
+      const o=order.slice(); [o[i+1],o[i]]=[o[i],o[i+1]]; send('is_result',{key:ev.key,order:o}); });
+    row.querySelector('[data-a=x]').addEventListener('click',()=>
+      send('is_result',{key:ev.key,order:order.filter(x=>x!==s)}));
+    ol.appendChild(row);
+  });
+  syncUndoState(ev);
+}
+function renderField(ev){
+  const mk=marks[ev.key]||{};
+  const roll=ev.entries.slice().sort((a,b)=>
+    a.school.localeCompare(b.school)||nameOf(a.id).localeCompare(nameOf(b.id)));
+  $('fieldHint').textContent=Object.keys(mk).length+' of '+roll.length+
+    ' entered · grouped by school · best distance wins';
+  const l=$('fieldList'); l.innerHTML='';
+  roll.forEach(e=>{
+    const d=document.createElement('div');
+    d.className='mrow'; d.style.setProperty('--sc',schoolColor(e.school));
+    d.innerHTML='<span class="who"><span class="n">'+esc(nameOf(e.id))+'</span>'+
+      '<span class="m">'+esc(e.school)+'</span></span>'+
+      '<input type="number" inputmode="decimal" step="0.01" min="0" placeholder="—" value="'+
+      (mk[e.id]==null?'':mk[e.id])+'"><span class="unit">'+unitFor(ev.event)+'</span>';
+    const inp=d.querySelector('input');
+    inp.addEventListener('change',()=>{
+      send('is_mark',{key:ev.key,entryId:e.id,value:inp.value===''?null:inp.value});
+    });
+    l.appendChild(d);
+  });
+  const rank=fieldRanking(ev);
+  const tb=$('fieldRank'); tb.innerHTML='';
+  if(!rank.length){ tb.innerHTML='<tr><td colspan="5" style="color:var(--faint);padding:14px 6px">Nothing entered yet.</td></tr>'; return; }
+  rank.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="p '+(i<3?'m'+(i+1):'')+'">'+(i+1)+'</td><td>'+esc(nameOf(r.entry.id))+'</td>'+
+      '<td style="color:var(--dim)">'+esc(r.entry.school)+'</td>'+
+      '<td class="mono">'+r.value.toFixed(2)+unitFor(ev.event)+'</td>'+
+      '<td style="font-weight:800">'+pointsFor(i)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+$('undoBtn').addEventListener('click',()=>{
+  const ev=evById(curEv); if(!ev) return;
+  const o=(results[ev.key]||[]).slice(); o.pop(); send('is_result',{key:ev.key,order:o});
+});
+function syncUndoState(ev){
+  $('undoBtn').disabled=!((results[ev.key]||[]).length);
+}
+$('resetBtn').addEventListener('click',()=>{
+  const ev=evById(curEv); if(!ev) return;
+  if(!confirm('Clear everything recorded for this event?')) return;
+  send('is_result',{key:ev.key,order:[]});
+  Object.keys(marks[ev.key]||{}).forEach(id=>send('is_mark',{key:ev.key,entryId:id,value:null}));
+});
+
+// ---------- standings ----------
+function renderStand(){
+  const t=tally(), st=schoolTotals();
+  const evs=allEvents();
+  $('standSub').textContent=Object.keys(t).length+' athletes have scored · '+
+    evs.filter(e=>counted(e)).length+' of '+evs.length+' events recorded';
+  const max=Math.max(1,...Object.values(st));
+  const lad=$('ladder'); lad.innerHTML='';
+  Object.entries(st).sort((a,b)=>b[1]-a[1]).forEach(([s,p],i)=>{
+    const d=document.createElement('div');
+    d.className='lad'; d.style.setProperty('--sc',schoolColor(s));
+    d.innerHTML='<span class="pos '+(i<3?'m'+(i+1):'')+'">'+(i+1)+'</span>'+
+      '<span class="nm">'+esc(s)+'</span>'+
+      '<span class="bar-wrap"><span class="bar-fill" style="width:'+(p/max*100)+'%"></span></span>'+
+      '<span class="pt">'+p+'</span>';
+    lad.appendChild(d);
+  });
+
+  const pb=$('ptsBody'); pb.innerHTML='';
+  scheme.forEach((v,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+(i+1)+ord(i+1)+'</td><td><input type="number" min="0" step="1" value="'+v+'"></td>';
+    tr.querySelector('input').addEventListener('change',e=>{
+      const sc=scheme.slice(); sc[i]=Math.max(0,parseInt(e.target.value,10)||0);
+      send('is_settings',{scheme:sc,tabScheme}); });
+    pb.appendChild(tr);
+  });
+
+  const tb2=$('tabBody'); tb2.innerHTML='';
+  tabScheme.forEach((v,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+(i+1)+ord(i+1)+'</td><td><input type="number" min="0" step="1" value="'+v+'"></td>';
+    tr.querySelector('input').addEventListener('change',e=>{
+      const sc=tabScheme.slice(); sc[i]=Math.max(0,parseInt(e.target.value,10)||0);
+      send('is_settings',{scheme,tabScheme:sc}); });
+    tb2.appendChild(tr);
+  });
+
+  const q=stuQuery.trim().toLowerCase();
+  const rows=Object.values(t)
+    .filter(a=>!q||a.name.toLowerCase().includes(q)||a.school.toLowerCase().includes(q))
+    .sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name));
+  const tb=$('stuBody'); tb.innerHTML='';
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="5" style="color:var(--faint);padding:14px 6px">No points recorded yet.</td></tr>'; return; }
+  rows.forEach((a,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="p '+(i<3?'m'+(i+1):'')+'">'+(i+1)+'</td><td>'+esc(a.name)+'</td>'+
+      '<td style="color:var(--dim)">'+esc(a.school)+'</td><td style="color:var(--dim)">Year '+a.year+
+      ' · '+a.events+' event'+(a.events===1?'':'s')+'</td>'+
+      '<td style="font-weight:800">'+a.pts+'</td>';
+    tb.appendChild(tr);
+  });
+}
+$('saveChip').addEventListener('click',()=>{
+  if(syncState==='nostore'){
+    alert('This browser will not let the page store anything — usually a Private tab.\n\n'+
+      'Open it in a normal tab so results survive a reload.');
+    return;
+  }
+  if(!SYNC_ON){
+    alert('Saved on this device.\n\n'+entries.length+' entries.\n\n'+
+      'No results sheet is connected, so nothing is shared with other devices. '+
+      'Paste your Apps Script URL into API_URL at the top of this file to turn sharing on.');
+    return;
+  }
+  if(syncState==='offline'){
+    alert('No connection to the results sheet right now.\n\n'+
+      'Keep recording — everything is held on this device and sent automatically when the '+
+      'connection returns. Nothing is lost.\n\n'+
+      (everSynced&&lastSynced?'Last reached the sheet at '+lastSynced.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+'.':''));
+    return;
+  }
+  alert('Syncing to the interschool results sheet.\n\n'+entries.length+' entries.\n'+
+    (lastSynced?'Last synced at '+lastSynced.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit',second:'2-digit'}):'')+
+    '\n\nEvery device on this page shares the same results, and each keeps a local copy so it '+
+    'keeps working if the connection drops.');
+});
+
+$('stuSearch').addEventListener('input',e=>{ stuQuery=e.target.value; renderStand(); });
+$('addPlace').addEventListener('click',()=>{ send('is_settings',{scheme:scheme.concat([0])}); });
+$('rmPlace').addEventListener('click',()=>{ if(scheme.length>1) send('is_settings',{scheme:scheme.slice(0,-1)}); });
+
+// ---------- printing ----------
+function today(){ return new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}); }
+function head(sub){ return '<h1>Interschool Carnival</h1><h2>'+sub+' · '+today()+'</h2>'; }
+function fieldBlock(ev){
+  if(ev.team){
+    return '<div class="pb"><h3>Event '+ev.no+' · '+esc(evName(ev))+'</h3>'+
+      '<table><thead><tr><th>School</th><th>Place</th></tr></thead><tbody>'+
+      SCHOOLS.map(s=>'<tr><td>'+esc(s)+'</td><td class="blank"></td></tr>').join('')+
+      '</tbody></table></div>';
+  }
+  const track=isTrack(ev.event);
+  const list=track?laneOrder(ev):ev.entries.slice().sort((a,b)=>
+    a.school.localeCompare(b.school)||nameOf(a.id).localeCompare(nameOf(b.id)));
+  return '<div class="pb"><h3>Event '+ev.no+' · '+esc(evName(ev))+'</h3>'+
+    '<table><thead><tr>'+(track?'<th>Lane</th>':'')+'<th>Name</th><th>School</th>'+
+    '<th>'+(track?'Place':'Distance ('+unitFor(ev.event)+')')+'</th></tr></thead><tbody>'+
+    list.map((e,i)=>'<tr>'+(track?'<td>'+(i+1)+'</td>':'')+'<td>'+esc(nameOf(e.id))+'</td><td>'+
+      esc(e.school)+'</td><td class="blank"></td></tr>').join('')+
+    '</tbody></table></div>';
+}
+$('printFieldBtn').addEventListener('click',()=>{
+  const ev=evById(curEv); if(!ev) return;
+  $('printSheet').innerHTML=head('Field')+fieldBlock(ev); window.print();
+});
+$('printFieldsBtn').addEventListener('click',()=>{
+  $('printSheet').innerHTML=head('All Fields')+allEvents().map(fieldBlock).join(''); window.print();
+});
+$('printListBtn').addEventListener('click',()=>{
+  $('printSheet').innerHTML=head('Event List')+
+    '<table><thead><tr><th>Event</th><th>Year</th><th>Gender</th><th>Discipline</th><th>Type</th><th>Entries</th></tr></thead><tbody>'+
+    allEvents().map(ev=>'<tr><td>'+ev.no+'</td><td>Year '+ev.year+'</td><td>'+ev.gender+'</td><td>'+
+      esc(ev.event)+'</td><td>'+evKind(ev.event)+'</td><td>'+expected(ev)+'</td></tr>').join('')+
+    '</tbody></table>';
+  window.print();
+});
+$('receiptBtn').addEventListener('click',()=>{
+  const ev=evById(curEv); if(ev) printReceipt(eventReceipt(ev));
+});
+$('receiptLadderBtn').addEventListener('click',()=>printReceipt(ladderReceipt()));
+$('printStandBtn').addEventListener('click',()=>{
+  const st=schoolTotals(), t=tally();
+  let h=head('Standings');
+  h+='<h3>School ladder</h3><table><thead><tr><th>#</th><th>School</th><th>Points</th></tr></thead><tbody>'+
+    Object.entries(st).sort((a,b)=>b[1]-a[1]).map(([s,p],i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(s)+'</td><td>'+p+'</td></tr>').join('')+
+    '</tbody></table>';
+  const top=Object.values(t).sort((a,b)=>b.pts-a.pts).slice(0,20);
+  h+='<h3>Leading individuals</h3><table><thead><tr><th>#</th><th>Name</th><th>School</th><th>Points</th></tr></thead><tbody>'+
+    top.map((a,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(a.name)+'</td><td>'+esc(a.school)+'</td><td>'+a.pts+'</td></tr>').join('')+
+    '</tbody></table>';
+  $('printSheet').innerHTML=h; window.print();
+});
+$('exportBtn').addEventListener('click',()=>{
+  const q=v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':v;
+  const lines=['Event,Year,Gender,Discipline,Place,Name,School,Result,Points'];
+  allEvents().forEach(ev=>{
+    if(ev.team){
+      (results[ev.key]||[]).forEach((school,i)=>
+        lines.push([ev.no,'Year '+ev.year,'Mixed',ev.event,i+1,'—',school,'',tabPoints(i)].map(q).join(',')));
+      return;
+    }
+    if(isTrack(ev.event)) (results[ev.key]||[]).forEach((id,i)=>{
+      const e=ev.entries.find(x=>x.id===id); if(!e) return;
+      lines.push([ev.no,'Year '+ev.year,ev.gender,ev.event,i+1,nameOf(e.id),e.school,'',pointsFor(i)].map(q).join(','));
+    });
+    else fieldRanking(ev).forEach((r,i)=>
+      lines.push([ev.no,'Year '+ev.year,ev.gender,ev.event,i+1,nameOf(r.entry.id),r.entry.school,
+        r.value.toFixed(2),pointsFor(i)].map(q).join(',')));
+  });
+  lines.push(''); lines.push('School,Points');
+  Object.entries(schoolTotals()).sort((a,b)=>b[1]-a[1]).forEach(([s,p])=>lines.push(q(s)+','+p));
+  const b=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download='interschool-results.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+
+// =====================================================
+// RECEIPT PRINTER — YHK / Anko BLE thermal printer
+// Protocol per joshmcarthur/yhk-mini-printer: ISSC Transparent UART service,
+// ESC/POS raster (GS v 0), 384-dot head, paced writes so the printer's small
+// buffer doesn't overflow and silently drop the bottom of the image.
+// =====================================================
+const PRN = {
+  SERVICE:'49535343-fe7d-4ae5-8fa9-9fafd205e455',
+  TX:     '49535343-8841-43f4-a8d4-ecbe34729bb3',
+  WIDTH:384,          // dots across a 58mm head
+  CHUNK:182,          // fits a typical BLE MTU
+  FEED:8,             // blank lines after printing, so it clears the tear bar
+  DELAY:40,           // ms between chunks (~5KB/s)
+  FLUSH:1500          // let the head catch up after the last chunk
+};
+let prnDevice=null, prnChar=null;
+const prnSupported = typeof navigator!=='undefined' && !!navigator.bluetooth;
+
+async function prnConnect(){
+  if(!prnSupported) throw new Error('nobluetooth');
+  prnDevice = await navigator.bluetooth.requestDevice({
+    filters:[{namePrefix:'YHK'}],
+    optionalServices:[PRN.SERVICE]
+  });
+  prnDevice.addEventListener('gattserverdisconnected',()=>{ prnChar=null; renderPrinterBar(); });
+  const server = await prnDevice.gatt.connect();
+  const svc = await server.getPrimaryService(PRN.SERVICE);
+  prnChar = await svc.getCharacteristic(PRN.TX);
+  renderPrinterBar();
+}
+function prnDisconnect(){
+  try{ if(prnDevice&&prnDevice.gatt.connected) prnDevice.gatt.disconnect(); }catch(e){}
+  prnDevice=null; prnChar=null; renderPrinterBar();
+}
+const prnReady = ()=> !!(prnChar && prnDevice && prnDevice.gatt.connected);
+
+// --- compose a receipt onto a 384px canvas -------------------------------
+// Everything is drawn bold and large; a 1-bit threshold destroys thin
+// antialiased strokes, so small light text would come out patchy.
+function receiptCanvas(doc){
+  const W=PRN.WIDTH, pad=8;
+  const c=document.createElement('canvas');
+  const ctx=c.getContext('2d');
+  const lines=[];
+  const push=(text,opt={})=>lines.push(Object.assign({text,size:22,bold:false,align:'left',gap:6},opt));
+
+  push(doc.title,{size:30,bold:true,align:'center',gap:4});
+  if(doc.subtitle) push(doc.subtitle,{size:20,align:'center',gap:10});
+  lines.push({rule:true,gap:10});
+  (doc.rows||[]).forEach(r=>lines.push(Object.assign({row:true,size:24,gap:9},r)));
+  if(doc.footer){ lines.push({rule:true,gap:8}); push(doc.footer,{size:18,align:'center',gap:4}); }
+
+  let h=pad;
+  lines.forEach(l=>{ h += (l.rule?2:(l.size||22)) + (l.sub?17:0) + (l.gap||6); });
+  h+=pad;
+  c.width=W; c.height=Math.ceil(h);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,c.height);
+  ctx.fillStyle='#000'; ctx.textBaseline='top';
+
+  let y=pad;
+  lines.forEach(l=>{
+    if(l.rule){
+      ctx.fillRect(pad,y,W-pad*2,2); y+=2+(l.gap||6); return;
+    }
+    ctx.font=(l.bold?'bold ':'')+(l.size||22)+'px "Helvetica Neue", Arial, sans-serif';
+    if(l.row){
+      // place | name | value, with the school on a quieter second line —
+      // 58mm paper is too narrow to fit "Name · Long School" on one line
+      ctx.font='bold '+(l.size)+'px "Helvetica Neue", Arial, sans-serif';
+      if(l.left) ctx.fillText(l.left,pad,y);
+      const rightW = l.right ? ctx.measureText(l.right).width : 0;
+      if(l.right) ctx.fillText(l.right,W-pad-rightW,y);
+      const lx=pad+(l.left?38:0);
+      let mid=l.mid||'';
+      const avail=W-pad-rightW-lx-10;
+      while(mid&&ctx.measureText(mid).width>avail) mid=mid.slice(0,-2)+'…';
+      ctx.fillText(mid,lx,y);
+      if(l.sub){
+        ctx.font='15px "Helvetica Neue", Arial, sans-serif';
+        let sub=l.sub;
+        while(sub&&ctx.measureText(sub).width>W-pad-lx) sub=sub.slice(0,-2)+'…';
+        ctx.fillText(sub,lx,y+(l.size)+1);
+      }
+    } else {
+      const w=ctx.measureText(l.text).width;
+      const x = l.align==='center' ? (W-w)/2 : pad;
+      ctx.fillText(l.text,x,y);
+    }
+    y+=(l.size||22)+(l.sub?17:0)+(l.gap||6);
+  });
+  return c;
+}
+
+// --- canvas -> 1-bit rows -> ESC/POS raster ------------------------------
+function canvasToBits(canvas){
+  const ctx=canvas.getContext('2d');
+  const {width:w,height:h}=canvas;
+  const d=ctx.getImageData(0,0,w,h).data;
+  const bits=new Uint8Array(w*h);
+  for(let i=0,px=0;px<w*h;px++,i+=4){
+    // luminance, then threshold at 128; treat transparent as white
+    const a=d[i+3]/255;
+    const lum=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])*a + 255*(1-a);
+    bits[px]= lum<128 ? 1 : 0;
+  }
+  return bits;
+}
+function encodeRaster(bits,w,h){
+  const wb=Math.ceil(w/8);
+  const body=new Uint8Array(wb*h);
+  for(let y=0;y<h;y++)
+    for(let x=0;x<w;x++)
+      if(bits[y*w+x]) body[y*wb+(x>>3)] |= 1<<(7-(x&7));
+  const head=new Uint8Array([0x1D,0x76,0x30,0x00, wb&0xff,(wb>>8)&0xff, h&0xff,(h>>8)&0xff]);
+  const out=new Uint8Array(2+head.length+body.length+3);   // +3 = ESC d n
+  let o=0;
+  out.set([0x1B,0x40],o); o+=2;                 // ESC @  reset
+  out.set(head,o); o+=head.length;
+  out.set(body,o); o+=body.length;
+  out.set([0x1B,0x64,PRN.FEED],o);              // ESC d n  blank feed to tear against
+  return out;
+}
+async function prnSend(bytes,onProgress){
+  const total=Math.ceil(bytes.length/PRN.CHUNK);
+  for(let i=0;i<total;i++){
+    const slice=bytes.slice(i*PRN.CHUNK,(i+1)*PRN.CHUNK);
+    await prnChar.writeValueWithoutResponse(slice);
+    if(onProgress) onProgress(i+1,total);
+    await new Promise(r=>setTimeout(r,PRN.DELAY));
+  }
+  await new Promise(r=>setTimeout(r,PRN.FLUSH));
+}
+async function printReceipt(doc){
+  if(!prnReady()){
+    alert(prnSupported
+      ? 'No printer connected.\n\nTap “Connect printer”, pick your YHK device, then try again.'
+      : 'This browser cannot talk to Bluetooth printers.\n\nWeb Bluetooth works in Chrome or Edge on a laptop or Android tablet. Safari and Chrome on iPad do not support it.');
+    return;
+  }
+  const say=t=>document.querySelectorAll('.prnstatus').forEach(e=>e.textContent=t);
+  try{
+    const canvas=receiptCanvas(doc);
+    const bytes=encodeRaster(canvasToBits(canvas),canvas.width,canvas.height);
+    await prnSend(bytes,(n,t)=>say('Printing '+Math.round(n/t*100)+'%'));
+    say('Printed');
+    setTimeout(renderPrinterBar,1200);
+  }catch(e){
+    alert('Printing failed: '+(e.message||e)+'\n\nCheck the printer is on and not connected to a phone app.');
+    renderPrinterBar();
+  }
+}
+
+// --- what to print -------------------------------------------------------
+function eventReceipt(ev){
+  const rows=[];
+  if(ev.team){
+    (results[ev.key]||[]).forEach((school,i)=>
+      rows.push({left:(i+1)+'.',mid:school,right:tabPoints(i)+'pt'}));
+  } else if(isTrack(ev.event)){
+    (results[ev.key]||[]).forEach((id,i)=>{
+      const e=ev.entries.find(x=>x.id===id); if(!e) return;
+      rows.push({left:(i+1)+'.',mid:nameOf(e.id),sub:e.school,right:pointsFor(i)+'pt'});
+    });
+  } else {
+    fieldRanking(ev).forEach((r,i)=>
+      rows.push({left:(i+1)+'.',mid:nameOf(r.entry.id),sub:r.entry.school,
+                 right:r.value.toFixed(2)+unitFor(ev.event)}));
+  }
+  if(!rows.length) rows.push({left:'',mid:'No result recorded yet.',right:''});
+  return {title:evName(ev),subtitle:'Event '+ev.no+' · '+evKind(ev.event),rows,
+          footer:new Date().toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+
+                 ' · Interschool Carnival'};
+}
+function ladderReceipt(){
+  const st=schoolTotals();
+  const rows=Object.entries(st).sort((a,b)=>b[1]-a[1])
+    .map(([s,p],i)=>({left:(i+1)+'.',mid:s,right:String(p)}));
+  const evs=allEvents();
+  return {title:'School Ladder',
+          subtitle:evs.filter(e=>counted(e)).length+' of '+evs.length+' events in',
+          rows,
+          footer:new Date().toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+
+                 ' · Interschool Carnival'};
+}
+
+// --- the connect bar -----------------------------------------------------
+function renderPrinterBar(){
+  ['prnBar','prnBar2'].forEach(id=>paintPrinterBar($(id)));
+}
+function paintPrinterBar(bar){
+  if(!bar) return;
+  if(!prnSupported){
+    bar.className='prnbar off';
+    bar.innerHTML='<span class="pdot"></span><span class="prnstatus">Receipt printing needs Chrome or Edge</span>';
+    return;
+  }
+  const on=prnReady();
+  bar.className='prnbar '+(on?'on':'');
+  bar.innerHTML='<span class="pdot"></span><span class="prnstatus">'+
+    (on?'Printer connected':'Printer not connected')+'</span>'+
+    '<button class="btn" id="prnBtn" style="margin-left:auto;padding:8px 13px;font-size:12.5px">'+
+    (on?'Disconnect':'Connect printer')+'</button>';
+  bar.querySelector('#prnBtn').addEventListener('click',async()=>{
+    if(prnReady()){ prnDisconnect(); return; }
+    bar.querySelector('.prnstatus').textContent='Choosing a printer…';
+    try{ await prnConnect(); }
+    catch(e){
+      renderPrinterBar();
+      if(e&&e.name!=='NotFoundError') alert('Could not connect: '+(e.message||e));
+    }
+  });
+}
+
+// ---------- shell ----------
+function renderTabs(){
+  const t=$('tabs'); t.innerHTML='';
+  [['prog','Events'],['stand','Standings'],['entries','Entries']].forEach(([v,l])=>{
+    const b=document.createElement('button');
+    b.className='tab'+((view===v||(v==='prog'&&view==='event'))?' on':'');
+    b.textContent=l;
+    b.addEventListener('click',()=>{ view=v; render(); });
+    t.appendChild(b);
+  });
+}
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{ view=b.dataset.goto; render(); }));
+$('goEntries').addEventListener('click',()=>{ view='entries'; render(); window.scrollTo(0,0); });
+(function(){ const b=$('themeBtn');
+  const ap=t=>{document.documentElement.setAttribute('data-theme',t); b.textContent=t==='dark'?'☀️':'🌙';
+    try{localStorage.setItem('interschool-theme',t)}catch(e){}};
+  let t='light'; try{t=localStorage.getItem('interschool-theme')||'light'}catch(e){}
+  ap(t); b.addEventListener('click',()=>{
+    ap(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+    render();                      // school colours are theme-dependent
+  });
+})();
+function render(){
+  $('scrEntries').hidden=view!=='entries';
+  $('scrProg').hidden=view!=='prog';
+  $('scrEvent').hidden=view!=='event';
+  $('scrStand').hidden=view!=='stand';
+  renderTabs(); setSync(syncState); renderPrinterBar();
+  if(view==='entries'){ renderEntries(); renderNames(); }
+  else if(view==='prog'){ renderProg(); renderFinder(); }
+  else if(view==='event') renderEvent();
+  else if(view==='stand') renderStand();
+}
+const DEMO=[{"School":"Hilton","Name":"Isla Tupou","Year":3,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Nell Ashby","Year":3,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Wren Draycott","Year":3,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Isla Tupou","Year":3,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Nell Ashby","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Isla Tupou","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Nell Ashby","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Wren Draycott","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Noah Ashby","Year":3,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Bo Neave","Year":3,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Bo Neave","Year":3,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Rafferty Okafor","Year":3,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Rafferty Okafor","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Bo Neave","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Noah Ashby","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Bo Neave","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Sadie Munro","Year":4,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Aria Draycott","Year":4,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Sadie Munro","Year":4,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Aria Draycott","Year":4,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Aria Draycott","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Sadie Munro","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Sadie Munro","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Aria Draycott","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Rune Rasmussen","Year":4,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Sol Bright","Year":4,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Sol Bright","Year":4,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Otis Stavros","Year":4,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Rune Rasmussen","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Otis Stavros","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Sol Bright","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Rune Rasmussen","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Willow Tupou","Year":5,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Remi Rasmussen","Year":5,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Willow Tupou","Year":5,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Remi Rasmussen","Year":5,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Remi Rasmussen","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Willow Tupou","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Willow Tupou","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Etta Castellan","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Bodhi Halliwell","Year":5,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Ari Sandoval","Year":5,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Levi Rasmussen","Year":5,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Ari Sandoval","Year":5,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Ari Sandoval","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Bodhi Halliwell","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Ari Sandoval","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Levi Rasmussen","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Ada Yildiz","Year":6,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Lark Halliwell","Year":6,"Gender":"Girls","Event":"100m"},{"School":"Hilton","Name":"Etta Halliwell","Year":6,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Lark Halliwell","Year":6,"Gender":"Girls","Event":"200m"},{"School":"Hilton","Name":"Ada Yildiz","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Etta Halliwell","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"Hilton","Name":"Lark Halliwell","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Ada Yildiz","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"Hilton","Name":"Jasper Considine","Year":6,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Bodhi Kowalski","Year":6,"Gender":"Boys","Event":"100m"},{"School":"Hilton","Name":"Jasper Considine","Year":6,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Bodhi Kowalski","Year":6,"Gender":"Boys","Event":"200m"},{"School":"Hilton","Name":"Jasper Considine","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Bodhi Kowalski","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"Hilton","Name":"Bodhi Kowalski","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"Hilton","Name":"Ari Castellan","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Hazel Draycott","Year":3,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Poppy Halliwell","Year":3,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Poppy Halliwell","Year":3,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Hazel Draycott","Year":3,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Hazel Draycott","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Poppy Halliwell","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Hazel Draycott","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Sage Trentham","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Milo Ashby","Year":3,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Flynn Stavros","Year":3,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Flynn Stavros","Year":3,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Milo Ashby","Year":3,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Milo Ashby","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Finn Okafor","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Flynn Stavros","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Milo Ashby","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Immy Okafor","Year":4,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Remi Larsen","Year":4,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Remi Larsen","Year":4,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Immy Okafor","Year":4,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Remi Larsen","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Immy Okafor","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Immy Okafor","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Nina Vasquez","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Jed Beckett","Year":4,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Archie Ellery","Year":4,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Jed Beckett","Year":4,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Levi Yildiz","Year":4,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Levi Yildiz","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Archie Ellery","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Jed Beckett","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Archie Ellery","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Sadie Ashby","Year":5,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Bonnie Beckett","Year":5,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Maeve Draycott","Year":5,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Bonnie Beckett","Year":5,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Sadie Ashby","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Maeve Draycott","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Bonnie Beckett","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Sadie Ashby","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Rory Ellery","Year":5,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Flynn Halliwell","Year":5,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Rory Ellery","Year":5,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Archie Okafor","Year":5,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Archie Okafor","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Flynn Halliwell","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Archie Okafor","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Rory Ellery","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Chloe Rasmussen","Year":6,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Freya Mercer","Year":6,"Gender":"Girls","Event":"100m"},{"School":"North Fremantle","Name":"Poppy Calloway","Year":6,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Freya Mercer","Year":6,"Gender":"Girls","Event":"200m"},{"School":"North Fremantle","Name":"Chloe Rasmussen","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Poppy Calloway","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"North Fremantle","Name":"Poppy Calloway","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Chloe Rasmussen","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"North Fremantle","Name":"Jed Lomax","Year":6,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Rune Castellan","Year":6,"Gender":"Boys","Event":"100m"},{"School":"North Fremantle","Name":"Jed Lomax","Year":6,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Rune Castellan","Year":6,"Gender":"Boys","Event":"200m"},{"School":"North Fremantle","Name":"Rune Castellan","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Ezra Kerrigan","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"North Fremantle","Name":"Jed Lomax","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"North Fremantle","Name":"Rune Castellan","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Remi Yildiz","Year":3,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Etta Ellery","Year":3,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Remi Yildiz","Year":3,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Aria Sandoval","Year":3,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Remi Yildiz","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Aria Sandoval","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Etta Ellery","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Aria Sandoval","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Rory Sandoval","Year":3,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Leo Ferreira","Year":3,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Rory Sandoval","Year":3,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Bodhi Rowntree","Year":3,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Rory Sandoval","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Bodhi Rowntree","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Rory Sandoval","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Leo Ferreira","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Lila Rasmussen","Year":4,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Remi Ellery","Year":4,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Immy Barrow","Year":4,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Lila Rasmussen","Year":4,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Immy Barrow","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Remi Ellery","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Lila Rasmussen","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Immy Barrow","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Otis Rasmussen","Year":4,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Jasper Okafor","Year":4,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Jasper Okafor","Year":4,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Rory Ashby","Year":4,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Jasper Okafor","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Rory Ashby","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Jasper Okafor","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Otis Rasmussen","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Opal Calloway","Year":5,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Mia Sandoval","Year":5,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Mia Sandoval","Year":5,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Hazel Castellan","Year":5,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Mia Sandoval","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Opal Calloway","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Hazel Castellan","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Opal Calloway","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Finn Sandoval","Year":5,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Ari Nguyen","Year":5,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Ari Nguyen","Year":5,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Finn Sandoval","Year":5,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Rafferty Stavros","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Ari Nguyen","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Finn Sandoval","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Rafferty Stavros","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Immy Fairweather","Year":6,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Clara Calloway","Year":6,"Gender":"Girls","Event":"100m"},{"School":"Fremantle","Name":"Lila Munro","Year":6,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Immy Fairweather","Year":6,"Gender":"Girls","Event":"200m"},{"School":"Fremantle","Name":"Lila Munro","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Immy Fairweather","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"Fremantle","Name":"Immy Fairweather","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Lila Munro","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"Fremantle","Name":"Noah Castellan","Year":6,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Ari Munro","Year":6,"Gender":"Boys","Event":"100m"},{"School":"Fremantle","Name":"Ari Munro","Year":6,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Noah Castellan","Year":6,"Gender":"Boys","Event":"200m"},{"School":"Fremantle","Name":"Knox Stavros","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Noah Castellan","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"Fremantle","Name":"Knox Stavros","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"Fremantle","Name":"Ari Munro","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Opal Considine","Year":3,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Juno Castellan","Year":3,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Clara Yildiz","Year":3,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Opal Considine","Year":3,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Clara Yildiz","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Juno Castellan","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Clara Yildiz","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Juno Castellan","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Nash Calloway","Year":3,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Sol Larsen","Year":3,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Milo Ihaka","Year":3,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Nash Calloway","Year":3,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Nash Calloway","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Milo Ihaka","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Nash Calloway","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Sol Larsen","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Isla Ellery","Year":4,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Pia Larsen","Year":4,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Isla Ellery","Year":4,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Pia Larsen","Year":4,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Willow Ferreira","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Isla Ellery","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Pia Larsen","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Willow Ferreira","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Kai Considine","Year":4,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Archie Beckett","Year":4,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Leo Rasmussen","Year":4,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Archie Beckett","Year":4,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Archie Beckett","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Leo Rasmussen","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Archie Beckett","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Kai Considine","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Ada Draycott","Year":5,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Mia Vasquez","Year":5,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Marlowe Larsen","Year":5,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Ada Draycott","Year":5,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Mia Vasquez","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Marlowe Larsen","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Mia Vasquez","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Ada Draycott","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Nash Bright","Year":5,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Rory Neave","Year":5,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Rory Neave","Year":5,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Nash Bright","Year":5,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Rory Neave","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Nash Bright","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Nash Bright","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Rory Neave","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Zara Fairweather","Year":6,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Freya Halliwell","Year":6,"Gender":"Girls","Event":"100m"},{"School":"White Gum Valley","Name":"Freya Halliwell","Year":6,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Zara Fairweather","Year":6,"Gender":"Girls","Event":"200m"},{"School":"White Gum Valley","Name":"Zara Fairweather","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Bonnie Ferreira","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Freya Halliwell","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Zara Fairweather","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Noah Rowntree","Year":6,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Sonny Neave","Year":6,"Gender":"Boys","Event":"100m"},{"School":"White Gum Valley","Name":"Sonny Neave","Year":6,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Dax Lomax","Year":6,"Gender":"Boys","Event":"200m"},{"School":"White Gum Valley","Name":"Sonny Neave","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Dax Lomax","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"White Gum Valley","Name":"Sonny Neave","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"White Gum Valley","Name":"Noah Rowntree","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Bonnie Ihaka","Year":3,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Esme Considine","Year":3,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Bonnie Ihaka","Year":3,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Esme Considine","Year":3,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Esme Considine","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Bonnie Ihaka","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Esme Considine","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Bonnie Ihaka","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Jed Mercer","Year":3,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Ari Okafor","Year":3,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Jasper Larsen","Year":3,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Ari Okafor","Year":3,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Jasper Larsen","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Ari Okafor","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Jed Mercer","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Ari Okafor","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Poppy Munro","Year":4,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Tess Mercer","Year":4,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Poppy Munro","Year":4,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Tess Mercer","Year":4,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Poppy Munro","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Sage Barrow","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Sage Barrow","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Poppy Munro","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Finn Barrow","Year":4,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Tate Calloway","Year":4,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Finn Barrow","Year":4,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Rafferty Bright","Year":4,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Rafferty Bright","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Finn Barrow","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Rafferty Bright","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Tate Calloway","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Ruby Ashby","Year":5,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Maeve Considine","Year":5,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Ruby Ashby","Year":5,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Maeve Considine","Year":5,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Ruby Ashby","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Juno Fairweather","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Juno Fairweather","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Maeve Considine","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Wade Yildiz","Year":5,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Rory Castellan","Year":5,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Wade Yildiz","Year":5,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Rory Castellan","Year":5,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Rory Castellan","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Bo Barrow","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Rory Castellan","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Bo Barrow","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Marlowe Munro","Year":6,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Ruby Vasquez","Year":6,"Gender":"Girls","Event":"100m"},{"School":"Winterfold","Name":"Mia Calloway","Year":6,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Ruby Vasquez","Year":6,"Gender":"Girls","Event":"200m"},{"School":"Winterfold","Name":"Marlowe Munro","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Ruby Vasquez","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"Winterfold","Name":"Mia Calloway","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Marlowe Munro","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"Winterfold","Name":"Zane Stavros","Year":6,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Finn Kowalski","Year":6,"Gender":"Boys","Event":"100m"},{"School":"Winterfold","Name":"Dax Rowntree","Year":6,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Finn Kowalski","Year":6,"Gender":"Boys","Event":"200m"},{"School":"Winterfold","Name":"Finn Kowalski","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Zane Stavros","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"Winterfold","Name":"Finn Kowalski","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"Winterfold","Name":"Dax Rowntree","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Clara Mercer","Year":3,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Juno Lomax","Year":3,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Lark Beckett","Year":3,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Clara Mercer","Year":3,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Clara Mercer","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Lark Beckett","Year":3,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Clara Mercer","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Juno Lomax","Year":3,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Knox Beckett","Year":3,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Ari Beckett","Year":3,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Knox Beckett","Year":3,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Ari Beckett","Year":3,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Knox Beckett","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Rory Stavros","Year":3,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Rory Stavros","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Knox Beckett","Year":3,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Pia Calloway","Year":4,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Hazel Pethick","Year":4,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Hazel Pethick","Year":4,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Mia Whitlock","Year":4,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Hazel Pethick","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Mia Whitlock","Year":4,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Hazel Pethick","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Pia Calloway","Year":4,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Leo Tupou","Year":4,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Cody Barrow","Year":4,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Leo Tupou","Year":4,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Cody Barrow","Year":4,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Leo Tupou","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Cody Barrow","Year":4,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Cody Barrow","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Leo Tupou","Year":4,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Lark Sandoval","Year":5,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Nell Castellan","Year":5,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Sage Kerrigan","Year":5,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Lark Sandoval","Year":5,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Nell Castellan","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Sage Kerrigan","Year":5,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Nell Castellan","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Lark Sandoval","Year":5,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Reid Pethick","Year":5,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Archie Trentham","Year":5,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Reid Pethick","Year":5,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Archie Trentham","Year":5,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Rafferty Draycott","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Reid Pethick","Year":5,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Rafferty Draycott","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Archie Trentham","Year":5,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Lila Pethick","Year":6,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Zara Nguyen","Year":6,"Gender":"Girls","Event":"100m"},{"School":"East Hamilton Hill","Name":"Hazel Whitlock","Year":6,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Zara Nguyen","Year":6,"Gender":"Girls","Event":"200m"},{"School":"East Hamilton Hill","Name":"Hazel Whitlock","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Lila Pethick","Year":6,"Gender":"Girls","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Lila Pethick","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Zara Nguyen","Year":6,"Gender":"Girls","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Noah Kerrigan","Year":6,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Zane Rasmussen","Year":6,"Gender":"Boys","Event":"100m"},{"School":"East Hamilton Hill","Name":"Zane Rasmussen","Year":6,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Beau Larsen","Year":6,"Gender":"Boys","Event":"200m"},{"School":"East Hamilton Hill","Name":"Zane Rasmussen","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Noah Kerrigan","Year":6,"Gender":"Boys","Event":"Long Jump"},{"School":"East Hamilton Hill","Name":"Noah Kerrigan","Year":6,"Gender":"Boys","Event":"Shot Put"},{"School":"East Hamilton Hill","Name":"Zane Rasmussen","Year":6,"Gender":"Boys","Event":"Shot Put"}];
+loadNames(); load(); rebuild(); setSync(SYNC_ON?'idle':'local'); render(); lastHash=stateHash();
+if(SYNC_ON){ poll(); setInterval(poll,POLL_MS); }
+</script>
+</body>
+</html>
