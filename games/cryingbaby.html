@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Crying Baby</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#123047;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #4fd0f0,0 0 40px rgba(0,0,0,.7);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;bottom:5vh;pointer-events:auto;display:flex;align-items:center;
+    justify-content:center;color:#fff;font-weight:bold;font-family:inherit;
+    border:3px solid rgba(255,255,255,.55);background:rgba(30,70,100,.45);
+    border-radius:16px;user-select:none;-webkit-user-select:none;}
+  .btn:active,.btn.on{background:rgba(79,208,240,.7);border-color:#9ff0ff;color:#0d2a3d;}
+  /* her cabinet: joystick on the left is UP, two buttons on the right are LEFT and RIGHT */
+  #bU{left:4vw;width:21vh;height:21vh;border-radius:50%;font-size:4vh;
+      background:rgba(230,90,90,.5);border-color:#ff9a9a;}
+  #bL{right:calc(4vw + 19vh);width:17vh;height:17vh;border-radius:50%;font-size:5.5vh;}
+  #bR{right:4vw;width:17vh;height:17vh;border-radius:50%;font-size:5.5vh;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#123047;color:#4fd0f0;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bU">UP</div>
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bR">&#9654;</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   CRYING BABY
+   You are the babysitter. The baby ran off up the ladders and
+   is crying giant tears. Climb up and get to it.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+/* ---------- grid ---------- */
+const CELL = 24, COLS = 20;
+const HUD_H = 34;
+function wx(c){ return c*CELL + CELL/2; }
+function wy(r){ return r*CELL + CELL/2; }
+
+/* ---------- palette ---------- */
+const C = {
+  skyTop:'#d4f0ff', skyMid:'#8fd0ee', skyLow:'#4a86b8', skyDeep:'#2a5a80',
+  wood:'#8a5a2e', woodDark:'#5c3a18', woodLite:'#a87a4a', woodRail:'#6b451f',
+  tear:'#4fd0f0', tearLite:'#bff0ff', tearDark:'#2aa8d0',
+  coin:'#ffd23f', coinDark:'#c9a010',
+  skin:'#f0c9a0', hair:'#7a4a28', top:'#2f5fd0', pants:'#e07a3a',
+  babySkin:'#f7d9b8', babyHair:'#e0a840', babySuit:'#4fd0f0', babySuit2:'#ffd23f',
+  ink:'#20303a', paper:'#f2fbff', heart:'#e0463c', cloud:'#ffffff'
+};
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.07:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(40,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+/* the baby wails right before each tear, so you get a warning */
+function cryNoise(){ slide(880, 520, 0.34, 'sawtooth', 0.045); setTimeout(()=>slide(760,440,0.3,'sawtooth',0.04), 200); }
+function splashNoise(){ slide(500,120,0.4,'sine',0.08); tone(180,0.2,'triangle',0.05); }
+function coinNoise(){ tone(988,0.06,'square',0.05); setTimeout(()=>tone(1319,0.09,'square',0.05),50); }
+function yayNoise(){ [523,659,784,1046,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.17,'square',0.07), i*95)); }
+function diedNoise(){ [330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,0.34,'triangle',0.07), i*180)); }
+
+/* ---------- input ---------- */
+const keys={u:false,l:false,r:false};
+let anyPress=false;
+const KEYMAP={ArrowUp:'u',KeyW:'u',Space:'u', ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r'};
+addEventListener('keydown',e=>{ initAudio(); anyPress=true; const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; }});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{ e.preventDefault(); initAudio(); anyPress=true; keys[key]=true; el.classList.add('on'); };
+  const off=e=>{ e.preventDefault(); keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bU','u'); bindBtn('bL','l'); bindBtn('bR','r');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- levels ---------- */
+const LEVELS = [
+  { name:'THE FIRST FLOOR', hint:'GO UP THE LADDERS. DODGE THE TEARS', rungs:6,  coins:8,  tears:1, aim:0,    seed:5  },
+  { name:'UP THE LANDING',  hint:'THE BABY IS AIMING AT YOUR LANE NOW',  rungs:7,  coins:10, tears:1, aim:0.5,  seed:19 },
+  { name:'THE TALL STAIRS', hint:'TWO TEARS AT A TIME',                  rungs:8,  coins:12, tears:2, aim:0.35, seed:33 },
+  { name:'THE HIGH ATTIC',  hint:'KEEP MOVING SIDEWAYS TO STAY SAFE',    rungs:9,  coins:13, tears:2, aim:0.6,  seed:47 },
+  { name:'ALMOST THERE',    hint:'LAST CLIMB. GET TO THE BABY',          rungs:10, coins:15, tears:3, aim:0.55, seed:63 }
+];
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0, level=0, score=0, best=0, hearts=3;
+let walk=[], rows=0, rungRows=[], coins=[], tears=[], baby=null, player=null;
+let camY=0, tearTimer=0, shake=0, hintT=0, pops=[], sparks=[], warn=[];
+
+function rngFrom(seed){ let s=seed>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+function walkable(c,r){ return c>=0&&c<COLS&&r>=0&&r<rows&&walk[r][c]===1; }
+
+/* ---------- tower builder ----------
+   Built from the bottom up. Gaps are only ever cut outside the span of the
+   ladders you arrive on, so the way up is always still there. */
+function buildTower(n){
+  const L = LEVELS[n], rnd = rngFrom(L.seed);
+  rows = L.rungs*3 + 4;
+  walk = [];
+  for(let r=0;r<rows;r++) walk.push(new Array(COLS).fill(0));
+
+  rungRows = [];
+  for(let i=0;i<L.rungs;i++) rungRows.push(rows-2 - i*3);
+
+  const startCol = 2 + Math.floor(rnd()*(COLS-4));
+  let arrivals = [startCol];
+
+  for(let i=0;i<rungRows.length;i++){
+    const r = rungRows[i];
+    for(let c=0;c<COLS;c++) walk[r][c]=1;
+
+    const loA = Math.min.apply(null,arrivals), hiA = Math.max.apply(null,arrivals);
+    const nGaps = 1 + Math.floor(rnd()*3);
+    for(let g=0; g<nGaps; g++){
+      const gw = 2 + Math.floor(rnd()*2);
+      const left = rnd() < 0.5;
+      let gx;
+      if(left){
+        const room = loA - 1 - gw;
+        if(room < 1) continue;
+        gx = 1 + Math.floor(rnd()*room);
+      } else {
+        const from = hiA + 2, room = COLS - from - gw;
+        if(room < 1) continue;
+        gx = from + Math.floor(rnd()*room);
+      }
+      for(let c=gx;c<gx+gw;c++) if(c>=0&&c<COLS) walk[r][c]=0;
+    }
+
+    /* the connected stretch of this rung that the arrivals stand on */
+    let lo = loA, hi = hiA;
+    while(lo-1 >= 0 && walk[r][lo-1]) lo--;
+    while(hi+1 < COLS && walk[r][hi+1]) hi++;
+
+    if(i < rungRows.length-1){
+      const above = rungRows[i+1];
+      const nLad = 2 + Math.floor(rnd()*2);
+      const picks = [];
+      let tries = 0;
+      while(picks.length < nLad && tries < 80){
+        tries++;
+        const c = lo + Math.floor(rnd()*(hi-lo+1));
+        if(picks.indexOf(c) < 0 && picks.every(p=>Math.abs(p-c)>=2)) picks.push(c);
+      }
+      if(!picks.length) picks.push(lo);
+      for(const c of picks) for(let rr=above; rr<=r; rr++) walk[rr][c]=1;
+      arrivals = picks;
+    } else {
+      /* final climb to the baby */
+      const c = Math.max(lo, Math.min(hi, Math.round((lo+hi)/2)));
+      for(let rr=1; rr<=r; rr++) walk[rr][c]=1;
+      baby = { c:c, r:1, scale:0.55 };
+      arrivals = [c];
+    }
+  }
+
+  /* coins sit on the rungs, never on the very cell you start on */
+  coins = [];
+  let guard = 0;
+  while(coins.length < LEVELS[n].coins && guard < 500){
+    guard++;
+    const r = rungRows[Math.floor(rnd()*rungRows.length)];
+    const c = Math.floor(rnd()*COLS);
+    if(!walkable(c,r)) continue;
+    if(r === rungRows[0] && c === startCol) continue;
+    if(coins.some(k=>k.c===c&&k.r===r)) continue;
+    coins.push({c:c,r:r,taken:false});
+  }
+
+  player = { c:startCol, r:rungRows[0], tc:startCol, tr:rungRows[0],
+             x:wx(startCol), y:wy(rungRows[0]), moving:false, face:1,
+             anim:0, climbing:false, grace:70 };
+  tears = []; warn = []; pops = []; sparks = [];
+  tearTimer = 120;
+  camY = 0;
+  hintT = 290;
+}
+
+function startGame(){ level=0; score=0; hearts=3; buildTower(0); state='play'; timer=0; }
+
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.paper,t:70}); }
+function splash(x,y){
+  for(let i=0;i<14;i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*2.2,vy:-Math.random()*2.4,t:26,c: Math.random()<0.5?C.tear:C.tearLite});
+}
+
+/* nearest place to land after a knockdown, preferring further down */
+function nearestWalkable(col,row){
+  for(let dr=0; dr<rows; dr++){
+    for(const r of (dr===0?[row]:[row+dr,row-dr])){
+      if(r<0||r>=rows) continue;
+      for(let dc=0; dc<COLS; dc++){
+        for(const c of (dc===0?[col]:[col-dc,col+dc])){
+          if(c<0||c>=COLS) continue;
+          if(walk[r][c]) return [c,r];
+        }
+      }
+    }
+  }
+  return [col,row];
+}
+
+function hitByTear(t){
+  const p = player;
+  hearts--; shake=18;
+  splashNoise(); splash(p.x, p.y);
+  t.dead = true;
+  /* "if you get hit by a tear, you go down 5 steps" */
+  const [nc,nr] = nearestWalkable(p.c, Math.min(rows-1, p.r + 5));
+  p.c=nc; p.r=nr; p.tc=nc; p.tr=nr; p.x=wx(nc); p.y=wy(nr);
+  p.moving=false; p.grace=100;
+  pop(p.x, p.y-20, 'DOWN 5 STEPS', C.tear);
+  if(hearts<=0){ state='died'; timer=0; diedNoise(); }
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; tone(700,0.09);} return; }
+  if(state==='howto'){ timer++; if(anyPress&&timer>20){ anyPress=false; startGame(); tone(950,0.1);} return; }
+  if(state==='died'||state==='won'){ timer++; if(anyPress&&timer>70){ anyPress=false; state='title'; timer=0; } return; }
+  if(state==='clear'){
+    timer++; updateFx();
+    if(timer>140){
+      level++;
+      if(level>=LEVELS.length){ best=Math.max(best,score); state='won'; timer=0; yayNoise(); }
+      else { buildTower(level); state='play'; timer=0; }
+    }
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  const p = player;
+  if(p.grace>0) p.grace--;
+
+  /* grid movement: up, left, right. No going down - that only happens to you. */
+  if(p.moving){
+    const tx=wx(p.tc), ty=wy(p.tr);
+    const dx=tx-p.x, dy=ty-p.y, d=Math.hypot(dx,dy);
+    const spd = p.climbing ? 1.25 : 1.7;
+    if(d<=spd){ p.x=tx; p.y=ty; p.c=p.tc; p.r=p.tr; p.moving=false; }
+    else { p.x+=dx/d*spd; p.y+=dy/d*spd; p.anim+=0.22; }
+  }
+  if(!p.moving){
+    if(keys.u && walkable(p.c, p.r-1)){
+      p.tr=p.r-1; p.tc=p.c; p.moving=true; p.climbing=true;
+      if(frame%14===0) tone(300+Math.random()*60,0.04,'square',0.03);
+    }
+    else if(keys.l && walkable(p.c-1, p.r)){ p.tc=p.c-1; p.tr=p.r; p.moving=true; p.climbing=false; p.face=-1; }
+    else if(keys.r && walkable(p.c+1, p.r)){ p.tc=p.c+1; p.tr=p.r; p.moving=true; p.climbing=false; p.face=1; }
+  }
+
+  /* camera keeps the babysitter around two thirds down the view */
+  const viewH = H - HUD_H;
+  const want = p.y - (HUD_H + viewH*0.62);
+  camY += (Math.max(0, Math.min(rows*CELL - viewH, want)) - camY) * 0.1;
+
+  /* the baby grows as you get closer - "starts small then gets big" */
+  const climbFrac = 1 - (p.r - baby.r) / Math.max(1, rows - baby.r);
+  baby.scale = 0.55 + 0.85 * Math.max(0, Math.min(1, climbFrac));
+
+  /* every 4 seconds the baby drops a big tear in one lane */
+  tearTimer--;
+  if(tearTimer === 40) cryNoise();
+  if(tearTimer <= 0){
+    const L = LEVELS[level];
+    tearTimer = 240;                       /* four seconds, exactly as written */
+    const topY = camY + HUD_H;
+    for(let i=0;i<L.tears;i++){
+      let col;
+      if(Math.random() < L.aim) col = Math.max(0, Math.min(COLS-1, p.c + (Math.floor(Math.random()*3)-1)));
+      else col = Math.floor(Math.random()*COLS);
+      tears.push({ c:col, x:wx(col), y: topY - 20 - i*40, w:12, h:18 });
+      warn.push({ c:col, t:50 });
+    }
+  }
+
+  for(const t of tears){
+    t.y += 2.05;
+    if(t.y > rows*CELL + 40) t.dead = true;   /* past the floor, it disappears */
+    if(!t.dead && p.grace<=0 &&
+       Math.abs(t.x - p.x) < 13 && Math.abs(t.y - p.y) < 18){
+      hitByTear(t);
+      if(state !== 'play') return;
+    }
+  }
+  tears = tears.filter(t=>!t.dead);
+  for(const w of warn) w.t--;
+  warn = warn.filter(w=>w.t>0);
+
+  /* coins: 20 points each */
+  for(const k of coins){
+    if(k.taken) continue;
+    if(Math.abs(wx(k.c)-p.x)<13 && Math.abs(wy(k.r)-p.y)<15){
+      k.taken=true; score+=20; coinNoise();
+      pop(wx(k.c), wy(k.r)-10, '+20', C.coin);
+    }
+  }
+
+  /* reached the baby */
+  if(p.r <= baby.r && Math.abs(p.c - baby.c) <= 1){
+    score += 500 + hearts*100;
+    state='clear'; timer=0; yayNoise();
+    splash(p.x, p.y);
+    return;
+  }
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y -= 0.4; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.vy+=0.14; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(15,35,50,.5)',align); txt(s,x,y,size,col,align);
+}
+
+function drawSky(){
+  const g = ctx.createLinearGradient(0, HUD_H, 0, H);
+  const topFrac = camY / Math.max(1, rows*CELL - (H-HUD_H));
+  const a = topFrac, b = 1-topFrac;
+  g.addColorStop(0, b>0.5 ? C.skyTop : C.skyMid);
+  g.addColorStop(0.55, a>0.5 ? C.skyLow : C.skyMid);
+  g.addColorStop(1, a>0.5 ? C.skyDeep : C.skyLow);
+  ctx.fillStyle=g; ctx.fillRect(0,HUD_H,W,H-HUD_H);
+
+  /* clouds only near the top of the tower, like her map */
+  for(let i=0;i<7;i++){
+    const wxp = (i*97) % (W+60) - 30;
+    const wyp = 40 + (i*53)%120;
+    const sy = wyp - camY*0.35;
+    if(sy < HUD_H-20 || sy > H) continue;
+    ctx.globalAlpha=0.55;
+    px(wxp,sy,30,9,C.cloud); px(wxp+7,sy-5,18,8,C.cloud); px(wxp+4,sy+7,22,5,C.cloud);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawTower(){
+  const r0 = Math.max(0, Math.floor((camY+HUD_H)/CELL)-1);
+  const r1 = Math.min(rows-1, Math.ceil((camY+H)/CELL)+1);
+  for(let r=r0;r<=r1;r++){
+    for(let c=0;c<COLS;c++){
+      if(!walk[r][c]) continue;
+      const x = c*CELL, y = r*CELL - camY;
+      const side = walkable(c-1,r) || walkable(c+1,r);
+      const vert = walkable(c,r-1) || walkable(c,r+1);
+      if(side){                                  /* a rung you can walk along */
+        px(x, y+8, CELL, 9, C.wood);
+        px(x, y+8, CELL, 2, C.woodLite);
+        px(x, y+15, CELL, 2, C.woodDark);
+        for(let i=3;i<CELL-3;i+=7) px(x+i, y+11, 2, 3, C.woodDark);
+      }
+      if(vert){                                  /* a ladder you can climb */
+        px(x+3, y, 3, CELL, C.woodRail);
+        px(x+CELL-6, y, 3, CELL, C.woodRail);
+        px(x+3, y+5, CELL-9, 3, C.woodLite);
+        px(x+3, y+16, CELL-9, 3, C.woodLite);
+      }
+    }
+  }
+}
+
+function drawCoin(x,y){
+  const b = Math.sin(frame*0.11 + x*0.05)*1.5;
+  px(x-5,y-5+b,10,10,C.coin);
+  px(x-6,y-3+b,12,6,C.coin);
+  px(x-2,y-4+b,3,8,C.coinDark);
+  px(x-4,y-3+b,2,4,'#fff6c8');
+}
+
+function drawTear(t){
+  const x = t.x, y = t.y - camY;
+  px(x-5,y-2,10,12,C.tear);
+  px(x-6,y+2,12,8,C.tear);
+  px(x-3,y-8,6,7,C.tear);
+  px(x-1,y-10,3,4,C.tear);
+  px(x-4,y,3,6,C.tearLite);
+  px(x-5,y+9,10,3,C.tearDark);
+}
+
+function drawBaby(){
+  const s = baby.scale;
+  const x = wx(baby.c), y = wy(baby.r) - camY + 4;
+  const b = Math.sin(frame*0.09)*2*s;
+  ctx.save(); ctx.translate(x, y+b); ctx.scale(s,s);
+  /* crying wobble lines */
+  ctx.globalAlpha=0.6;
+  px(-22,-14,4,3,C.tear); px(-26,-8,4,3,C.tear);
+  px(18,-14,4,3,C.tear); px(22,-8,4,3,C.tear);
+  ctx.globalAlpha=1;
+  px(-8,2,16,12,C.babySuit);             /* onesie */
+  px(-8,2,16,3,C.babySuit2);
+  px(-6,14,5,4,C.babySkin); px(1,14,5,4,C.babySkin);
+  px(-10,-12,20,16,C.babySkin);          /* head */
+  px(-4,-16,8,5,C.babyHair);             /* tuft */
+  px(-2,-19,3,4,C.babyHair);
+  px(-6,-8,4,4,C.ink); px(2,-8,4,4,C.ink);
+  px(-6,-4,3,6,C.tear); px(3,-4,3,6,C.tear);   /* tears on the cheeks */
+  px(-3,-2,6,4,C.ink);                   /* open wailing mouth */
+  px(-2,0,4,2,'#e07a8a');
+  ctx.restore();
+  if(frame%54<34) txtS('WAAAH!', x, y - 34*s - 8, 9*Math.max(0.9,s*0.8), C.tear, 'center');
+}
+
+function drawSitter(p){
+  const x = p.x, y = p.y - camY;
+  ctx.save(); ctx.translate(x|0, y|0);
+  if(p.face<0) ctx.scale(-1,1);
+  const step = p.moving ? (Math.floor(p.anim)%2) : 0;
+  px(-6,-2,5,7,C.pants); px(1,-2,5,7,C.pants);     /* legs */
+  if(p.climbing && p.moving){ px(-6,-2,5,5+step*2,C.pants); px(1,-2,5,7-step*2,C.pants); }
+  px(-7,-12,14,11,C.top);                          /* jumper */
+  px(-9,-11,3,7,C.skin); px(6,-11,3,7,C.skin);     /* arms */
+  px(-6,-23,12,11,C.skin);                         /* head */
+  px(-7,-25,14,6,C.hair);
+  px(-7,-22,3,7,C.hair); px(4,-22,3,7,C.hair);
+  px(-3,-20,3,3,C.ink); px(1,-20,3,3,C.ink);
+  px(-2,-15,4,2,'#c96a6a');
+  if(p.grace>0 && frame%8<4){ ctx.globalAlpha=0.35; px(-10,-26,20,32,'#ffffff'); ctx.globalAlpha=1; }
+  ctx.restore();
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#123047');
+  px(0,HUD_H-3,W,3,C.tear);
+  for(let i=0;i<Math.max(0,hearts);i++){
+    const x=10+i*17, y=11;
+    px(x,y,5,5,C.heart); px(x+7,y,5,5,C.heart); px(x+1,y+5,10,5,C.heart); px(x+3,y+10,6,3,C.heart);
+  }
+  txtS('SCORE '+String(score).padStart(5,'0'), 74, 17, 12, C.paper);
+  txtS('LEVEL '+(level+1)+'/'+LEVELS.length, 220, 17, 10, C.tearLite);
+
+  /* how far up you are */
+  const frac = 1 - (player.r - baby.r) / Math.max(1, rows - baby.r);
+  txtS('HEIGHT', 320, 10, 8, C.tearLite);
+  px(320, 17, 90, 8, '#0b2436');
+  px(321, 18, 88*Math.max(0,Math.min(1,frac)), 6, C.tear);
+  txtS(Math.round(frac*100)+'%', 424, 17, 10, C.tear);
+
+  /* which lane the next tear is coming down */
+  for(const w of warn){
+    const x = wx(w.c);
+    if(frame%8<5){
+      ctx.globalAlpha = Math.min(1, w.t/30);
+      px(x-6, HUD_H+1, 12, 4, C.tear);
+      txtS('!', x, HUD_H+11, 11, C.tearLite, 'center');
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function drawTitle(){
+  camY = 0;
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,C.skyTop); g.addColorStop(1,C.skyLow);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<6;i++){ const x=(i*89)%460, y=24+(i*37)%70;
+    ctx.globalAlpha=0.6; px(x,y,30,9,C.cloud); px(x+7,y-5,18,8,C.cloud); ctx.globalAlpha=1; }
+
+  /* the title letters drip, like her banner */
+  txtS('CRYING', W/2-2, 62, 40, '#8f7fd0', 'center');
+  txtS('BABY', W/2+96, 100, 26, C.coin, 'center');
+  for(let i=0;i<9;i++){
+    const x=90+i*34, d=(frame*1.6 + i*40)%70;
+    ctx.globalAlpha=0.75; px(x,86+d,4,9,C.tear); px(x,84+d,4,3,C.tearLite); ctx.globalAlpha=1;
+  }
+
+  /* a scrap of ladder with the two characters */
+  px(0,214,W,4,C.wood);
+  for(let i=0;i<W;i+=CELL){ px(i,206,20,8,C.wood); px(i,206,20,2,C.woodLite); }
+  px(300,150,3,64,C.woodRail); px(318,150,3,64,C.woodRail);
+  px(300,160,21,3,C.woodLite); px(300,178,21,3,C.woodLite); px(300,196,21,3,C.woodLite);
+
+  const savedCam = camY, savedBaby = baby;
+  camY = 0; baby = {c:0,r:0,scale:0.85};
+  ctx.save(); ctx.translate(150, 60); drawBaby(); ctx.restore();
+  baby = savedBaby; camY = savedCam;
+  drawSitter({x:250,y:206,face:1,moving:true,anim:frame*0.2,climbing:false,grace:0});
+
+  txtS('YOU ARE THE BABYSITTER. THE BABY RAN OFF.', W/2, 240, 10, '#0d3348', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON TO START', W/2, 268, 13, C.paper, 'center');
+  if(best>0) txtS('BEST '+String(best).padStart(5,'0'), 10, 288, 9, '#0d3348');
+}
+
+function drawHowTo(){
+  camY = 0;
+  ctx.fillStyle='#123047'; ctx.fillRect(0,0,W,H);
+  px(14,10,W-28,H-20,'#1b4562');
+  ctx.strokeStyle=C.tear; ctx.lineWidth=2; ctx.strokeRect(14,10,W-28,H-20);
+  txtS('HOW TO PLAY', W/2, 32, 16, C.tear, 'center');
+
+  txtS('UP', 44, 62, 13, '#ff9a9a');
+  txtS('climbs a ladder. The two buttons', 100, 58, 10, C.paper);
+  txtS('move you left and right.', 100, 72, 10, C.paper);
+  txtS('There is no down. Only up.', 100, 86, 10, C.tearLite);
+
+  ctx.save(); ctx.translate(0,0);
+  px(44,110,4,26,C.woodRail); px(58,110,4,26,C.woodRail);
+  px(44,116,18,3,C.woodLite); px(44,128,18,3,C.woodLite);
+  ctx.restore();
+  txtS('All the brown is a ladder. White', 100, 116, 10, C.paper);
+  txtS('space is where you cannot go.', 100, 130, 10, C.paper);
+
+  drawTear({x:52,y:170,c:0}); 
+  txtS('Every 4 seconds the baby drops a', 100, 162, 10, C.paper);
+  txtS('giant tear down one lane. A hit', 100, 176, 10, C.paper);
+  txtS('sends you DOWN 5 STEPS.', 100, 190, 10, C.tear);
+
+  drawCoin(52, 214);
+  txtS('Every coin is 20 points. Three', 100, 210, 10, C.paper);
+  txtS('hearts. Reach the baby to win.', 100, 224, 10, C.coin);
+
+  txtS('KEYBOARD: UP ARROW, LEFT ARROW, RIGHT ARROW', W/2, 248, 9, C.tearLite, 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 272, 13, C.tear, 'center');
+}
+
+function drawOverlay(){
+  if(state==='clear'){
+    px(0,112,W,74,'rgba(18,48,71,.88)');
+    txtS('YAY!', W/2, 138, 34, C.coin, 'center');
+    txtS('YOU GOT TO THE BABY', W/2, 166, 11, C.paper, 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 180, 10, C.tearLite, 'center');
+  }
+  if(state==='died'){
+    ctx.fillStyle='rgba(10,26,38,.93)'; ctx.fillRect(0,0,W,H);
+    txtS('UH OH, YOU DIED!', W/2, 118, 26, C.tear, 'center');
+    txtS('THE BABY IS STILL CRYING', W/2, 154, 12, '#7aa8c0', 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 184, 12, C.paper, 'center');
+    if(timer>70 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 236, 11, '#7aa8c0', 'center');
+  }
+  if(state==='won'){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,C.skyTop); g.addColorStop(1,C.skyMid);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    txtS('YAY!', W/2, 62, 44, C.coin, 'center');
+    txtS('EVERY FLOOR CLIMBED', W/2, 104, 13, '#0d3348', 'center');
+    const savedCam=camY, savedBaby=baby;
+    camY=0; baby={c:0,r:0,scale:1.1};
+    ctx.save(); ctx.translate(W/2-30,150); drawBaby(); ctx.restore();
+    baby=savedBaby; camY=savedCam;
+    drawSitter({x:W/2+34,y:176,face:-1,moving:false,anim:0,climbing:false,grace:0});
+    txtS('THE BABY STOPPED CRYING', W/2, 208, 11, '#0d3348', 'center');
+    txtS('FINAL SCORE '+String(score).padStart(5,'0'), W/2, 232, 14, '#0d3348', 'center');
+    if(timer>70 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 262, 11, '#0d3348', 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,28,'rgba(18,48,71,.8)');
+    txtS(LEVELS[level].name, W/2, HUD_H+11, 11, C.coin, 'center');
+    txtS(LEVELS[level].hint, W/2, HUD_H+24, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#123047'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='howto'){ drawHowTo(); return; }
+  if(state==='died'||state==='won'){ drawOverlay(); return; }
+
+  drawSky();
+  drawTower();
+  for(const k of coins) if(!k.taken) drawCoin(wx(k.c), wy(k.r)-camY);
+  drawBaby();
+  for(const t of tears) drawTear(t);
+  if(state!=='clear' || timer%8<5) drawSitter(player);
+
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/12); px(s.x,s.y-camY,2,2,s.c); ctx.globalAlpha=1; }
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/25);
+    txtS(p.s, p.x, p.y-camY, 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
