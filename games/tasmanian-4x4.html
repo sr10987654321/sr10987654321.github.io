@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Tasmanian 4x4</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#171a12;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #e0576a,0 0 40px rgba(0,0,0,.8);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(50,45,35,.45);border-radius:50%;user-select:none;-webkit-user-select:none;
+    text-align:center;line-height:1.1;}
+  .btn:active,.btn.on{background:rgba(242,224,58,.7);border-color:#f2e03a;color:#2a2410;}
+  #bL{left:3vw;bottom:5vh;width:15vh;height:15vh;font-size:5vh;border-radius:18px;}
+  #bR{left:calc(3vw + 17vh);bottom:5vh;width:15vh;height:15vh;font-size:5vh;border-radius:18px;}
+  #bG{right:3vw;bottom:4vh;width:19vh;height:19vh;font-size:3.2vh;
+      background:rgba(120,200,120,.45);border-color:#8fe08f;}
+  #bB{right:calc(3vw + 21vh);bottom:4vh;width:13vh;height:13vh;font-size:2.4vh;}
+  #bS{right:calc(3vw + 21vh);bottom:19vh;width:13vh;height:13vh;font-size:2.4vh;
+      background:rgba(224,87,106,.45);border-color:#ff9aa8;}
+  #bF{right:3vw;bottom:25vh;width:13vh;height:13vh;font-size:2.4vh;
+      background:rgba(150,120,220,.45);border-color:#c0a8f0;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#171a12;color:#f2e03a;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bF">FLIP</div>
+  <div class="btn" id="bS">SHOOT</div>
+  <div class="btn" id="bB">REV</div>
+  <div class="btn" id="bG">GO</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   TASMANIAN 4x4
+   Get to Hobart before the Sombys come out to get you.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+const HUD_H = 32;
+const WORLD_W = 2000, WORLD_H = 1400;
+
+/* ---------- palette ---------- */
+const C = {
+  scrub:'#4e5c34', scrub2:'#5d6d3e', bush:'#37451f', dirt:'#8a7346',
+  road:'#b5713f', roadDark:'#8f5730', roadLine:'#e0576a',
+  car:'#e0653a', carDark:'#a8401f', carRoof:'#f2a03a', glass:'#2a3a5a', tyre:'#161616',
+  zSkin:'#6aa84f', zSkinDark:'#4a7a35', zShirt:'#3a8ad0', zShirtDark:'#2a6aa8',
+  city:'#3a8ad0', cityLite:'#7ec0f0', cityDark:'#1f4f80',
+  boost:'#f2e03a', boostDark:'#c9b010',
+  ramp:'#c9a86a', rampDark:'#8a7040',
+  gold:'#f2e03a', paper:'#fff6e0', hot:'#e0576a', ink:'#20200f'
+};
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sawtooth';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.07:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function noise(dur,vol){
+  if(!AC) return;
+  try{
+    const n=Math.floor(AC.sampleRate*dur), buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource(), g=AC.createGain();
+    src.buffer=buf; g.gain.value=vol||0.12;
+    src.connect(g); g.connect(AC.destination); src.start();
+  }catch(e){}
+}
+/* the three sounds she asked for */
+function smashSound(){ noise(0.22,0.16); slide(300,90,0.24,'square',0.07); }
+function screamSound(){ slide(900,180,0.7,'sawtooth',0.09); setTimeout(()=>slide(760,140,0.6,'sawtooth',0.07),150); }
+function trophySound(){ [523,659,784,1046,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'square',0.07), i*110)); }
+function boostSound(){ [440,660,880,1180].forEach((f,i)=>setTimeout(()=>tone(f,0.09,'square',0.06), i*45)); }
+
+/* ---------- input ---------- */
+const keys={l:false,r:false,g:false,b:false};
+let shootEdge=false, flipEdge=false, anyPress=false;
+const KEYMAP={ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r', ArrowUp:'g',KeyW:'g', ArrowDown:'b',KeyS:'b'};
+addEventListener('keydown',e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Space'||e.code==='KeyX'){ e.preventDefault(); shootEdge=true; return; }
+  if(e.code==='KeyZ'||e.code==='ShiftLeft'||e.code==='Enter'){ e.preventDefault(); flipEdge=true; return; }
+  const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='s') shootEdge=true; else if(key==='f') flipEdge=true; else keys[key]=true;
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='s'&&key!=='f') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bL','l'); bindBtn('bR','r'); bindBtn('bG','g'); bindBtn('bB','b');
+bindBtn('bS','s'); bindBtn('bF','f');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- the road to Hobart, traced from her map ---------- */
+const ROAD = [
+  [1860,1255],[1450,1235],[1150,1120],[ 820,1180],[ 600,1000],
+  [ 700, 800],[1050, 760],[1400, 700],[1600, 640],[1680, 545],
+  [1610, 455],[1440, 425],[1050, 415],[ 700, 375],[ 520, 430],
+  [ 420, 530],[ 350, 455],[ 318, 330],[ 300, 175]
+];
+const ROAD_HALF = 30;
+const HOBART = { x:300, y:175 };
+
+/* her four ramps, in the places she drew them */
+const RAMPS = [
+  { x:1300, y:1160, a:-2.78, type:'ramp',       label:'RAMP' },
+  { x: 660, y: 890, a:-1.11, type:'vertical',   label:'VERTICAL RAMP' },
+  { x:1640, y: 592, a:-0.87, type:'upsidedown', label:'UPSIDOWN RAMP' },
+  { x: 480, y: 450, a: 2.36, type:'flip',       label:'FLIP RAMP' }
+];
+/* "you can only get speed bosts when yor in the dirt" - so every pad sits off-road */
+const BOOSTS = [
+  { x:1210, y:1031, taken:0 }, { x: 830, y: 900, taken:0 },
+  { x:1290, y: 620, taken:0 }, { x:1600, y: 386, taken:0 },
+  { x: 800, y: 300, taken:0 }, { x: 414, y: 262, taken:0 },
+  { x: 982, y:1049, taken:0 }, { x: 493, y: 605, taken:0 }
+];
+
+function segDist(px_,py_,ax,ay,bx,by){
+  const dx=bx-ax, dy=by-ay;
+  const L=dx*dx+dy*dy;
+  let t = L>0 ? ((px_-ax)*dx + (py_-ay)*dy)/L : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx=ax+dx*t, qy=ay+dy*t;
+  return { d:Math.hypot(px_-qx, py_-qy), t:t, qx:qx, qy:qy };
+}
+function roadInfo(x,y){
+  let best={d:1e9,i:0,t:0,qx:x,qy:y};
+  for(let i=0;i<ROAD.length-1;i++){
+    const r=segDist(x,y,ROAD[i][0],ROAD[i][1],ROAD[i+1][0],ROAD[i+1][1]);
+    if(r.d<best.d) best={d:r.d,i:i,t:r.t,qx:r.qx,qy:r.qy};
+  }
+  return best;
+}
+const SEG_LEN = [];
+(function(){
+  let total=0;
+  for(let i=ROAD.length-2;i>=0;i--){
+    total += Math.hypot(ROAD[i+1][0]-ROAD[i][0], ROAD[i+1][1]-ROAD[i][1]);
+    SEG_LEN[i]=total;
+  }
+})();
+function distToHobart(x,y){
+  const r = roadInfo(x,y);
+  const segL = Math.hypot(ROAD[r.i+1][0]-ROAD[r.i][0], ROAD[r.i+1][1]-ROAD[r.i][1]);
+  return Math.max(0, SEG_LEN[r.i] - segL*r.t);
+}
+const TOTAL_DIST = SEG_LEN[0];
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0, score=0, best=0, lives=3;
+let car=null, zombies=[], bullets=[], zbullets=[], pops=[], sparks=[], decor=[];
+let camX=0, camY=0, shake=0, hintT=0, spawnTimer=0, nightT=0, boostChain=0;
+
+function seeded(n){ const x=Math.sin(n*127.1)*43758.5453; return x-Math.floor(x); }
+function buildDecor(){
+  decor=[];
+  for(let i=0;i<520;i++){
+    const x=seeded(i*3.1)*WORLD_W, y=seeded(i*7.7+11)*WORLD_H;
+    if(roadInfo(x,y).d < ROAD_HALF+10) continue;
+    decor.push({x:x,y:y,k: seeded(i*13.3)<0.72?'bush':'rock', v:seeded(i*5.5)});
+  }
+}
+function newCar(){
+  return { x:ROAD[0][0], y:ROAD[0][1], a:Math.atan2(ROAD[1][1]-ROAD[0][1], ROAD[1][0]-ROAD[0][0]),
+           sp:0, z:0, air:0, airMax:0, roll:0, rollQ:0, spin:0, boost:0,
+           shootCD:0, grace:90, smashChain:0 };
+}
+function startGame(){
+  score=0; lives=3; nightT=0; spawnTimer=200; boostChain=0;
+  for(const b of BOOSTS) b.taken=0;
+  car=newCar(); zombies=[]; bullets=[]; zbullets=[]; pops=[]; sparks=[];
+  buildDecor();
+  /* the Sombys she drew standing about at the start */
+  spawnZombie(1500,1120,false); spawnZombie(1620,700,true);
+  spawnZombie(900,1250,false);
+  camX=car.x-W/2; camY=car.y-H/2;
+  hintT=320; state='play'; timer=0;
+}
+function spawnZombie(x,y,shooter){
+  zombies.push({ x:x, y:y, shooter:!!shooter, cd:120+Math.random()*120, anim:Math.random()*6, dead:false });
+}
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:70}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*2.2,vy:(Math.random()*2-1)*2.2,t:26,c:col});
+}
+
+function spinOut(){
+  if(state!=='play' || car.grace>0 || car.spin>0) return;
+  lives--; shake=20; screamSound();
+  car.spin=110; car.sp*=0.3; car.boost=0; boostChain=0;
+  puff(car.x,car.y,C.hot,18);
+  if(lives<=0){ state='dead'; timer=0; }
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; tone(700,0.09);} return; }
+  if(state==='howto'){ timer++; if(anyPress&&timer>20){ anyPress=false; startGame(); tone(950,0.1);} return; }
+  if(state==='dead'||state==='won'){ timer++; if(anyPress&&timer>80){ anyPress=false; state='title'; timer=0; } return; }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  const c = car;
+  if(c.grace>0) c.grace--;
+  if(c.shootCD>0) c.shootCD--;
+  nightT++;
+
+  /* "the Sombes come out" - more of them the longer you take */
+  spawnTimer--;
+  if(spawnTimer<=0 && zombies.length<16){
+    const pressure = Math.min(1, nightT/5400);
+    spawnTimer = Math.round(210 - 150*pressure);
+    const ahead = roadInfo(c.x,c.y);
+    const i = Math.max(0, Math.min(ROAD.length-2, ahead.i + 1 + Math.floor(Math.random()*2)));
+    const px_ = ROAD[i][0] + (Math.random()*2-1)*110;
+    const py_ = ROAD[i][1] + (Math.random()*2-1)*110;
+    spawnZombie(px_, py_, Math.random() < 0.3 + 0.35*pressure);
+  }
+
+  /* ----- driving ----- */
+  const onRoad = roadInfo(c.x,c.y).d < ROAD_HALF;
+  const maxSp = c.boost>0 ? 5.4 : (onRoad ? 3.7 : 2.5);
+
+  if(c.spin>0){
+    flipEdge = false;
+    c.spin--;
+    c.a += 0.26;
+    c.sp *= 0.94;
+    if(c.spin===0 && lives>0){
+      const r=roadInfo(c.x,c.y);
+      c.x=r.qx; c.y=r.qy; c.sp=0; c.grace=100;
+      c.a=Math.atan2(ROAD[Math.min(ROAD.length-1,r.i+1)][1]-c.y, ROAD[Math.min(ROAD.length-1,r.i+1)][0]-c.x);
+    }
+  } else if(c.air>0){
+    /* airborne. "you cant jump if yor driving" - only a ramp puts you up here */
+    c.air--;
+    const t = 1 - c.air/c.airMax;
+    c.z = Math.sin(t*Math.PI) * (c.airMax*0.42);
+    if(flipEdge){ flipEdge=false; c.rollQ++; tone(760,0.07,'square',0.05); }
+    if(c.rollQ>0){
+      c.roll += 0.19;
+      if(c.roll >= Math.PI*2){
+        c.roll=0; c.rollQ--; score+=500; boostChain=0;
+        pop(c.x,c.y-30,'FLIP +500',C.boost); tone(1100,0.1,'square',0.06);
+      }
+    }
+    if(keys.l) c.a -= 0.012;
+    if(keys.r) c.a += 0.012;
+    c.x += Math.cos(c.a)*c.sp; c.y += Math.sin(c.a)*c.sp;
+    if(c.air===0){ c.z=0; c.roll=0; c.rollQ=0; noise(0.12,0.08); }
+  } else {
+    flipEdge = false;                 /* only counts in the air */
+    if(keys.g) c.sp += 0.15;
+    else if(keys.b) c.sp -= 0.13;
+    else c.sp *= onRoad ? 0.988 : 0.972;
+    c.sp = Math.max(-1.5, Math.min(maxSp, c.sp));
+    if(!onRoad && c.sp > 2.5 && c.boost<=0) c.sp -= 0.05;
+
+    const grip = Math.min(1, Math.abs(c.sp)/2.4);
+    const turn = 0.046 * grip * (c.sp<0?-1:1);
+    if(keys.l) c.a -= turn;
+    if(keys.r) c.a += turn;
+
+    c.x += Math.cos(c.a)*c.sp; c.y += Math.sin(c.a)*c.sp;
+    if(Math.abs(c.sp)>1.2 && frame%3===0 && !onRoad)
+      sparks.push({x:c.x-Math.cos(c.a)*10, y:c.y-Math.sin(c.a)*10, vx:(Math.random()*2-1)*0.6,
+                   vy:(Math.random()*2-1)*0.6, t:20, c:C.dirt});
+  }
+  if(c.boost>0){ c.boost--; if(c.boost===0) boostChain=0; }
+  c.x = Math.max(12, Math.min(WORLD_W-12, c.x));
+  c.y = Math.max(12, Math.min(WORLD_H-12, c.y));
+
+  /* ----- ramps ----- */
+  if(c.air<=0 && c.spin<=0){
+    for(const r of RAMPS){
+      if(Math.hypot(c.x-r.x, c.y-r.y) < 26 && c.sp > 2.0){
+        const power = r.type==='vertical' ? 92 : (r.type==='flip' ? 78 : (r.type==='upsidedown' ? 70 : 58));
+        c.air = power; c.airMax = power; c.z = 0;
+        c.sp = Math.min(maxSp, c.sp*1.12);
+        if(r.type==='upsidedown') c.rollQ = 1;
+        if(r.type==='flip') c.rollQ = 2;
+        slide(300,900,0.3,'square',0.06);
+        pop(c.x, c.y-24, r.label, C.boost);
+      }
+    }
+  }
+
+  /* ----- speed boosts (dirt only, exactly as written) ----- */
+  for(const b of BOOSTS){
+    if(b.taken>0){ b.taken--; continue; }
+    if(Math.hypot(c.x-b.x, c.y-b.y) < 22 && c.air<=0){
+      b.taken = 600;
+      const chained = c.boost > 0;
+      boostChain = chained ? boostChain+1 : 1;
+      const pts = chained ? 2000 : 1000;      /* "if you hit tow speed possess 2000" */
+      score += pts;
+      c.boost = 210; c.sp = Math.max(c.sp, 4.6);
+      pop(b.x, b.y-16, (chained?'DOUBLE BOOST +':'SPEED BOST +')+pts, C.boost);
+      boostSound();
+    }
+  }
+
+  /* ----- shooting (button 2) ----- */
+  if(shootEdge){
+    shootEdge=false;
+    if(c.shootCD<=0 && c.spin<=0){
+      c.shootCD=18;
+      bullets.push({x:c.x+Math.cos(c.a)*14, y:c.y+Math.sin(c.a)*14,
+                    vx:Math.cos(c.a)*6.4, vy:Math.sin(c.a)*6.4, life:60});
+      tone(320,0.05,'square',0.05); noise(0.06,0.05);
+    }
+  }
+  for(const b of bullets){
+    b.x+=b.vx; b.y+=b.vy; b.life--;
+    if(b.life<=0) b.dead=true;
+  }
+
+  /* ----- zombies ----- */
+  for(const z of zombies){
+    if(z.dead) continue;
+    const dx=c.x-z.x, dy=c.y-z.y, d=Math.hypot(dx,dy);
+    z.anim += 0.1;
+    if(d > 700){ z.dead = true; continue; }        /* well behind you, forget them */
+    if(z.shooter && d < 190){
+      z.cd--;
+      if(z.cd<=0){
+        z.cd = 140 + Math.random()*80;
+        zbullets.push({x:z.x, y:z.y-8, vx:dx/d*2.7, vy:dy/d*2.7, life:130});
+        tone(220,0.07,'sawtooth',0.05);
+      }
+    } else if(d > 24){
+      const sp = z.shooter ? 0.34 : 0.58;
+      z.x += dx/d*sp; z.y += dy/d*sp;
+      if(z.shooter) z.cd = Math.min(z.cd, 90);
+    }
+
+    if(c.air<=0 && c.spin<=0 && d < 17){
+      if(Math.abs(c.sp) > 1.6){
+        z.dead=true; score+=500; c.smashChain++;
+        smashSound(); puff(z.x,z.y,C.zSkin,14);
+        pop(z.x,z.y-16,'SMASH +500',C.paper);
+        c.sp *= 0.86; shake=8;
+      } else if(c.grace<=0){
+        spinOut();
+        if(state!=='play') return;
+      }
+    }
+    for(const b of bullets){
+      if(b.dead) continue;
+      if(Math.hypot(b.x-z.x, b.y-z.y) < 12){
+        b.dead=true; z.dead=true; score+=500;
+        smashSound(); puff(z.x,z.y,C.zSkin,12);
+        pop(z.x,z.y-16,'+500',C.paper);
+      }
+    }
+  }
+  zombies = zombies.filter(z=>!z.dead);
+  bullets = bullets.filter(b=>!b.dead);
+
+  /* "if a zomby shots you dig and spin into the void" */
+  for(const b of zbullets){
+    b.x+=b.vx; b.y+=b.vy; b.life--;
+    if(b.life<=0){ b.dead=true; continue; }
+    if(c.air<=0 && c.grace<=0 && c.spin<=0 && Math.hypot(b.x-c.x, b.y-c.y) < 12){
+      b.dead=true; spinOut();
+      if(state!=='play') return;
+    }
+  }
+  zbullets = zbullets.filter(b=>!b.dead);
+
+  /* ----- Hobart ----- */
+  if(Math.hypot(c.x-HOBART.x, c.y-HOBART.y) < 52){
+    score += 1000000;                        /* her number, to the digit */
+    best = Math.max(best, score);
+    state='won'; timer=0; trophySound();
+    return;
+  }
+
+  /* camera */
+  const wantX = c.x - W/2, wantY = c.y - (HUD_H + (H-HUD_H)/2);
+  camX += (Math.max(0,Math.min(WORLD_W-W, wantX)) - camX)*0.11;
+  camY += (Math.max(0,Math.min(WORLD_H-(H-HUD_H), wantY)) - camY)*0.11;
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y-=0.35; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(15,15,5,.55)',align); txt(s,x,y,size,col,align);
+}
+function sx(x){ return x-camX; }
+function sy(y){ return y-camY; }
+
+function drawGround(){
+  px(0,HUD_H,W,H-HUD_H,C.scrub);
+  const step=40;
+  const x0=Math.floor(camX/step)*step, y0=Math.floor(camY/step)*step;
+  for(let x=x0;x<camX+W+step;x+=step)
+    for(let y=y0;y<camY+H+step;y+=step)
+      if(((x/step)+(y/step))%2===0) px(sx(x),sy(y),step,step,C.scrub2);
+
+  for(const d of decor){
+    const X=sx(d.x), Y=sy(d.y);
+    if(X<-14||X>W+14||Y<HUD_H-14||Y>H+14) continue;
+    if(d.k==='bush'){
+      px(X-5,Y-3,11,8,C.bush); px(X-3,Y-6,7,5,C.bush);
+      px(X-2,Y-5,4,3,'#4a5c2a');
+    } else {
+      px(X-4,Y-2,9,6,'#7a7266'); px(X-3,Y-4,6,3,'#9a9286');
+    }
+  }
+}
+
+function drawRoad(){
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath();
+  ctx.moveTo(sx(ROAD[0][0]), sy(ROAD[0][1]));
+  for(let i=1;i<ROAD.length;i++) ctx.lineTo(sx(ROAD[i][0]), sy(ROAD[i][1]));
+  ctx.strokeStyle=C.roadDark; ctx.lineWidth=ROAD_HALF*2+6; ctx.stroke();
+  ctx.strokeStyle=C.road;     ctx.lineWidth=ROAD_HALF*2;   ctx.stroke();
+  /* tyre tracks down the middle */
+  ctx.strokeStyle='rgba(0,0,0,.16)'; ctx.lineWidth=6; ctx.stroke();
+  ctx.strokeStyle=C.roadLine; ctx.lineWidth=2; ctx.globalAlpha=0.7;
+  ctx.beginPath();
+  for(let i=0;i<ROAD.length-1;i++){
+    const ax=ROAD[i][0],ay=ROAD[i][1],bx=ROAD[i+1][0],by=ROAD[i+1][1];
+    const a=Math.atan2(by-ay,bx-ax), nx=-Math.sin(a)*ROAD_HALF, ny=Math.cos(a)*ROAD_HALF;
+    ctx.moveTo(sx(ax+nx),sy(ay+ny)); ctx.lineTo(sx(bx+nx),sy(by+ny));
+    ctx.moveTo(sx(ax-nx),sy(ay-ny)); ctx.lineTo(sx(bx-nx),sy(by-ny));
+  }
+  ctx.stroke(); ctx.globalAlpha=1;
+}
+
+function drawBoost(b){
+  const X=sx(b.x), Y=sy(b.y);
+  if(X<-30||X>W+30||Y<HUD_H-30||Y>H+30) return;
+  if(b.taken>0){
+    ctx.globalAlpha=0.25; px(X-18,Y-11,36,22,'#5a5a3a'); ctx.globalAlpha=1;
+    return;
+  }
+  const pulse = 0.75+0.25*Math.sin(frame*0.16);
+  ctx.globalAlpha=pulse;
+  px(X-19,Y-12,38,24,C.boost);
+  px(X-19,Y-12,38,3,C.boostDark); px(X-19,Y+9,38,3,C.boostDark);
+  ctx.globalAlpha=1;
+  for(let i=0;i<2;i++){
+    const ox=-8+i*14, w=3;
+    px(X+ox, Y-7, w, 7, C.ink); px(X+ox+3, Y-3, w, 6, C.ink);
+    px(X+ox, Y+2, w, 6, C.ink);
+  }
+}
+
+function drawRamp(r){
+  const X=sx(r.x), Y=sy(r.y);
+  if(X<-40||X>W+40||Y<HUD_H-40||Y>H+40) return;
+  ctx.save(); ctx.translate(X,Y); ctx.rotate(r.a);
+  for(let i=0;i<7;i++){
+    const w = 34 - i*2;
+    px(-w/2, -16+i*5, w, 5, i%2 ? C.ramp : C.rampDark);
+  }
+  px(-18,-18,36,3,C.ink);
+  ctx.restore();
+  txtS(r.label, X, Y-26, 8, C.ramp, 'center');
+}
+
+function drawZombie(z){
+  const X=sx(z.x), Y=sy(z.y);
+  if(X<-20||X>W+20||Y<HUD_H-20||Y>H+20) return;
+  const bob = Math.sin(z.anim)*1.2;
+  ctx.save(); ctx.translate(X|0,(Y+bob)|0);
+  px(-5,-16,10,9,C.zSkin);                 /* blocky head */
+  px(-5,-16,10,2,C.zSkinDark);
+  px(-3,-13,2,2,'#152510'); px(1,-13,2,2,'#152510');
+  px(-2,-10,4,1,'#152510');
+  px(-6,-7,12,10,z.shooter?C.zShirtDark:C.zShirt);   /* body */
+  px(-9,-6,3,7,C.zSkin); px(6,-6,3,7,C.zSkin);       /* arms out front */
+  px(-5,3,4,5,C.zShirtDark); px(1,3,4,5,C.zShirtDark);
+  if(z.shooter){ px(6,-5,6,3,'#3a3a3a'); px(11,-5,3,2,'#6a6a6a'); }
+  ctx.restore();
+}
+
+function drawCar(c){
+  const X=sx(c.x), Y=sy(c.y) - c.z;
+  if(c.z>1){ ctx.globalAlpha=0.24; px(sx(c.x)-9, sy(c.y)-4, 18, 9, '#000000'); ctx.globalAlpha=1; }
+  ctx.save(); ctx.translate(X|0, Y|0); ctx.rotate(c.a);
+  const roll = c.rollQ>0 ? Math.abs(Math.cos(c.roll)) : 1;   /* barrel roll squash */
+  ctx.scale(1, Math.max(0.18, roll));
+  const flip = c.rollQ>0 && Math.cos(c.roll) < 0;
+
+  if(c.boost>0){
+    ctx.globalAlpha=0.7;
+    px(-22,-3,8,6, frame%4<2 ? C.boost : '#ff9a3a');
+    px(-17,-5,6,10, frame%4<2 ? '#ff9a3a' : C.boost);
+    ctx.globalAlpha=1;
+  }
+  px(-13,-9,26,18, flip ? C.carDark : C.car);   /* body */
+  px(-13,-9,26,3,C.carDark);
+  px(-13,6,26,3,C.carDark);
+  px(-14,-11,7,4,C.tyre); px(-14,7,7,4,C.tyre);  /* wheels */
+  px(7,-11,7,4,C.tyre);  px(7,7,7,4,C.tyre);
+  if(!flip){
+    px(-4,-7,11,14,C.carRoof);                   /* roof rack */
+    px(6,-6,5,12,C.glass);                       /* windscreen */
+    px(-2,-5,3,3,C.ink); px(-2,2,3,3,C.ink);
+    px(12,-6,2,3,'#fff6c8'); px(12,3,2,3,'#fff6c8');  /* headlights */
+  } else {
+    px(-6,-6,14,12,'#4a2a18');                   /* chassis, seen from below */
+    px(-8,-2,18,3,'#2a1a10');
+  }
+  ctx.restore();
+
+  if(c.grace>0 && frame%8<4){ ctx.globalAlpha=0.3; px(X-16,Y-13,32,26,'#ffffff'); ctx.globalAlpha=1; }
+}
+
+function drawHobart(){
+  const X=sx(HOBART.x), Y=sy(HOBART.y);
+  if(X<-140||X>W+140||Y<HUD_H-140||Y>H+140) return;
+  const towers=[[-56,26,44],[-26,20,60],[-2,28,38],[24,22,52],[52,18,34]];
+  for(const [ox,w,h] of towers){
+    px(X+ox, Y-h, w, h, C.city);
+    px(X+ox, Y-h, w, 3, C.cityLite);
+    px(X+ox, Y-3, w, 6, C.cityDark);
+    for(let r=0;r<Math.floor(h/9);r++)
+      for(let cc=0;cc<Math.floor(w/9);cc++)
+        px(X+ox+3+cc*9, Y-h+5+r*9, 4, 4, (r+cc)%3 ? C.cityLite : '#ffe9a0');
+  }
+  px(X-64, Y+3, 130, 4, '#3a3a3a');
+  txtS('HOBART', X, Y-72, 14, C.paper, 'center');
+  if(frame%50<32) txtS('DRIVE HERE', X, Y+18, 9, C.gold, 'center');
+}
+
+function drawNight(){
+  const f = Math.min(0.5, nightT/9000);
+  if(f<=0.01) return;
+  ctx.globalAlpha=f;
+  px(0,HUD_H,W,H-HUD_H,'#1a2050');
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#241f14');
+  px(0,HUD_H-2,W,2,C.roadLine);
+  txtS(String(score).padStart(7,'0'), 8, 12, 13, C.gold);
+  txtS('SCORE', 8, 25, 8, '#a89870');
+
+  for(let i=0;i<Math.max(0,lives);i++){
+    px(112+i*18, 8, 14, 8, C.car); px(113+i*18, 6, 8, 3, C.carRoof);
+    px(111+i*18, 15, 5, 3, C.tyre); px(121+i*18, 15, 5, 3, C.tyre);
+  }
+  txtS('4x4s', 112, 25, 8, '#a89870');
+
+  /* speed */
+  const sp = Math.abs(car.sp);
+  txtS('SPEED', 186, 8, 8, '#a89870');
+  px(186, 15, 76, 8, '#3a3222');
+  px(187, 16, 74*Math.min(1,sp/5.4), 6, car.boost>0 ? C.boost : '#8fe08f');
+  if(car.boost>0 && frame%16<10) txtS('BOOST!', 226, 27, 8, C.boost, 'center');
+
+  /* how far to Hobart */
+  const d = distToHobart(car.x, car.y);
+  txtS('TO HOBART', 278, 8, 8, '#a89870');
+  px(278, 15, 110, 8, '#3a3222');
+  px(279, 16, 108*(1-Math.min(1,d/TOTAL_DIST)), 6, C.city);
+  txtS(Math.round(d/10)+'km', 392, 19, 10, C.cityLite);
+
+  /* how close the Sombys are to owning the night */
+  const night = Math.min(1, nightT/5400);
+  txtS('SOMBYS', 424, 8, 8, night>0.6 ? C.hot : '#a89870');
+  px(424, 15, 48, 8, '#3a3222');
+  px(425, 16, 46*night, 6, night>0.6 ? C.hot : '#a8823a');
+}
+
+function drawTitle(){
+  ctx.fillStyle='#2a2415'; ctx.fillRect(0,0,W,H);
+  /* the squiggle-and-dot cabinet art */
+  ctx.strokeStyle='rgba(224,87,106,.5)'; ctx.lineWidth=2;
+  for(let r=0;r<5;r++){
+    ctx.beginPath();
+    for(let x=-20;x<W+20;x+=12) ctx.lineTo(x, 40+r*56 + Math.sin(x*0.05+r+frame*0.01)*14);
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(150,120,220,.45)';
+  for(let r=0;r<4;r++){
+    ctx.beginPath();
+    for(let x=-20;x<W+20;x+=12) ctx.lineTo(x, 70+r*62 + Math.cos(x*0.045-r+frame*0.012)*16);
+    ctx.stroke();
+  }
+  for(let i=0;i<40;i++){
+    const x=(i*97)%W, y=(i*53)%H;
+    px(x,y,2,2, i%3 ? 'rgba(80,160,240,.7)' : 'rgba(242,140,60,.7)');
+  }
+
+  px(36,52,W-72,80,'rgba(30,26,14,.88)');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(36,52,W-72,80);
+  txtS('TASMANIAN', W/2, 80, 26, C.paper, 'center');
+  txtS('4x4', W/2, 114, 30, C.hot, 'center');
+
+  const t=Math.sin(frame*0.05)*10;
+  const savedCam = [camX,camY]; camX=0; camY=0;
+  drawCar({x:150+t, y:196, a:0, sp:0, z:0, boost: frame%120<60 ? 1:0, rollQ:0, roll:0, grace:0});
+  drawZombie({x:300-t, y:196, shooter:false, anim:frame*0.1});
+  drawZombie({x:340-t, y:206, shooter:true, anim:frame*0.1+2});
+  camX=savedCam[0]; camY=savedCam[1];
+
+  txtS('GET TO THE CITY BEFORE THE SOMBYS COME OUT', W/2, 240, 10, '#c9b88a', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON TO START', W/2, 268, 13, C.gold, 'center');
+  if(best>0) txtS('BEST '+String(best).padStart(7,'0'), 10, 290, 9, '#a89870');
+}
+
+function drawHowTo(){
+  ctx.fillStyle='#2a2415'; ctx.fillRect(0,0,W,H);
+  px(14,10,W-28,H-20,'#3a3220');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(14,10,W-28,H-20);
+  txtS('HOW TO DRIVE', W/2, 30, 16, C.gold, 'center');
+
+  txtS('GO / REV', 34, 56, 11, '#8fe08f');
+  txtS('forward and backwards. The two', 132, 52, 10, C.paper);
+  txtS('arrows steer. Roads are faster', 132, 66, 10, C.paper);
+  txtS('than dirt.', 132, 80, 10, C.paper);
+
+  txtS('SHOOT', 34, 104, 11, '#ff9aa8');
+  txtS('shoots a Somby. Or just drive', 132, 100, 10, C.paper);
+  txtS('into one fast. Smash = 500.', 132, 114, 10, C.paper);
+
+  txtS('FLIP', 34, 140, 11, '#c0a8f0');
+  txtS('only works in the air, and only', 132, 136, 10, C.paper);
+  txtS('a ramp puts you there. Tap it', 132, 150, 10, C.paper);
+  txtS('again for another roll. 500 each.', 132, 164, 10, C.paper);
+
+  txtS('BOSTS', 34, 190, 11, C.boost);
+  txtS('sit out in the dirt. 1000 points,', 132, 186, 10, C.paper);
+  txtS('or 2000 if you chain two.', 132, 200, 10, C.boost);
+
+  txtS('GET SHOT OR CAUGHT AND YOU SPIN INTO THE VOID.', W/2, 224, 10, C.hot, 'center');
+  txtS('REACH HOBART: 1,000,000 POINTS.', W/2, 240, 11, C.gold, 'center');
+  txtS('KEYS: ARROWS  X=SHOOT  Z=FLIP', W/2, 258, 9, '#a89870', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 276, 12, C.gold, 'center');
+}
+
+function drawTrophy(x,y,s){
+  s=s||1;
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  px(-16,-30,32,20,C.gold);
+  px(-16,-30,32,4,'#fff6c8');
+  px(-22,-28,6,12,C.gold); px(16,-28,6,12,C.gold);
+  px(-5,-10,10,12,'#c9a010');
+  px(-14,2,28,6,C.gold);
+  px(-18,8,36,7,'#c9a010');
+  px(-8,-24,6,8,'#fff6c8');
+  ctx.restore();
+}
+
+function drawOverlay(){
+  if(state==='dead'){
+    ctx.fillStyle='rgba(20,10,10,.93)'; ctx.fillRect(0,0,W,H);
+    const w = 1 + Math.sin(frame*0.4)*0.06;
+    ctx.save(); ctx.translate(W/2,110); ctx.scale(w,w);
+    txtS('AAAAAH!', 0, 0, 34, C.hot, 'center');
+    ctx.restore();
+    txtS('THE SOMBYS GOT YOU', W/2, 150, 13, '#c9a8a0', 'center');
+    txtS('SCORE '+String(score).padStart(7,'0'), W/2, 182, 12, C.paper, 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 236, 11, '#a89870', 'center');
+  }
+  if(state==='won'){
+    ctx.fillStyle='#2a2a55'; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<50;i++){
+      const x=(i*83+frame)%W, y=(i*37+frame*2)%H;
+      px(x,y,2,2, i%3 ? C.gold : '#ff9a3a');
+    }
+    txtS('YOU MADE IT TO HOBART!', W/2, 56, 20, C.gold, 'center');
+    drawTrophy(W/2, 150, 1.7);
+    txtS('+1,000,000', W/2, 196, 20, C.paper, 'center');
+    txtS('FINAL SCORE '+String(score).padStart(7,'0'), W/2, 224, 13, C.gold, 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 258, 11, C.paper, 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,30,'rgba(20,18,10,.8)');
+    txtS('THE ROAD TO HOBART', W/2, HUD_H+12, 11, C.gold, 'center');
+    txtS('STAY ON THE ROAD. BOSTS ARE OUT IN THE DIRT', W/2, HUD_H+25, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#171a12'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='howto'){ drawHowTo(); return; }
+  if(state==='dead'||state==='won'){ drawOverlay(); return; }
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,HUD_H,W,H-HUD_H); ctx.clip();
+  drawGround();
+  drawRoad();
+  for(const b of BOOSTS) drawBoost(b);
+  for(const r of RAMPS) drawRamp(r);
+  drawHobart();
+  for(const z of zombies) drawZombie(z);
+  for(const b of zbullets){
+    const X=sx(b.x), Y=sy(b.y);
+    px(X-2,Y-2,5,5,'#8fe0a0'); px(X-1,Y-1,3,3,'#e0ffe8');
+  }
+  for(const b of bullets){
+    const X=sx(b.x), Y=sy(b.y);
+    px(X-2,Y-2,5,5,C.gold); px(X-1,Y-1,3,3,'#fff6c8');
+  }
+  drawCar(car);
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/14); px(sx(s.x),sy(s.y),2,2,s.c); ctx.globalAlpha=1; }
+  drawNight();
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/25);
+    txtS(p.s, sx(p.x), sy(p.y), 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+  ctx.restore();
+
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
