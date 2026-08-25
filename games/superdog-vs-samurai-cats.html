@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Super Dog v Samurai Cats</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0a0810;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #2a1c10,0 0 40px rgba(0,0,0,.8);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;bottom:3vh;pointer-events:auto;display:flex;align-items:center;
+    justify-content:center;color:#ffe9c0;font-weight:bold;font-family:inherit;
+    border:3px solid rgba(255,233,192,.45);background:rgba(30,20,12,.42);
+    border-radius:14px;user-select:none;-webkit-user-select:none;}
+  .btn:active,.btn.on{background:rgba(255,210,63,.55);border-color:#ffd23f;color:#2a1c10;}
+  #bL{left:2.5vw;width:15vh;height:15vh;font-size:7vh;}
+  #bR{left:calc(2.5vw + 17vh);width:15vh;height:15vh;font-size:7vh;}
+  #bS{right:calc(2.5vw + 19vh);width:17vh;height:15vh;font-size:3vh;letter-spacing:1px;}
+  #bJ{right:2.5vw;width:17vh;height:15vh;font-size:3.6vh;letter-spacing:1px;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#0a0810;color:#ffd23f;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bS">SHIELD</div>
+  <div class="btn" id="bJ">JUMP</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   SUPER DOG v SAMURAI CATS
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W * SC; cv.height = H * SC;
+ctx.setTransform(SC, 0, 0, SC, 0, 0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  cv.style.width  = Math.floor(W * s) + 'px';
+  cv.style.height = Math.floor(H * s) + 'px';
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+resize();
+
+/* ---------- palette ---------- */
+const C = {
+  sky1:'#241a2e', sky2:'#120d1a',
+  brick:'#a4622c', brickDark:'#5f3517', brickLine:'#3d2110',
+  plank:'#b5722f', plankDark:'#4a2a10',
+  cat:'#17171b', catDark:'#0c0c0f', fur:'#d98b33',
+  dog:'#f0dbb4', patch:'#b5722f', cape:'#2f6ad2', star:'#ffd23f',
+  shield:'#6fe3ff', blade:'#5f9bea', bow:'#8a5a24',
+  hud:'#a4622c', ink:'#1b1109', paper:'#ffe9c0', danger:'#ff4d3d'
+};
+
+/* ---------- audio ---------- */
+let AC = null;
+function beep(freq, dur, type, vol){
+  if(!AC) return;
+  try{
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    g.gain.value = (vol === undefined ? 0.07 : vol);
+    o.connect(g); g.connect(AC.destination);
+    const t = AC.currentTime;
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur);
+  }catch(e){}
+}
+function sweep(f1, f2, dur, type){
+  if(!AC) return;
+  try{
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'square';
+    const t = AC.currentTime;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t + dur);
+    g.gain.setValueAtTime(0.07, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + dur);
+  }catch(e){}
+}
+function noise(dur, vol){
+  if(!AC) return;
+  try{
+    const n = Math.floor(AC.sampleRate * dur);
+    const buf = AC.createBuffer(1, n, AC.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i = 0; i < n; i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+    const src = AC.createBufferSource(), g = AC.createGain();
+    src.buffer = buf; g.gain.value = vol || 0.14;
+    src.connect(g); g.connect(AC.destination); src.start();
+  }catch(e){}
+}
+function initAudio(){
+  if(AC) return;
+  try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+}
+
+/* ---------- input ---------- */
+const keys = { l:false, r:false, j:false, s:false };
+let jumpEdge = false, shieldEdge = false, anyPress = false;
+
+const KEYMAP = {
+  ArrowLeft:'l', KeyA:'l',
+  ArrowRight:'r', KeyD:'r',
+  Space:'j', ArrowUp:'j', KeyW:'j', KeyZ:'j',
+  ShiftLeft:'s', ShiftRight:'s', KeyX:'s', ArrowDown:'s', KeyS:'s'
+};
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.code];
+  initAudio();
+  if(k){
+    e.preventDefault();
+    if(k === 'j' && !keys.j) jumpEdge = true;
+    if(k === 's' && !keys.s) shieldEdge = true;
+    keys[k] = true;
+  }
+  anyPress = true;
+});
+addEventListener('keyup', e => {
+  const k = KEYMAP[e.code];
+  if(k){ e.preventDefault(); keys[k] = false; }
+});
+
+function bindBtn(id, key){
+  const el = document.getElementById(id);
+  const on = e => {
+    e.preventDefault(); initAudio(); anyPress = true;
+    if(key === 'j' && !keys.j) jumpEdge = true;
+    if(key === 's' && !keys.s) shieldEdge = true;
+    keys[key] = true; el.classList.add('on');
+  };
+  const off = e => { e.preventDefault(); keys[key] = false; el.classList.remove('on'); };
+  el.addEventListener('touchstart', on, {passive:false});
+  el.addEventListener('touchend', off, {passive:false});
+  el.addEventListener('touchcancel', off, {passive:false});
+  el.addEventListener('mousedown', on);
+  addEventListener('mouseup', off);
+}
+bindBtn('bL','l'); bindBtn('bR','r'); bindBtn('bJ','j'); bindBtn('bS','s');
+cv.addEventListener('touchstart', e => { e.preventDefault(); initAudio(); anyPress = true; }, {passive:false});
+cv.addEventListener('mousedown', () => { initAudio(); anyPress = true; });
+
+/* ---------- physics constants ---------- */
+const GRAV = 0.24, JUMP = -5.45, MAXFALL = 6.2, SPEED = 1.85;
+const FLOOR_Y = 270, CEIL_Y = 28;
+const PW = 16, PH = 20;          // player size
+const EW = 16, EH = 22;          // cat size
+const SHIELD_ON = 60, SHIELD_CD = 180;   // 1 sec active, 3 sec cooldown
+
+/* ---------- levels ---------- */
+/* tiers: 222 (low) 174 (mid) 126 (high) — each 48px, exactly one jump */
+const LEVELS = [
+  { name:'THE BACK ALLEY',
+    hint:'JUMP ON TOP OF A BOMB CAT TO SQUASH IT',
+    plats:[{x:70,y:222,w:90},{x:320,y:222,w:100}],
+    cats:[{t:'bomb',p:-1,x:390},{t:'bomb',p:0,x:100}] },
+
+  { name:'ARROW STREET',
+    hint:'SHIELD BOUNCES ARROWS BACK AT THE ARCHER',
+    plats:[{x:40,y:222,w:110},{x:200,y:174,w:100},{x:370,y:222,w:90}],
+    cats:[{t:'bow',p:2,x:400},{t:'bomb',p:-1,x:230}] },
+
+  { name:'THE SWORD YARD',
+    hint:'SWORD CATS ONLY DIE ON YOUR SHIELD',
+    plats:[{x:100,y:222,w:120},{x:280,y:222,w:120}],
+    cats:[{t:'sword',p:-1,x:250},{t:'sword',p:1,x:330}] },
+
+  { name:'THE HIDEOUT',
+    hint:'ALL THREE CATS. USE THE RIGHT MOVE ON EACH',
+    plats:[{x:50,y:222,w:130},{x:190,y:174,w:110},{x:310,y:222,w:140}],
+    cats:[{t:'bomb',p:0,x:90},{t:'sword',p:1,x:220},{t:'bow',p:2,x:400}] },
+
+  { name:'THE HIGH ROOF',
+    hint:'BLASTS HURT CATS TOO. SHIELD WONT STOP BOMBS',
+    plats:[{x:30,y:222,w:90},{x:160,y:174,w:90},{x:265,y:126,w:90},{x:380,y:222,w:80}],
+    cats:[{t:'sword',p:0,x:60},{t:'bomb',p:1,x:200},{t:'bow',p:2,x:300},{t:'bow',p:3,x:410}] },
+
+  { name:'THE SHOGUN CAT',
+    hint:'BOUNCE HIS OWN ARROWS BACK. THREE HITS',
+    plats:[{x:55,y:222,w:95},{x:330,y:222,w:95}],
+    cats:[], boss:true }
+];
+
+/* ---------- game state ---------- */
+let state = 'title';       // title | howto | play | clear | dead | over | win
+let timer = 0, level = 0, lives = 3, score = 0, best = 0;
+let frame = 0, shake = 0, hintT = 0;
+let plats = [], cats = [], bombs = [], arrows = [], blasts = [], sparks = [];
+let boss = null;
+let player = null;
+let starfield = [];
+
+for(let i = 0; i < 40; i++){
+  starfield.push({ x:Math.random()*W, y:CEIL_Y + Math.random()*(FLOOR_Y-CEIL_Y-40), s:Math.random()<0.4?2:1 });
+}
+
+function rectsHit(a, b){
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function surfaceOf(pIdx){ return pIdx < 0 ? FLOOR_Y : plats[pIdx].y; }
+
+function loadLevel(n){
+  const L = LEVELS[n];
+  plats = L.plats.map(p => ({ x:p.x, y:p.y, w:p.w, h:8 }));
+  cats = []; bombs = []; arrows = []; blasts = []; sparks = []; boss = null;
+
+  (L.cats || []).forEach(c => {
+    const surf = surfaceOf(c.p);
+    const lo = c.p < 0 ? 8 : plats[c.p].x + 1;
+    const hi = (c.p < 0 ? W - 8 : plats[c.p].x + plats[c.p].w - 1) - EW;
+    cats.push({
+      t:c.t, x:c.x, y:surf - EH, w:EW, h:EH,
+      dir:-1, lo:lo, hi:hi, surf:surf,
+      cd: 60 + Math.floor(Math.random()*60), alive:true, flash:0, charge:0
+    });
+  });
+
+  if(L.boss){
+    boss = { x:222, y:FLOOR_Y - 40, w:34, h:40, dir:-1, hp:3, cd:90, mode:0, flash:0, hurt:0 };
+  }
+
+  player = {
+    x:22, y:FLOOR_Y - PH, vx:0, vy:0, w:PW, h:PH,
+    dir:1, onGround:true, shield:0, cd:0, grace:70, anim:0
+  };
+  hintT = 260;
+}
+
+function startGame(){
+  level = 0; lives = 3; score = 0;
+  loadLevel(0);
+  state = 'play'; timer = 0;
+}
+
+/* ---------- spawners ---------- */
+function spawnBomb(x, y, dir){
+  bombs.push({ x:x, y:y, vx:dir * 1.5, vy:-3.1, w:8, h:8, st:'fly', t:0 });
+  beep(180, 0.08, 'square');
+}
+function spawnArrow(x, y, dir, friendly){
+  arrows.push({ x:x, y:y, vx:dir * 2.6, w:12, h:4, friendly: !!friendly });
+  beep(friendly ? 900 : 620, 0.06, 'square', 0.05);
+}
+function blast(x, y){
+  blasts.push({ x:x, y:y, r:6, t:0 });
+  noise(0.32, 0.2); sweep(220, 40, 0.35, 'sawtooth');
+  shake = 12;
+  for(let i = 0; i < 14; i++){
+    sparks.push({ x:x, y:y, vx:(Math.random()*2-1)*2.6, vy:(Math.random()*2-1)*2.6, t:26,
+                  c: Math.random() < 0.5 ? '#ffd23f' : C.danger });
+  }
+}
+function puff(x, y, col){
+  for(let i = 0; i < 10; i++){
+    sparks.push({ x:x, y:y, vx:(Math.random()*2-1)*1.8, vy:-Math.random()*2.2, t:22, c:col||'#ffffff' });
+  }
+}
+
+function killCat(c, pts){
+  c.alive = false;
+  score += pts;
+  puff(c.x + c.w/2, c.y + c.h/2, C.fur);
+  beep(520, 0.09, 'square'); setTimeout(() => beep(760, 0.09, 'square'), 60);
+}
+
+function hurtPlayer(){
+  if(player.grace > 0 || state !== 'play') return false;
+  state = 'dead'; timer = 0; lives--;
+  shake = 16;
+  sweep(400, 60, 0.6, 'sawtooth'); noise(0.3, 0.15);
+  puff(player.x + player.w/2, player.y + player.h/2, C.cape);
+  return true;
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake > 0) shake--;
+  if(hintT > 0) hintT--;
+
+  if(state === 'title'){
+    if(anyPress){ anyPress = false; state = 'howto'; timer = 0; beep(660,0.08); }
+    return;
+  }
+  if(state === 'howto'){
+    timer++;
+    if(anyPress && timer > 20){ anyPress = false; startGame(); beep(880,0.1); }
+    return;
+  }
+  if(state === 'over' || state === 'win'){
+    timer++;
+    if(anyPress && timer > 60){ anyPress = false; state = 'title'; timer = 0; }
+    return;
+  }
+  if(state === 'clear'){
+    timer++;
+    if(timer > 110){
+      level++;
+      if(level >= LEVELS.length){
+        best = Math.max(best, score);
+        state = 'win'; timer = 0;
+        [523,659,784,1046].forEach((f,i) => setTimeout(() => beep(f,0.22,'square'), i*140));
+      } else {
+        loadLevel(level); state = 'play'; timer = 0;
+      }
+    }
+    return;
+  }
+  if(state === 'dead'){
+    timer++;
+    updateParticles();
+    if(timer > 70){
+      if(lives <= 0){
+        best = Math.max(best, score);
+        state = 'over'; timer = 0;
+        [440,330,262,196].forEach((f,i) => setTimeout(() => beep(f,0.25,'triangle'), i*160));
+      } else {
+        loadLevel(level); state = 'play'; timer = 0;
+      }
+    }
+    return;
+  }
+
+  /* ----- PLAY ----- */
+  anyPress = false;
+  const p = player;
+  if(p.grace > 0) p.grace--;
+
+  /* shield */
+  if(shieldEdge){
+    shieldEdge = false;
+    if(p.shield <= 0 && p.cd <= 0){
+      p.shield = SHIELD_ON;
+      beep(1200, 0.12, 'sine', 0.08); beep(900, 0.16, 'sine', 0.05);
+    } else if(p.cd > 0){
+      beep(140, 0.07, 'square', 0.04);
+    }
+  }
+  if(p.shield > 0){ p.shield--; if(p.shield === 0) p.cd = SHIELD_CD; }
+  else if(p.cd > 0){ p.cd--; if(p.cd === 0) beep(1000, 0.07, 'sine', 0.05); }
+
+  /* move */
+  p.vx = 0;
+  if(keys.l && !keys.r){ p.vx = -SPEED; p.dir = -1; }
+  if(keys.r && !keys.l){ p.vx =  SPEED; p.dir =  1; }
+  if(p.vx !== 0 && p.onGround) p.anim += 0.22; else p.anim = 0;
+
+  if(jumpEdge){
+    jumpEdge = false;
+    if(p.onGround){ p.vy = JUMP; p.onGround = false; beep(420,0.09,'square',0.05); setTimeout(()=>beep(620,0.07,'square',0.04),50); }
+  }
+
+  p.vy = Math.min(p.vy + GRAV, MAXFALL);
+  p.x += p.vx;
+  if(p.x < 4) p.x = 4;
+  if(p.x + p.w > W - 4) p.x = W - 4 - p.w;
+
+  const prevBottom = p.y + p.h;
+  p.y += p.vy;
+  p.onGround = false;
+
+  if(p.y + p.h >= FLOOR_Y){ p.y = FLOOR_Y - p.h; p.vy = 0; p.onGround = true; }
+  if(p.y < CEIL_Y){ p.y = CEIL_Y; p.vy = 0.4; }
+
+  /* one-way platforms */
+  if(p.vy >= 0){
+    for(const pl of plats){
+      if(p.x + p.w > pl.x + 1 && p.x < pl.x + pl.w - 1 &&
+         prevBottom <= pl.y + 2 && p.y + p.h >= pl.y){
+        p.y = pl.y - p.h; p.vy = 0; p.onGround = true;
+      }
+    }
+  }
+
+  /* ----- cats ----- */
+  for(const c of cats){
+    if(!c.alive) continue;
+    if(c.flash > 0) c.flash--;
+    const pcx = p.x + p.w/2, ccx = c.x + c.w/2;
+    const sameLevel = Math.abs((p.y + p.h) - (c.y + c.h)) < 10;
+
+    if(c.t === 'bomb'){
+      c.x += c.dir * 0.5;
+      if(c.x < c.lo || c.x > c.hi){ c.dir *= -1; c.x = Math.max(c.lo, Math.min(c.hi, c.x)); }
+      c.cd--;
+      if(c.cd <= 0 && Math.abs(pcx - ccx) < 230){
+        c.dir = pcx < ccx ? -1 : 1;
+        spawnBomb(ccx - 4, c.y + 4, c.dir);
+        c.cd = 130 + Math.floor(Math.random()*60);
+      }
+    }
+    else if(c.t === 'bow'){
+      c.x += c.dir * 0.3;
+      if(c.x < c.lo || c.x > c.hi){ c.dir *= -1; c.x = Math.max(c.lo, Math.min(c.hi, c.x)); }
+      c.cd--;
+      if(c.cd === 26) c.dir = pcx < ccx ? -1 : 1;   // aim / telegraph
+      if(c.cd <= 0){
+        if(Math.abs((p.y + p.h) - (c.y + c.h)) < 46){
+          c.dir = pcx < ccx ? -1 : 1;
+          spawnArrow(ccx + c.dir*8, c.y + 11, c.dir, false);
+          c.cd = 105 + Math.floor(Math.random()*40);
+        } else {
+          c.cd = 30;
+        }
+      }
+    }
+    else if(c.t === 'sword'){
+      const chasing = sameLevel && Math.abs(pcx - ccx) < 105;
+      if(chasing){
+        c.dir = pcx < ccx ? -1 : 1;
+        c.x += c.dir * 1.35; c.charge = 8;
+      } else {
+        c.x += c.dir * 0.65;
+        if(c.charge > 0) c.charge--;
+      }
+      if(c.x < c.lo || c.x > c.hi){ c.dir *= -1; c.x = Math.max(c.lo, Math.min(c.hi, c.x)); }
+    }
+
+    /* --- contact rules (straight from the design doc) --- */
+    if(rectsHit(p, c)){
+      const stomp = p.vy > 0 && (prevBottom <= c.y + 8);
+      if(c.t === 'bomb' && stomp){
+        killCat(c, 100); p.vy = -3.8;
+      } else if(p.shield > 0){
+        /* force field destroys sword cats on contact; also saves you from others */
+        killCat(c, c.t === 'sword' ? 200 : 150);
+        p.vx = 0;
+      } else if(stomp && c.t === 'bow'){
+        /* small mercy: a clean stomp on an archer knocks it out */
+        killCat(c, 300); p.vy = -3.8;
+      } else {
+        if(hurtPlayer()) return;
+      }
+    }
+  }
+
+  /* ----- boss ----- */
+  if(boss && boss.hp > 0){
+    const b = boss;
+    if(b.flash > 0) b.flash--;
+    if(b.hurt > 0) b.hurt--;
+    const pcx = p.x + p.w/2, bcx = b.x + b.w/2;
+    b.dir = pcx < bcx ? -1 : 1;
+    if(b.hurt === 0) b.x += b.dir * 0.42;
+    b.x = Math.max(10, Math.min(W - 10 - b.w, b.x));
+
+    b.cd--;
+    if(b.cd <= 0){
+      b.mode = (b.mode + 1) % 3;
+      if(b.mode === 0 || b.mode === 2){
+        spawnArrow(bcx + b.dir*14, b.y + 18, b.dir, false);
+        b.cd = 80 - (3 - b.hp) * 12;
+      } else {
+        spawnBomb(bcx - 4, b.y + 6, b.dir);
+        b.cd = 105 - (3 - b.hp) * 12;
+      }
+    }
+    if(rectsHit(p, b)){
+      if(p.shield > 0){ p.x += (p.x < b.x ? -14 : 14); beep(300,0.1,'square'); }
+      else { if(hurtPlayer()) return; }
+    }
+  }
+
+  /* ----- bombs ----- */
+  for(const bo of bombs){
+    if(bo.st === 'fly'){
+      bo.vy = Math.min(bo.vy + 0.19, 5);
+      bo.x += bo.vx; bo.y += bo.vy;
+      if(bo.x < 3 || bo.x + bo.w > W - 3){ bo.vx *= -0.6; bo.x = Math.max(3, Math.min(W-3-bo.w, bo.x)); }
+      let landed = false;
+      if(bo.y + bo.h >= FLOOR_Y){ bo.y = FLOOR_Y - bo.h; landed = true; }
+      for(const pl of plats){
+        if(bo.vy > 0 && bo.x + bo.w > pl.x && bo.x < pl.x + pl.w &&
+           bo.y + bo.h >= pl.y && bo.y + bo.h <= pl.y + 12){ bo.y = pl.y - bo.h; landed = true; }
+      }
+      if(rectsHit(p, bo)){ bo.st = 'boom'; }
+      else if(landed){ bo.st = 'fuse'; bo.t = 34; bo.vx = 0; }
+    } else if(bo.st === 'fuse'){
+      bo.t--;
+      if(bo.t % 8 === 0) beep(1000, 0.04, 'square', 0.04);
+      if(bo.t <= 0) bo.st = 'boom';
+      if(rectsHit(p, bo)) bo.st = 'boom';
+    }
+    if(bo.st === 'boom'){
+      const cx = bo.x + bo.w/2, cy = bo.y + bo.h/2;
+      blast(cx, cy);
+      bo.dead = true;
+      /* blast kills cats too */
+      for(const c of cats){
+        if(!c.alive) continue;
+        const dx = (c.x + c.w/2) - cx, dy = (c.y + c.h/2) - cy;
+        if(dx*dx + dy*dy < 34*34) killCat(c, 150);
+      }
+      const dx = (p.x + p.w/2) - cx, dy = (p.y + p.h/2) - cy;
+      if(dx*dx + dy*dy < 30*30){ if(hurtPlayer()) return; }
+    }
+  }
+  bombs = bombs.filter(b => !b.dead);
+
+  /* ----- arrows ----- */
+  for(const a of arrows){
+    a.x += a.vx;
+    if(a.x < -20 || a.x > W + 20){ a.dead = true; continue; }
+    const box = { x:a.x, y:a.y, w:a.w, h:a.h };
+
+    if(!a.friendly && rectsHit(p, box)){
+      if(p.shield > 0){
+        /* THE ricochet rule */
+        a.vx = -a.vx * 1.25; a.friendly = true;
+        a.x += a.vx * 3;
+        score += 25;
+        beep(1400, 0.09, 'sine', 0.09); beep(1900, 0.07, 'sine', 0.05);
+        puff(p.x + p.w/2, p.y + p.h/2, C.shield);
+      } else { if(hurtPlayer()) return; }
+    }
+    if(a.friendly){
+      for(const c of cats){
+        if(!c.alive) continue;
+        if(rectsHit(c, box)){ killCat(c, c.t === 'bow' ? 300 : 200); a.dead = true; break; }
+      }
+      if(boss && boss.hp > 0 && !a.dead && rectsHit(boss, box)){
+        boss.hp--; boss.flash = 26; boss.hurt = 40; a.dead = true;
+        score += 500; shake = 10;
+        puff(boss.x + boss.w/2, boss.y + 14, C.fur);
+        sweep(700, 200, 0.3, 'square');
+        if(boss.hp <= 0){
+          score += 2000;
+          for(let i = 0; i < 6; i++) setTimeout(() => blast(boss.x + 6 + Math.random()*22, boss.y + Math.random()*34), i*110);
+        }
+      }
+    }
+  }
+  arrows = arrows.filter(a => !a.dead);
+
+  updateParticles();
+
+  /* ----- level clear ----- */
+  const catsLeft = cats.some(c => c.alive);
+  const bossLeft = boss ? boss.hp > 0 : false;
+  if(!catsLeft && !bossLeft && blasts.length === 0){
+    score += 500 + lives * 100;
+    state = 'clear'; timer = 0;
+    [660,880,1100].forEach((f,i) => setTimeout(() => beep(f,0.16,'square'), i*110));
+  }
+}
+
+function updateParticles(){
+  for(const b of blasts){ b.t++; b.r = 6 + b.t * 2.4; }
+  blasts = blasts.filter(b => b.t < 14);
+  for(const s of sparks){ s.x += s.vx; s.y += s.vy; s.vy += 0.14; s.t--; }
+  sparks = sparks.filter(s => s.t > 0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x, y, w, h, col){ ctx.fillStyle = col; ctx.fillRect(x|0, y|0, w|0, h|0); }
+
+function txt(s, x, y, size, col, align){
+  ctx.fillStyle = col;
+  ctx.font = 'bold ' + size + 'px "Courier New",monospace';
+  ctx.textAlign = align || 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(s, x, y);
+}
+function txtShadow(s, x, y, size, col, align){
+  txt(s, x + 1, y + 1, size, 'rgba(0,0,0,.6)', align);
+  txt(s, x, y, size, col, align);
+}
+
+/* ---- SUPER DOG ---- */
+function drawDog(x, y, dir, walk, shielded){
+  ctx.save();
+  ctx.translate((x|0) + PW/2, y|0);
+  if(dir < 0) ctx.scale(-1, 1);
+  const bob = walk ? (Math.floor(walk) % 2) : 0;
+
+  px(-10, 4, 5, 12, C.cape);            // cape
+  px(-9, 14, 4, 4, '#1f4ea0');
+  px(-8, 0, 11, 9, C.dog);              // head
+  px(-8, -2, 4, 4, C.patch);            // ear
+  px(2, 4, 6, 4, C.dog);                // snout
+  px(7, 5, 2, 2, '#241a14');            // nose
+  px(-1, 3, 2, 2, '#241a14');           // eye
+  px(-6, 9, 11, 7, C.dog);              // body
+  px(-2, 10, 5, 4, C.patch);            // patch
+  px(-5, 10, 3, 3, C.star);             // star badge
+  px(-4, 9, 1, 5, C.star);
+  px(-5 + bob, 16, 4, 4, C.dog);        // legs
+  px(1 - bob, 16, 4, 4, C.dog);
+  ctx.restore();
+
+  if(shielded){
+    ctx.save();
+    ctx.strokeStyle = C.shield;
+    ctx.globalAlpha = 0.55 + 0.35 * Math.sin(frame * 0.5);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + PW/2, y + PH/2, 17, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.16; ctx.fillStyle = C.shield; ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ---- SAMURAI CATS ---- */
+function drawCat(c){
+  const x = c.x|0, y = c.y|0, dir = c.dir;
+  ctx.save();
+  ctx.translate(x + EW/2, y);
+  if(dir < 0) ctx.scale(-1, 1);
+  const body = c.flash > 0 && (frame % 4 < 2) ? '#ffffff' : C.cat;
+
+  px(-6, -4, 12, 3, body);              // hat crown
+  px(-8, -1, 16, 3, body);              // hat brim
+  px(-6, 2, 12, 8, body);               // head
+  px(-8, 4, 16, 3, C.fur);              // whisker band
+  px(-4, 4, 2, 2, '#ffffff');           // eyes
+  px(2, 4, 2, 2, '#ffffff');
+  px(-4, 4, 1, 2, '#000');
+  px(2, 4, 1, 2, '#000');
+  px(-6, 10, 12, 8, body);              // body
+  px(-5, 18, 4, 4, body);               // legs
+  px(1, 18, 4, 4, body);
+
+  if(c.t === 'sword'){
+    px(-8, 11, 3, 3, C.fur);
+    px(6, 11, 3, 3, C.fur);
+    px(8, 3, 2, 11, C.blade);           // blade
+    px(7, 13, 4, 2, C.bow);             // guard
+    px(8, 15, 2, 3, '#2a1c10');
+  } else if(c.t === 'bow'){
+    ctx.strokeStyle = C.bow; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(6, 11, 8, -1.15, 1.15); ctx.stroke();
+    const aiming = (c.cd !== undefined && c.cd <= 26 && c.cd > 0);
+    ctx.strokeStyle = '#e8e0cc'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    if(aiming){ ctx.moveTo(9.5, 4); ctx.lineTo(3, 11); ctx.lineTo(9.5, 18); }
+    else { ctx.moveTo(9.5, 4); ctx.lineTo(9.5, 18); }
+    ctx.stroke();
+    if(aiming){
+      px(3, 10, 9, 2, '#e8e0cc');
+      if(frame % 6 < 3) px(-2, -12, 3, 7, C.danger);
+    }
+    px(-8, 11, 3, 3, C.fur);
+  } else {
+    px(-9, 10, 4, 4, C.fur);            // paws
+    px(6, 10, 3, 3, C.fur);
+    px(-12, 9, 5, 5, '#0d0d10');        // held bomb
+    px(-10, 7, 1, 2, C.bow);
+    px(-10, 5, 2, 2, frame % 8 < 4 ? '#ffe93f' : '#ff8a1f');
+  }
+  ctx.restore();
+}
+
+function drawBoss(b){
+  const x = b.x|0, y = b.y|0;
+  ctx.save();
+  ctx.translate(x + b.w/2, y);
+  if(b.dir < 0) ctx.scale(-1, 1);
+  const body = b.flash > 0 && (frame % 4 < 2) ? '#ffffff' : '#101014';
+
+  px(-13, -8, 26, 5, body);             // huge hat
+  px(-18, -3, 36, 4, body);
+  px(-4, -13, 8, 5, '#c0392b');         // crest
+  px(-12, 1, 24, 13, body);             // head
+  px(-16, 5, 32, 5, C.fur);
+  px(-8, 5, 4, 4, C.danger);            // red eyes
+  px(4, 5, 4, 4, C.danger);
+  px(-13, 14, 26, 16, body);            // body
+  px(-6, 17, 12, 8, C.fur);             // chest plate
+  px(-11, 30, 8, 10, body);             // legs
+  px(3, 30, 8, 10, body);
+  px(16, 4, 3, 22, C.blade);            // giant sword
+  px(14, 25, 7, 3, C.bow);
+  ctx.restore();
+
+  /* hp pips */
+  for(let i = 0; i < 3; i++){
+    px(x + 4 + i*11, y - 20, 9, 5, i < b.hp ? C.danger : '#3a2a2a');
+  }
+}
+
+function drawWorld(){
+  /* background */
+  const g = ctx.createLinearGradient(0, CEIL_Y, 0, FLOOR_Y);
+  g.addColorStop(0, C.sky1); g.addColorStop(1, C.sky2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  /* moon + stars */
+  px(410, 46, 26, 26, '#f4e7c0');
+  px(404, 52, 26, 26, C.sky1);
+  ctx.globalAlpha = 0.6;
+  for(const s of starfield) px(s.x, s.y, s.s, s.s, '#e8dcc0');
+  ctx.globalAlpha = 1;
+
+  /* distant hideout wall */
+  ctx.globalAlpha = 0.16;
+  for(let yy = CEIL_Y; yy < FLOOR_Y; yy += 14){
+    for(let xx = (yy/14 % 2) * 16; xx < W; xx += 32){
+      px(xx, yy, 30, 12, C.brick);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  /* platforms — planks with X bracing, as drawn */
+  for(const p of plats){
+    px(p.x, p.y, p.w, p.h, C.plank);
+    px(p.x, p.y, p.w, 1, '#d8934a');
+    px(p.x, p.y + p.h - 1, p.w, 1, C.plankDark);
+    ctx.strokeStyle = C.plankDark; ctx.lineWidth = 1;
+    for(let i = 0; i < Math.floor(p.w / 16); i++){
+      const bx = p.x + 2 + i*16;
+      ctx.beginPath();
+      ctx.moveTo(bx, p.y + 1.5); ctx.lineTo(bx + 12, p.y + p.h - 1.5);
+      ctx.moveTo(bx + 12, p.y + 1.5); ctx.lineTo(bx, p.y + p.h - 1.5);
+      ctx.stroke();
+    }
+  }
+
+  /* floor bricks with dots */
+  px(0, FLOOR_Y, W, H - FLOOR_Y, C.brick);
+  px(0, FLOOR_Y, W, 2, '#c87c3a');
+  for(let row = 0; row < 3; row++){
+    const yy = FLOOR_Y + 2 + row * 10;
+    for(let i = 0; i < 8; i++){
+      const xx = (row % 2) * 30 + i * 60;
+      px(xx, yy, 2, 9, C.brickLine);
+      px(xx + 14, yy + 3, 2, 2, C.brickDark);
+      px(xx + 40, yy + 5, 2, 2, C.brickDark);
+    }
+    px(0, yy + 9, W, 1, C.brickLine);
+  }
+}
+
+function drawHUD(){
+  px(0, 0, W, CEIL_Y, '#22160c');
+  px(0, CEIL_Y - 2, W, 2, C.brickLine);
+  px(6, 4, 150, 20, C.hud);
+  px(W - 156, 4, 150, 20, C.hud);
+  txtShadow('LIVES:' + Math.max(0, lives), 14, 15, 13, C.ink);
+
+  /* little dog heads for lives */
+  for(let i = 0; i < Math.max(0, lives); i++) px(96 + i*17, 9, 11, 10, C.dog);
+
+  txtShadow('LEVEL:' + (level + 1), W - 148, 15, 13, C.ink);
+  txtShadow(String(score).padStart(6, '0'), W - 14, 15, 13, C.ink, 'right');
+
+  /* shield meter */
+  const p = player;
+  const label = p.shield > 0 ? 'SHIELD ON' : (p.cd > 0 ? 'CHARGING' : 'SHIELD READY');
+  const col = p.shield > 0 ? C.shield : (p.cd > 0 ? '#7a6a55' : '#8dffb0');
+  txtShadow(label, W/2, 15, 10, col, 'center');
+  const pct = p.shield > 0 ? p.shield / SHIELD_ON : (p.cd > 0 ? 1 - p.cd / SHIELD_CD : 1);
+  px(W/2 - 40, 21, 80, 3, '#3a2a1a');
+  px(W/2 - 40, 21, 80 * pct, 3, col);
+}
+
+function drawEntities(){
+  /* bombs */
+  for(const b of bombs){
+    const flick = b.st === 'fuse' && (b.t % 6 < 3);
+    px(b.x, b.y, 8, 8, flick ? '#ff6a4a' : '#0d0d10');
+    px(b.x + 2, b.y + 1, 2, 2, '#3a3a44');
+    px(b.x + 6, b.y - 2, 1, 2, C.bow);
+    px(b.x + 6, b.y - 4, 2, 2, frame % 6 < 3 ? '#ffe93f' : '#ff8a1f');
+  }
+  /* arrows */
+  for(const a of arrows){
+    const col = a.friendly ? C.shield : '#e8e0cc';
+    px(a.x, a.y, a.w, 2, col);
+    px(a.x + (a.vx > 0 ? a.w - 3 : 0), a.y - 1, 3, 4, a.friendly ? '#ffffff' : C.bow);
+  }
+  /* cats */
+  for(const c of cats) if(c.alive) drawCat(c);
+  if(boss && boss.hp > 0) drawBoss(boss);
+
+  /* player */
+  if(state === 'play' || state === 'clear'){
+    if(!(player.grace > 0 && frame % 6 < 3)) {
+      drawDog(player.x, player.y, player.dir, player.anim, player.shield > 0);
+    }
+  }
+
+  /* blasts */
+  for(const b of blasts){
+    ctx.globalAlpha = Math.max(0, 1 - b.t / 14);
+    ctx.fillStyle = b.t < 5 ? '#fff4c0' : (b.t < 9 ? '#ffb03a' : C.danger);
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  /* sparks */
+  for(const s of sparks){
+    ctx.globalAlpha = Math.min(1, s.t / 12);
+    px(s.x, s.y, 2, 2, s.c);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawBanner(cx, cy){
+  /* recreation of the hand-drawn banner: blue half + green half */
+  const bw = 300, bh = 62;
+  px(cx - bw/2, cy - bh/2, bw/2, bh, '#7cc4f0');
+  px(cx, cy - bh/2, bw/2, bh, '#8fd42a');
+  ctx.strokeStyle = '#12100c'; ctx.lineWidth = 3;
+  ctx.strokeRect(cx - bw/2, cy - bh/2, bw, bh);
+
+  /* star */
+  ctx.save(); ctx.translate(cx - 112, cy - 12);
+  ctx.fillStyle = C.star; ctx.strokeStyle = '#12100c'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for(let i = 0; i < 10; i++){
+    const r = i % 2 ? 7 : 16, a = -Math.PI/2 + i * Math.PI/5;
+    ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a)*r, Math.sin(a)*r);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+
+  txtShadow('SUPER', cx - 88, cy - 12, 17, '#12100c');
+  txtShadow('DOGS', cx - 128, cy + 14, 17, '#12100c');
+
+  /* fireball + sword divider */
+  ctx.fillStyle = '#e0325a'; ctx.beginPath(); ctx.arc(cx - 2, cy, 15, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = C.star; ctx.beginPath(); ctx.arc(cx - 2, cy, 7, 0, Math.PI*2); ctx.fill();
+  px(cx - 4, cy - 30, 4, 16, C.blade);
+  px(cx - 4, cy + 14, 4, 16, C.blade);
+
+  txtShadow('SAMURAI', cx + 22, cy - 12, 17, '#12100c');
+  txtShadow('CATS', cx + 22, cy + 14, 17, '#12100c');
+}
+
+function drawTitle(){
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#2b1c3a'); g.addColorStop(1, '#0d0a14');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 0.65;
+  for(const s of starfield) px(s.x, s.y * 0.9 + 10, s.s, s.s, '#e8dcc0');
+  ctx.globalAlpha = 1;
+
+  drawBanner(W/2, 66);
+
+  /* attract-mode showdown */
+  const t = Math.sin(frame * 0.05) * 8;
+  drawDog(96 + t, 176, 1, frame * 0.12, frame % 200 < 60);
+  drawCat({ x:300 - t, y:174, dir:-1, t:'sword', flash:0 });
+  drawCat({ x:352, y:174, dir:-1, t:'bow', flash:0 });
+  drawCat({ x:250 - t, y:174, dir:-1, t:'bomb', flash:0 });
+  px(0, 196, W, 4, C.plank);
+  px(0, 200, W, H - 200, C.brick);
+  for(let i = 0; i < 10; i++){ px(i*52, 204, 2, 20, C.brickLine); px(i*52 + 20, 210, 2, 2, C.brickDark); }
+  px(0, 224, W, 1, C.brickLine);
+
+  txtShadow('RUN THROUGH THE EVIL SAMURAI CATS HIDEOUT', W/2, 244, 11, '#c8b48a', 'center');
+  txtShadow('AND SAVE THE TOWN', W/2, 258, 11, '#c8b48a', 'center');
+  if(frame % 60 < 38) txtShadow('PRESS ANY BUTTON TO START', W/2, 282, 13, C.star, 'center');
+  if(best > 0) txtShadow('BEST ' + String(best).padStart(6,'0'), 10, 282, 10, '#8a7a5a');
+}
+
+function drawHowTo(){
+  ctx.fillStyle = '#0d0a14'; ctx.fillRect(0, 0, W, H);
+  px(14, 10, W - 28, H - 20, '#1a1424');
+  ctx.strokeStyle = C.plank; ctx.lineWidth = 2; ctx.strokeRect(14, 10, W - 28, H - 20);
+  txtShadow('HOW TO PLAY', W/2, 30, 16, C.star, 'center');
+
+  const rows = [
+    ['bomb',  'BOMB CAT',  'JUMP ON TOP OF IT'],
+    ['sword', 'SWORD CAT', 'TOUCH IT WITH YOUR SHIELD ON'],
+    ['bow',   'BOW CAT',   'SHIELD THE ARROW TO SEND IT BACK']
+  ];
+  rows.forEach((r, i) => {
+    const y = 62 + i * 46;
+    drawCat({ x:44, y:y, dir:1, t:r[0], flash:0 });
+    txtShadow(r[1], 82, y + 6, 12, C.fur);
+    txtShadow(r[2], 82, y + 20, 10, '#d8ccb0');
+  });
+
+  txtShadow('SHIELD LASTS 1 SEC, THEN RECHARGES FOR 3', W/2, 214, 10, C.shield, 'center');
+  txtShadow('IT DOES NOT STOP BOMB BLASTS', W/2, 228, 10, C.danger, 'center');
+  txtShadow('MOVE: ARROWS   JUMP: SPACE   SHIELD: X', W/2, 250, 10, '#8a7a5a', 'center');
+  if(frame % 60 < 38) txtShadow('PRESS ANY BUTTON TO FIGHT', W/2, 274, 13, C.star, 'center');
+}
+
+function drawOverlayText(){
+  if(state === 'clear'){
+    px(0, 120, W, 60, 'rgba(10,8,16,.82)');
+    txtShadow('LEVEL CLEAR', W/2, 142, 22, C.star, 'center');
+    txtShadow('SCORE ' + String(score).padStart(6,'0'), W/2, 166, 12, C.paper, 'center');
+  }
+  if(state === 'dead'){
+    px(0, 124, W, 52, 'rgba(10,8,16,.82)');
+    txtShadow(lives > 0 ? 'OUCH! TRY AGAIN' : 'THE CATS GOT YOU', W/2, 150, 18, C.danger, 'center');
+  }
+  if(state === 'over'){
+    ctx.fillStyle = 'rgba(8,6,12,.9)'; ctx.fillRect(0, 0, W, H);
+    txtShadow('GAME OVER', W/2, 110, 28, C.danger, 'center');
+    txtShadow('THE TOWN IS STILL IN TROUBLE', W/2, 146, 12, C.paper, 'center');
+    txtShadow('SCORE ' + String(score).padStart(6,'0'), W/2, 176, 14, C.star, 'center');
+    txtShadow('BEST  ' + String(best).padStart(6,'0'), W/2, 196, 12, '#8a7a5a', 'center');
+    if(timer > 60 && frame % 60 < 38) txtShadow('PRESS ANY BUTTON', W/2, 236, 12, C.paper, 'center');
+  }
+  if(state === 'win'){
+    ctx.fillStyle = '#0e1a12'; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 0.5;
+    for(const s of starfield) px(s.x, s.y, s.s, s.s, '#dff0c0');
+    ctx.globalAlpha = 1;
+    txtShadow('YOU SAVED THE TOWN!', W/2, 70, 24, C.star, 'center');
+    drawDog(W/2 - 8, 120, 1, frame * 0.14, frame % 40 < 20);
+    txtShadow('YOU ARE THE SUPER DOG', W/2, 178, 14, C.paper, 'center');
+    txtShadow('FINAL SCORE ' + String(score).padStart(6,'0'), W/2, 206, 14, C.fur, 'center');
+    if(timer > 60 && frame % 60 < 38) txtShadow('PRESS ANY BUTTON', W/2, 246, 12, C.paper, 'center');
+  }
+  if(state === 'play' && hintT > 0){
+    const a = Math.min(1, hintT / 60);
+    ctx.globalAlpha = a;
+    px(0, 34, W, 30, 'rgba(10,8,16,.75)');
+    txtShadow(LEVELS[level].name, W/2, 44, 11, C.fur, 'center');
+    txtShadow(LEVELS[level].hint, W/2, 57, 10, C.star, 'center');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if(shake > 0){
+    ctx.translate((Math.random()*2-1) * shake * 0.35, (Math.random()*2-1) * shake * 0.35);
+  }
+  ctx.fillStyle = '#0a0810'; ctx.fillRect(-8, -8, W + 16, H + 16);
+
+  if(state === 'title'){ drawTitle(); return; }
+  if(state === 'howto'){ drawHowTo(); return; }
+
+  drawWorld();
+  drawEntities();
+  drawHUD();
+  drawOverlayText();
+}
+
+/* ---------- loop ---------- */
+let last = performance.now(), acc = 0;
+const STEP = 1000 / 60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now - last, 100);
+  last = now;
+  while(acc >= STEP){ update(); acc -= STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
