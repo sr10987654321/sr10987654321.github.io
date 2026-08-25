@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Goat vs Troll - Deliver the Food</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#1a1426;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #7b5ea8,0 0 40px rgba(0,0,0,.75);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(60,45,90,.45);border-radius:16px;user-select:none;-webkit-user-select:none;}
+  .btn:active,.btn.on{background:rgba(255,209,102,.7);border-color:#ffd166;color:#3a2a10;}
+  #bU{left:calc(2.5vw + 12.5vh);bottom:16vh;width:11.5vh;height:11vh;font-size:4.6vh;}
+  #bL{left:2.5vw;bottom:4.5vh;width:11.5vh;height:11vh;font-size:4.6vh;}
+  #bD{left:calc(2.5vw + 12.5vh);bottom:4.5vh;width:11.5vh;height:11vh;font-size:4.6vh;}
+  #bR{left:calc(2.5vw + 25vh);bottom:4.5vh;width:11.5vh;height:11vh;font-size:4.6vh;}
+  #bP{right:calc(3vw + 17vh);bottom:5vh;width:15vh;height:15vh;border-radius:50%;font-size:2.5vh;
+      background:rgba(120,200,140,.42);border-color:#8fe3a0;line-height:1.15;text-align:center;}
+  #bJ{right:3vw;bottom:8vh;width:16vh;height:16vh;border-radius:50%;font-size:3.2vh;
+      background:rgba(255,140,190,.42);border-color:#ffb3d9;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#1a1426;color:#ffd166;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bU">&#9650;</div>
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bD">&#9660;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bP">PICK UP<br>DELIVER</div>
+  <div class="btn" id="bJ">JUMP</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   GOAT vs TROLL - DELIVER THE FOOD
+   Barry the goat has five minutes to fetch the cake from the
+   cliff and get it back to the troll. Or the troll eats him.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+const PY0 = 36, PY1 = 296;          /* the walkable strip below the HUD */
+
+/* ---------- palette ---------- */
+/* the diagonal rainbow ground from the map, softened so sprites read on top */
+const GROUND = ['#9fd4e8','#f0b98a','#f2dc9a','#a8d99a','#c3b0e0','#f0b0cc'];
+const C = {
+  chasm:'#241a3a', chasmDeep:'#120c20', chasmEdge:'#4a3a6a',
+  bush:'#4f9c4a', bushDark:'#356b32', bushLite:'#6fbd63',
+  log:'#8a6034', logDark:'#5c3e20', logLite:'#a87a4a',
+  goat:'#f2f0ea', goatDark:'#b8b4ac', goatPink:'#f2a0b8', horn:'#c9a878', ink:'#241a14',
+  troll:'#5aa83c', trollDark:'#3d7a28', trollTeeth:'#fffaf0', trollEye:'#ffd166',
+  cake:'#f2a0b8', cakeBase:'#c98a5a', cherry:'#e0463c',
+  snow:'#f0f4ff', paper:'#fffaf0', gold:'#ffd166', hot:'#ff5a6a'
+};
+
+/* ---------- audio ---------- */
+let AC = null, musicOn = true;
+function initAudio(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.07:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sawtooth';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.08:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+/* the sounds the design names, one by one */
+function screamSound(){ slide(760, 180, 0.55, 'sawtooth', 0.09); setTimeout(()=>slide(620,140,0.45,'sawtooth',0.07), 120); }
+function dodgeSound(){ tone(880,0.06,'square',0.05); setTimeout(()=>tone(1175,0.08,'square',0.05),55); }
+function pickupSound(){ [659,784,988].forEach((f,i)=>setTimeout(()=>tone(f,0.1,'square',0.06), i*60)); }
+function deliverFanfare(){ [523,659,784,1046,988,1318].forEach((f,i)=>setTimeout(()=>tone(f,0.18,'square',0.07), i*110)); }
+
+/* "adventure music for journey" - a slow loop that runs only while travelling */
+const MEL = [392,440,523,587,523,440,349,392, 349,392,440,523,440,392,330,294];
+const BASS= [196,196,262,262,196,196,175,175];
+let musicStep = 0;
+function musicTick(){
+  if(!AC || !musicOn) return;
+  if(frame % 20 !== 0) return;
+  const n = MEL[musicStep % MEL.length];
+  tone(n, 0.20, 'triangle', 0.028);
+  if(musicStep % 2 === 0) tone(BASS[(musicStep/2) % BASS.length], 0.34, 'sine', 0.030);
+  musicStep++;
+}
+
+/* ---------- input ---------- */
+const keys = { l:false, r:false, u:false, d:false };
+let jumpEdge=false, useEdge=false, anyPress=false;
+const KEYMAP = { ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r', ArrowUp:'u',KeyW:'u', ArrowDown:'d',KeyS:'d' };
+addEventListener('keydown', e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Space'||e.code==='KeyZ'){ e.preventDefault(); jumpEdge=true; return; }
+  if(e.code==='KeyX'||e.code==='KeyE'||e.code==='Enter'){ e.preventDefault(); useEdge=true; return; }
+  if(e.code==='KeyM'){ musicOn=!musicOn; return; }
+  const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener('keyup', e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; } });
+
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='j') jumpEdge=true; else if(key==='p') useEdge=true; else keys[key]=true;
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='j'&&key!=='p') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bU','u'); bindBtn('bL','l'); bindBtn('bD','d'); bindBtn('bR','r');
+bindBtn('bJ','j'); bindBtn('bP','p');
+cv.addEventListener('touchstart', e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown', ()=>{ initAudio(); anyPress=true; });
+
+/* ---------- constants ---------- */
+const SPEED = 1.75, JUMP_FRAMES = 30, JUMP_SPEED = 2.2, JUMP_CD = 26;
+const BW = 16, BH = 14;                  /* Barry's footprint */
+const START_TIME = 300;                  /* the troll waits five minutes. exactly. */
+
+/* ---------- levels ---------- */
+const LEVELS = [
+  { name:'THE FIRST RUN',  hint:'FETCH THE CAKE, BRING IT BACK TO THE TROLL', w:1200, chasms:1, bushes:6,  logs:3, rollers:0, seed:11 },
+  { name:'FALLEN LOGS',    hint:'JUMP AN OBSTACLE TO DODGE IT. 50 POINTS',    w:1380, chasms:2, bushes:8,  logs:4, rollers:2, seed:27 },
+  { name:'THE COLD PASS',  hint:'ROLLING LOGS. TIME YOUR RUN',               w:1500, chasms:2, bushes:10, logs:5, rollers:3, seed:43 },
+  { name:'THE DEEP CLIFF', hint:'DO NOT WALK INTO A CHASM. JUMP IT',         w:1620, chasms:3, bushes:12, logs:6, rollers:4, seed:61 },
+  { name:'THE LAST MEAL',  hint:'LAST DELIVERY. GO GO GO',                   w:1740, chasms:3, bushes:14, logs:7, rollers:5, seed:79 }
+];
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0, level=0, score=0, best=0;
+let lives=3, timeLeft=START_TIME, shake=0, hintT=0;
+let world=null, barry=null, camX=0, pops=[], sparks=[];
+
+function rngFrom(seed){ let s=seed>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+
+function buildWorld(n){
+  const L = LEVELS[n], rnd = rngFrom(L.seed);
+  const w = L.w;
+  const chasms = [];
+  for(let i=0;i<L.chasms;i++){
+    const span = (w - 520) / L.chasms;
+    const x = 300 + i*span + rnd()*(span*0.4);
+    chasms.push({ x:Math.round(x), w:28 + Math.round(rnd()*8), cleared:false });
+  }
+  const nearChasm = x => chasms.some(c => x > c.x-70 && x < c.x+c.w+70);
+  const obs = [];
+  function place(type, count, ww, hh){
+    let tries = 0;
+    while(count > 0 && tries < 600){
+      tries++;
+      const x = 190 + rnd()*(w-360);
+      const y = PY0+18 + rnd()*(PY1-PY0-52);
+      if(nearChasm(x)) continue;
+      if(x < 150 || x > w-130) continue;
+      if(obs.some(o => Math.abs(o.x-x) < ww+26 && Math.abs(o.y-y) < hh+22)) continue;
+      obs.push({ x:Math.round(x), y:Math.round(y), w:ww, h:hh, type:type, cleared:false });
+      count--;
+    }
+  }
+  place('bush', L.bushes, 18, 14);
+  place('log',  L.logs,   34, 12);
+
+  const rollers = [];
+  for(let i=0;i<L.rollers;i++){
+    let x = 0, tries = 0;
+    do { x = 240 + rnd()*(w-460); tries++; } while(nearChasm(x) && tries < 60);
+    const y0 = PY0+16, y1 = PY1-30;
+    rollers.push({ x:Math.round(x), y: y0 + rnd()*(y1-y0), w:30, h:12,
+                   vy: (rnd()<0.5?-1:1) * (0.75 + rnd()*0.5), y0:y0, y1:y1 });
+  }
+
+  /* scenery that does nothing but look like the map */
+  const decor = [];
+  for(let i=0;i<70;i++){
+    const x = rnd()*w, y = PY0 + rnd()*(PY1-PY0);
+    decor.push({ x:x, y:y, kind: rnd()<0.25 ? 'snow' : 'grass', v:rnd() });
+  }
+
+  world = {
+    w:w, chasms:chasms, obs:obs, rollers:rollers, decor:decor,
+    troll:{ x:52, y:PY0 + (PY1-PY0)/2 },
+    cake:{ x:w-70, y:PY0 + (PY1-PY0)/2, taken:false }
+  };
+}
+
+function loadLevel(n){
+  buildWorld(n);
+  barry = { x:110, y:PY0+(PY1-PY0)/2, w:BW, h:BH, dx:1, dy:0, face:1,
+            jumping:false, jt:0, jdur:JUMP_FRAMES, hop:0, cd:0, anim:0,
+            carrying:false, grace:70, safeX:110, safeY:PY0+(PY1-PY0)/2, safeT:0 };
+  camX = 0; pops = []; sparks = [];
+  hintT = 300;
+}
+
+function startGame(){
+  level=0; score=0; lives=3; timeLeft=START_TIME; musicStep=0;
+  loadLevel(0); state='play'; timer=0;
+}
+
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:70}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*1.7,vy:(Math.random()*2-1)*1.7,t:26,c:col});
+}
+function hit(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
+function loseLife(reason){
+  if(state!=='play') return;
+  lives--; shake=18;
+  screamSound();
+  puff(barry.x+BW/2, barry.y+BH/2, C.hot, 16);
+  if(lives<=0){ state='eaten'; timer=0; return; }
+  state='hurt'; timer=0; barry.deathMsg = reason;
+}
+function respawn(){
+  barry.x = barry.safeX; barry.y = barry.safeY;
+  barry.jumping=false; barry.hop=0; barry.cd=0; barry.grace=80;
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; tone(700,0.09);} return; }
+  if(state==='howto'){ timer++; if(anyPress&&timer>20){ anyPress=false; startGame(); tone(950,0.1);} return; }
+  if(state==='win'||state==='eaten'||state==='timeup'){
+    timer++; if(anyPress&&timer>70){ anyPress=false; state='title'; timer=0; } return;
+  }
+  if(state==='clear'){
+    timer++; updateFx();
+    if(timer>150){
+      level++;
+      if(level>=LEVELS.length){ best=Math.max(best,score); state='win'; timer=0; deliverFanfare(); }
+      else { loadLevel(level); state='play'; timer=0; }
+    }
+    return;
+  }
+  if(state==='hurt'){
+    timer++; updateFx();
+    if(timer>70){ respawn(); state='play'; timer=0; }
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  musicTick();
+
+  /* the troll's five minutes */
+  if(frame % 60 === 0){
+    timeLeft--;
+    if(timeLeft <= 10 && timeLeft > 0) tone(440,0.08,'square',0.06);
+    if(timeLeft <= 0){ state='timeup'; timer=0; return; }
+  }
+
+  const b = barry;
+  if(b.grace>0) b.grace--;
+  if(b.cd>0) b.cd--;
+
+  if(jumpEdge){
+    jumpEdge=false;
+    if(!b.jumping && b.cd<=0){
+      /* snap to one axis: a diagonal hop would not clear the widest chasm */
+      if(Math.abs(b.dx) >= Math.abs(b.dy)){ b.dx = b.dx>=0?1:-1; b.dy = 0; }
+      else { b.dy = b.dy>0?1:-1; b.dx = 0; }
+      b.jumping=true; b.jt=0; b.jhit=[];
+      tone(520,0.08,'square',0.05); setTimeout(()=>tone(740,0.07,'square',0.04),70);
+    }
+  }
+
+  if(b.jumping){
+    b.jt++;
+    b.hop = Math.sin((b.jt/b.jdur)*Math.PI) * 11;
+    b.x += b.dx * JUMP_SPEED;
+    b.y += b.dy * JUMP_SPEED;
+    b.x = Math.max(4, Math.min(world.w-4-BW, b.x));
+    b.y = Math.max(PY0, Math.min(PY1-BH, b.y));
+    /* count what you sail over - "if you do dodge you get 50 pts" */
+    for(const o of world.obs){
+      if(!o.cleared && hit(b,o) && b.jhit.indexOf(o)<0){ b.jhit.push(o); }
+    }
+    for(const c of world.chasms){
+      const cb = {x:c.x, y:PY0, w:c.w, h:PY1-PY0};
+      if(!c.cleared && hit(b,cb) && b.jhit.indexOf(c)<0){ b.jhit.push(c); }
+    }
+    if(b.jt >= b.jdur){
+      b.jumping=false; b.hop=0; b.cd=JUMP_CD;
+      for(const o of b.jhit){
+        if(o.cleared) continue;
+        const box = o.type ? o : {x:o.x, y:PY0, w:o.w, h:PY1-PY0};
+        if(hit(b, box)) continue;              /* landed on it - no dodge */
+        o.cleared=true; score+=50;
+        pop(b.x+8, b.y-6, 'DODGE +50', C.gold); dodgeSound();
+      }
+      b.jhit=[];
+    }
+  } else {
+    let mx=0, my=0;
+    if(keys.l) mx-=1; if(keys.r) mx+=1;
+    if(keys.u) my-=1; if(keys.d) my+=1;
+    if(mx||my){
+      const len = Math.hypot(mx,my);
+      b.dx = mx/len; b.dy = my/len;
+      if(mx) b.face = mx>0?1:-1;
+      b.x += b.dx*SPEED; b.y += b.dy*SPEED;
+      b.anim += 0.2;
+      b.x = Math.max(4, Math.min(world.w-4-BW, b.x));
+      b.y = Math.max(PY0, Math.min(PY1-BH, b.y));
+    }
+  }
+
+  /* rolling logs travel whether you like it or not */
+  for(const r of world.rollers){
+    r.y += r.vy;
+    if(r.y < r.y0){ r.y = r.y0; r.vy = Math.abs(r.vy); }
+    if(r.y > r.y1){ r.y = r.y1; r.vy = -Math.abs(r.vy); }
+  }
+
+  /* hazards - only while your hooves are down */
+  if(!b.jumping && b.grace<=0){
+    for(const c of world.chasms){
+      if(b.x+BW > c.x && b.x < c.x+c.w){ loseLife('FELL'); return; }
+    }
+    for(const o of world.obs){ if(hit(b,o)){ loseLife('HIT'); return; } }
+    for(const r of world.rollers){ if(hit(b,r)){ loseLife('HIT'); return; } }
+
+    /* remember the last patch of solid, empty ground */
+    b.safeT++;
+    if(b.safeT > 20){
+      b.safeT = 0;
+      const clear = !world.chasms.some(c => b.x+BW > c.x-24 && b.x < c.x+c.w+24) &&
+                    !world.obs.some(o => Math.abs(o.x-b.x)<40 && Math.abs(o.y-b.y)<34);
+      if(clear){ b.safeX = b.x; b.safeY = b.y; }
+    }
+  }
+
+  /* pick up / deliver - her second button */
+  if(useEdge){
+    useEdge=false;
+    const ck = world.cake, tr = world.troll;
+    if(!b.carrying && !ck.taken &&
+       Math.abs(b.x-ck.x)<26 && Math.abs(b.y-ck.y)<26){
+      ck.taken=true; b.carrying=true; score+=200;
+      pop(b.x+8, b.y-10, 'GOT THE CAKE!', C.cake); pickupSound();
+    } else if(b.carrying && Math.abs(b.x-tr.x)<34 && Math.abs(b.y-tr.y)<34){
+      b.carrying=false; score+=1000;
+      timeLeft = Math.min(START_TIME, timeLeft + 45);
+      pop(b.x+8, b.y-10, 'DELIVERED! +1000', C.gold);
+      deliverFanfare();
+      state='clear'; timer=0;
+      puff(tr.x, tr.y, C.gold, 20);
+      return;
+    } else {
+      tone(190,0.06,'square',0.04);
+    }
+  }
+
+  /* camera */
+  const want = b.x + BW/2 - W/2;
+  camX += (Math.max(0, Math.min(world.w - W, want)) - camX) * 0.12;
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y -= 0.35; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.vy+=0.07; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(30,20,10,.5)',align); txt(s,x,y,size,col,align);
+}
+function fmtTime(t){
+  const m = Math.floor(Math.max(0,t)/60), s = Math.max(0,t)%60;
+  return m + ':' + String(s).padStart(2,'0');
+}
+
+/* the diagonal rainbow ground from the design sheet */
+function drawGround(){
+  const bandW = 90;
+  const first = Math.floor((camX - PY1) / bandW) - 1;
+  const last  = Math.ceil((camX + W) / bandW) + 1;
+  px(0, PY0, W, PY1-PY0, GROUND[0]);
+  for(let i=first;i<=last;i++){
+    const col = GROUND[((i % GROUND.length)+GROUND.length)%GROUND.length];
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    const x0 = i*bandW - camX;
+    ctx.moveTo(x0, PY0);
+    ctx.lineTo(x0+bandW, PY0);
+    ctx.lineTo(x0+bandW+(PY1-PY0), PY1);
+    ctx.lineTo(x0+(PY1-PY0), PY1);
+    ctx.closePath();
+    ctx.save(); ctx.beginPath(); ctx.rect(0,PY0,W,PY1-PY0); ctx.clip(); ctx.fill(); ctx.restore();
+  }
+  for(const d of world.decor){
+    const x = d.x - camX;
+    if(x < -12 || x > W+12) continue;
+    if(d.kind==='snow'){
+      px(x-4,d.y,9,4,C.snow); px(x-2,d.y-2,5,3,C.snow);
+    } else {
+      px(x-3,d.y+1,2,4,'#6a9a5a'); px(x,d.y-1,2,6,'#6a9a5a'); px(x+3,d.y+2,2,3,'#6a9a5a');
+    }
+  }
+}
+
+function drawChasms(){
+  for(const c of world.chasms){
+    const x = c.x - camX;
+    if(x < -c.w-20 || x > W+20) continue;
+    px(x, PY0, c.w, PY1-PY0, C.chasm);
+    px(x+3, PY0, c.w-6, PY1-PY0, C.chasmDeep);
+    for(let y=PY0;y<PY1;y+=7){
+      px(x-2, y, 3, 4, C.chasmEdge);
+      px(x+c.w-1, y+3, 3, 4, C.chasmEdge);
+    }
+    if(c.cleared) txtS('DODGED', x+c.w/2, PY0+10, 8, 'rgba(255,209,102,.5)', 'center');
+  }
+}
+
+function drawBush(x,y){
+  px(x+1,y+3,16,10,C.bushDark);
+  px(x,y+1,18,9,C.bush);
+  px(x+3,y-2,7,6,C.bush);
+  px(x+10,y,6,5,C.bushLite);
+  px(x+2,y+2,4,3,C.bushLite);
+}
+function drawLog(x,y,w){
+  w = w||34;
+  px(x,y+1,w,10,C.log);
+  px(x,y,w,3,C.logLite);
+  px(x,y+9,w,3,C.logDark);
+  for(let i=6;i<w-4;i+=9) px(x+i,y+3,2,6,C.logDark);
+  px(x+w-4,y+2,4,8,C.logDark);
+}
+
+function drawCake(x,y,s){
+  s = s||1;
+  px(x-7*s,y+1*s,14*s,7*s,C.cakeBase);
+  px(x-7*s,y-3*s,14*s,5*s,C.cake);
+  px(x-7*s,y-5*s,14*s,3*s,'#fff0f4');
+  px(x-1*s,y-8*s,3*s,3*s,C.cherry);
+  px(x-7*s,y+7*s,14*s,2*s,'#a06a44');
+}
+
+function drawTroll(t){
+  const x = t.x - camX, y = t.y;
+  const b = Math.sin(frame*0.05)*1.5;
+  ctx.save(); ctx.translate(x|0,(y+b)|0);
+  for(let i=0;i<7;i++) px(-16+i*5, -30, 4, 6, C.trollDark);      /* spiky hair */
+  px(-16,-25,32,26,C.troll);                                      /* head */
+  px(-16,-25,32,4,C.trollDark);
+  px(-11,-19,8,7,'#ffffff'); px(4,-19,8,7,'#ffffff');             /* eyes */
+  px(-8,-17,4,4,C.ink); px(6,-17,4,4,C.ink);
+  px(-12,-8,24,8,C.ink);                                          /* mouth */
+  for(let i=0;i<6;i++) px(-11+i*4, -8, 3, 4, C.trollTeeth);
+  for(let i=0;i<5;i++) px(-9+i*4, -4, 3, 4, C.trollTeeth);
+  px(-20,-14,5,10,C.troll); px(15,-14,5,10,C.troll);              /* ears */
+  px(-14,1,10,8,C.troll); px(4,1,10,8,C.troll);                   /* feet */
+  ctx.restore();
+  if(!barry || !barry.carrying) txtS('HUNGRY', x, y-40, 9, C.hot, 'center');
+  else if(frame%50<32) txtS('DELIVER!', x, y-40, 10, C.gold, 'center');
+}
+
+function drawBarry(b){
+  const x = b.x + BW/2 - camX, y = b.y + BH - (b.hop||0);
+  if(b.jumping){ ctx.globalAlpha=0.22; px(x-7, b.y+BH-2, 14, 4, '#000000'); ctx.globalAlpha=1; }
+  const step = (b.anim && !b.jumping) ? (Math.floor(b.anim)%2) : 0;
+  ctx.save(); ctx.translate(x|0, y|0);
+  if(b.face<0) ctx.scale(-1,1);
+
+  px(-7,-10,13,9,C.goatPink);           /* body */
+  px(-7,-10,13,2,'#ffc4d4');
+  px(-6+step,-2,4,3,C.goatDark);        /* legs */
+  px(1-step,-2,4,3,C.goatDark);
+  px(-9,-13,4,5,C.goat);                /* tail end / rump */
+  px(2,-22,11,11,C.goat);               /* head */
+  px(4,-19,3,3,C.ink); px(9,-19,3,3,C.ink);
+  px(6,-14,4,3,C.goatDark);             /* muzzle */
+  px(5,-11,3,4,C.goat);                 /* beard */
+  px(2,-26,3,5,C.horn); px(9,-26,3,5,C.horn);   /* horns */
+  px(1,-24,2,3,C.horn); px(11,-24,2,3,C.horn);
+  if(b.grace>0 && frame%8<4){ ctx.globalAlpha=0.3; px(-10,-27,24,26,'#ffffff'); ctx.globalAlpha=1; }
+  ctx.restore();
+
+  if(b.carrying) drawCake(x, y - 32 + Math.sin(frame*0.12)*1.5, 0.85);
+}
+
+function objectiveArrow(){
+  const target = barry.carrying ? world.troll : world.cake;
+  if(!barry.carrying && world.cake.taken) return;
+  const sx = target.x - camX;
+  if(sx > 14 && sx < W-14) return;
+  const right = sx >= W-14;
+  const x = right ? W-16 : 16, y = PY0 + 22;
+  const d = Math.round(Math.abs(target.x - barry.x));
+  ctx.save(); ctx.translate(x,y); if(!right) ctx.scale(-1,1);
+  ctx.fillStyle = barry.carrying ? C.troll : C.cake;
+  ctx.beginPath(); ctx.moveTo(-6,-7); ctx.lineTo(7,0); ctx.lineTo(-6,7); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  txtS(d+'m', x, y+15, 8, C.paper, 'center');
+}
+
+function drawHUD(){
+  px(0,0,W,PY0-2,'#2a1f42');
+  px(0,PY0-3,W,3,'#7b5ea8');
+  /* hearts, the way she drew them */
+  for(let i=0;i<Math.max(0,lives);i++){
+    const x = 10+i*16, y = 12;
+    px(x,y,4,4,C.hot); px(x+6,y,4,4,C.hot); px(x+1,y+4,9,4,C.hot); px(x+3,y+8,5,3,C.hot);
+  }
+  txtS('SCORE '+String(score).padStart(5,'0'), 72, 16, 12, C.paper);
+  txtS('LEVEL '+(level+1)+'/'+LEVELS.length, 218, 16, 10, '#c9b0e8');
+
+  const urgent = timeLeft <= 30;
+  txtS('TROLL WAITS', 316, 10, 9, urgent ? C.hot : '#c9b0e8');
+  txtS(fmtTime(timeLeft), 316, 24, 14, urgent && frame%20<12 ? C.hot : C.gold);
+
+  if(barry && barry.carrying){ drawCake(410, 16, 0.7); txtS('CAKE', 428, 16, 10, C.cake); }
+  else txtS('NO CAKE', 400, 16, 10, '#8a7aa8');
+}
+
+function drawTitle(){
+  ctx.fillStyle='#2a1f42'; ctx.fillRect(0,0,W,H);
+  /* rainbow diagonal wash from the cabinet art */
+  for(let i=-6;i<12;i++){
+    ctx.fillStyle = GROUND[((i%GROUND.length)+GROUND.length)%GROUND.length];
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(i*70,0); ctx.lineTo(i*70+70,0); ctx.lineTo(i*70+70+H,H); ctx.lineTo(i*70+H,H);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  px(30,30,W-60,72,'rgba(42,31,66,.9)');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(30,30,W-60,72);
+  txtS('GOAT', 118, 58, 28, C.paper, 'center');
+  txtS('vs', 196, 60, 18, C.hot, 'center');
+  txtS('TROLL', 290, 58, 28, C.troll, 'center');
+  txtS('DELIVER THE FOOD', W/2, 88, 12, C.gold, 'center');
+  drawCake(400, 56, 1.2);
+
+  const t = Math.sin(frame*0.045)*8;
+  drawBarry({x:150+t+camXfix(), y:190, w:BW,h:BH, face:1, anim:frame*0.2, carrying:false, grace:0, hop:0});
+  drawTroll({x:330-t+camXfix(), y:206});
+  px(0,236,W,H-236,'#3a2a5a');
+  txtS('BARRY HAS FIVE MINUTES TO FETCH THE CAKE', W/2, 252, 10, C.paper, 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON TO START', W/2, 276, 13, C.gold, 'center');
+  if(best>0) txtS('BEST '+String(best).padStart(5,'0'), 10, 290, 9, '#c9b0e8');
+}
+function camXfix(){ return camX; }   /* title screen draws through the same helpers */
+
+function drawHowTo(){
+  ctx.fillStyle='#2a1f42'; ctx.fillRect(0,0,W,H);
+  px(14,10,W-28,H-20,'#3a2a5a');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(14,10,W-28,H-20);
+  txtS('HOW TO PLAY', W/2, 30, 16, C.gold, 'center');
+
+  drawBush(38, 54); txtS('Bushes and logs cost a life if you', 96, 58, 10, C.paper);
+  drawLog(34, 76, 26); txtS('walk into them. Go round, or JUMP.', 96, 80, 10, C.paper);
+
+  px(38, 104, 16, 22, C.chasmDeep); px(36,104,3,22,C.chasmEdge); px(53,104,3,22,C.chasmEdge);
+  txtS('A chasm is death. Only a jump gets', 96, 108, 10, C.paper);
+  txtS('you across it.', 96, 122, 10, C.hot);
+
+  txtS('+50', 40, 150, 12, C.gold);
+  txtS('Sail over an obstacle and that is a', 96, 146, 10, C.paper);
+  txtS('dodge. Fifty points, once each.', 96, 160, 10, C.gold);
+
+  drawCake(44, 186, 0.9);
+  txtS('Stand on the cake, press PICK UP.', 96, 184, 10, C.paper);
+  txtS('Carry it back, press DELIVER. +1000', 96, 198, 10, C.paper);
+
+  txtS('THREE LIVES. THE TROLL WAITS FIVE MINUTES.', W/2, 224, 10, C.hot, 'center');
+  txtS('KEYS: ARROWS   SPACE=JUMP   X=PICK UP/DELIVER   M=MUSIC', W/2, 246, 8, '#c9b0e8', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 270, 13, C.gold, 'center');
+}
+
+function drawOverlay(){
+  if(state==='clear'){
+    px(0,110,W,80,'rgba(26,20,38,.88)');
+    txtS('YOU HAVE DELIVERED!', W/2, 134, 20, C.gold, 'center');
+    txtS('THE TROLL IS HAPPY. +45 SECONDS', W/2, 160, 11, C.troll, 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 178, 11, C.paper, 'center');
+  }
+  if(state==='hurt'){
+    px(0,126,W,52,'rgba(26,20,38,.85)');
+    txtS(barry.deathMsg==='FELL' ? 'BARRY FELL OFF!' : 'OUCH! AN OBSTACLE!', W/2, 144, 17, C.hot, 'center');
+    txtS(lives+' LIVES LEFT', W/2, 166, 11, C.paper, 'center');
+  }
+  if(state==='eaten' || state==='timeup'){
+    /* "if it says you died, silence" - so this screen makes no sound at all */
+    ctx.fillStyle='#0d0912'; ctx.fillRect(0,0,W,H);
+    txtS(state==='timeup' ? 'TIME UP' : 'DEATH', W/2, 108, 34, C.hot, 'center');
+    txtS('THE TROLL ATE BARRY', W/2, 148, 13, '#8a7aa8', 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 178, 12, '#6a5a88', 'center');
+    if(timer>70 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 232, 11, '#6a5a88', 'center');
+  }
+  if(state==='win'){
+    ctx.fillStyle='#1a2e1a'; ctx.fillRect(0,0,W,H);
+    for(let i=-6;i<12;i++){
+      ctx.fillStyle = GROUND[((i%GROUND.length)+GROUND.length)%GROUND.length];
+      ctx.globalAlpha=0.3;
+      ctx.beginPath(); ctx.moveTo(i*70,0); ctx.lineTo(i*70+70,0);
+      ctx.lineTo(i*70+70+H,H); ctx.lineTo(i*70+H,H); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    txtS('EVERY DELIVERY MADE!', W/2, 64, 22, C.gold, 'center');
+    txtS('BARRY WAS NEVER EATEN', W/2, 94, 12, C.paper, 'center');
+    drawCake(W/2, 150, 1.6);
+    txtS('FINAL SCORE '+String(score).padStart(5,'0'), W/2, 200, 15, C.gold, 'center');
+    txtS('TIME LEFT '+fmtTime(timeLeft), W/2, 222, 11, C.paper, 'center');
+    if(timer>70 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 254, 12, C.paper, 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,PY0+2,W,28,'rgba(26,20,38,.78)');
+    txtS(LEVELS[level].name, W/2, PY0+11, 11, C.gold, 'center');
+    txtS(LEVELS[level].hint, W/2, PY0+24, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#1a1426'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='howto'){ drawHowTo(); return; }
+  if(state==='win'||state==='eaten'||state==='timeup'){ drawOverlay(); return; }
+
+  drawGround();
+  drawChasms();
+
+  /* everything in the world, sorted so nearer things overlap properly */
+  const items = [];
+  for(const o of world.obs) items.push({y:o.y, f:()=> o.type==='bush' ? drawBush(o.x-camX,o.y) : drawLog(o.x-camX,o.y,o.w)});
+  for(const r of world.rollers) items.push({y:r.y, f:()=> drawLog(r.x-camX, r.y, r.w)});
+  if(!world.cake.taken) items.push({y:world.cake.y, f:()=>{
+    const bob = Math.sin(frame*0.09)*2;
+    drawCake(world.cake.x-camX, world.cake.y+bob, 1);
+    ctx.globalAlpha=0.25+0.15*Math.sin(frame*0.09);
+    px(world.cake.x-camX-11, world.cake.y-10, 22, 22, C.cake); ctx.globalAlpha=1;
+  }});
+  items.push({y:world.troll.y, f:()=>drawTroll(world.troll)});
+  items.push({y:barry.y+40, f:()=>{ if(state!=='hurt'||timer%8<4) drawBarry(barry); }});
+  items.sort((a,b)=>a.y-b.y);
+  for(const it of items) it.f();
+
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/12); px(s.x-camX,s.y,2,2,s.c); ctx.globalAlpha=1; }
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/25);
+    txtS(p.s, p.x-camX, p.y, 10, p.c, 'center');
+    ctx.globalAlpha=1;
+  }
+
+  objectiveArrow();
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
