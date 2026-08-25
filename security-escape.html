@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Security Escape - For Pups</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#07060c;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #1c2338,0 0 40px rgba(0,0,0,.85);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;bottom:3vh;pointer-events:auto;display:flex;align-items:center;
+    justify-content:center;color:#eef2ff;font-weight:bold;font-family:inherit;
+    border:3px solid rgba(238,242,255,.4);background:rgba(20,26,44,.45);
+    border-radius:14px;user-select:none;-webkit-user-select:none;}
+  .btn:active,.btn.on{background:rgba(255,214,84,.6);border-color:#ffd654;color:#1a1408;}
+  #bL{left:2.5vw;width:14vh;height:14vh;font-size:6.5vh;}
+  #bR{left:calc(2.5vw + 16vh);width:14vh;height:14vh;font-size:6.5vh;}
+  #bD{right:calc(2.5vw + 30vh);width:13vh;height:14vh;font-size:2.7vh;}
+  #bG{right:calc(2.5vw + 15vh);width:13vh;height:14vh;font-size:2.7vh;}
+  #bJ{right:2.5vw;width:13vh;height:14vh;font-size:2.7vh;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#07060c;color:#ffd654;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bD">DUCK</div>
+  <div class="btn" id="bG">GRAB</div>
+  <div class="btn" id="bJ">JUMP</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   SECURITY ESCAPE - FOR PUPS
+   Penny Puppy must sneak past Security Guard Fred,
+   find the key and unlock the door.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W * SC; cv.height = H * SC;
+ctx.setTransform(SC, 0, 0, SC, 0, 0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  cv.style.width  = Math.floor(W * s) + 'px';
+  cv.style.height = Math.floor(H * s) + 'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 250));
+resize();
+
+/* ---------- the rainbow, lights off and lights on ---------- */
+const BANDS_DIM = ['#3d1f2b','#3d2a1d','#3a371c','#1f3a1f','#1c2f42','#2a2042','#3d1f36','#24242c'];
+const BANDS_LIT = ['#e05a5a','#e0904a','#e0d24a','#6cc24a','#4a9be0','#8a68e6','#e06ab4','#a8a8b8'];
+const BAND_H = Math.ceil((H - 26) / BANDS_DIM.length);
+
+const C = {
+  plat:'#0e0e14', platLit:'#3a3a48', platTop:'#23232e', platTopLit:'#6a6a80',
+  dog:'#f4f1ea', dogSpot:'#1a1a1a', collar:'#d64545',
+  uni:'#2b3f6b', uniDark:'#1e2c4d', skin:'#e8b98a', torch:'#ffd654',
+  key:'#ffd654', keyDark:'#c9a325',
+  door:'#6b4a2a', doorDark:'#3d2a17', lock:'#c8ccd8',
+  ink:'#0b0a12', paper:'#eef2ff', warn:'#ff5a4a', good:'#6cf0a0'
+};
+
+/* ---------- audio ---------- */
+let AC = null;
+function initAudio(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function beep(f, dur, type, vol){
+  if(!AC) return;
+  try{
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'square'; o.frequency.value = f;
+    const t = AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.07:vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function sweepTone(f1, f2, dur, type, vol){
+  if(!AC) return;
+  try{
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'square';
+    const t = AC.currentTime;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2), t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.07:vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+/* the two sounds the design asks for by name */
+function sadSound(){ [392,330,262,196].forEach((f,i)=>setTimeout(()=>beep(f,0.3,'triangle',0.08), i*150)); }
+function happySound(){ [523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'square',0.07), i*95)); }
+
+/* ---------- input ---------- */
+const keys = { l:false, r:false, j:false, d:false, g:false };
+let jumpEdge = false, grabEdge = false, anyPress = false;
+const KEYMAP = {
+  ArrowLeft:'l', KeyA:'l', ArrowRight:'r', KeyD:'r',
+  Space:'j', ArrowUp:'j', KeyW:'j',
+  ArrowDown:'d', KeyS:'d', KeyZ:'d',
+  KeyX:'g', KeyE:'g', ShiftLeft:'g', ShiftRight:'g', Enter:'g'
+};
+addEventListener('keydown', e => {
+  initAudio(); anyPress = true;
+  const k = KEYMAP[e.code];
+  if(k){
+    e.preventDefault();
+    if(k==='j' && !keys.j) jumpEdge = true;
+    if(k==='g' && !keys.g) grabEdge = true;
+    keys[k] = true;
+  }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k] = false; } });
+
+function bindBtn(id, key){
+  const el = document.getElementById(id);
+  const on = e => {
+    e.preventDefault(); initAudio(); anyPress = true;
+    if(key==='j' && !keys.j) jumpEdge = true;
+    if(key==='g' && !keys.g) grabEdge = true;
+    keys[key] = true; el.classList.add('on');
+  };
+  const off = e => { e.preventDefault(); keys[key] = false; el.classList.remove('on'); };
+  el.addEventListener('touchstart', on, {passive:false});
+  el.addEventListener('touchend', off, {passive:false});
+  el.addEventListener('touchcancel', off, {passive:false});
+  el.addEventListener('mousedown', on);
+  addEventListener('mouseup', off);
+}
+bindBtn('bL','l'); bindBtn('bR','r'); bindBtn('bJ','j'); bindBtn('bD','d'); bindBtn('bG','g');
+cv.addEventListener('touchstart', e => { e.preventDefault(); initAudio(); anyPress = true; }, {passive:false});
+cv.addEventListener('mousedown', () => { initAudio(); anyPress = true; });
+
+/* ---------- constants ---------- */
+const GRAV = 0.24, JUMP = -5.45, MAXFALL = 6.4, SPEED = 1.8, SNEAK = 0.85;
+const PW = 18, PH_STAND = 20, PH_DUCK = 8;
+const GW = 18, GH = 26;
+const BEAM_LEN = 150, BEAM_THICK = 9;
+const CEIL_Y = 26;
+
+/* ---------- levels ---------- */
+/* platform tiers 262 / 214 / 166 / 118 - each exactly one jump apart */
+const LEVELS = [
+  { name:'NIGHT SHIFT',
+    hint:'HOLD DUCK - THE TORCH PASSES OVER YOU',
+    plats:[{x:0,y:262,w:480},{x:120,y:214,w:90},{x:290,y:214,w:100},{x:190,y:166,w:100}],
+    start:{x:14,p:0}, key:{x:230,p:3}, door:{x:440,p:0},
+    guards:[{p:0,lo:110,hi:390}] },
+
+  { name:'THE STOREROOM',
+    hint:'FALLING OFF A PLATFORM COSTS A LIFE',
+    plats:[{x:0,y:262,w:140},{x:200,y:262,w:130},{x:390,y:262,w:90},
+           {x:80,y:214,w:100},{x:260,y:214,w:110},{x:150,y:166,w:120}],
+    start:{x:14,p:0}, key:{x:200,p:5}, door:{x:430,p:2},
+    guards:[{p:5,lo:155,hi:255},{p:1,lo:205,hi:320}] },
+
+  { name:'THE LIFT SHAFT',
+    hint:'PRESS GRAB TO TAKE THE KEY AND OPEN THE DOOR',
+    plats:[{x:0,y:262,w:130},{x:170,y:262,w:150},{x:390,y:262,w:90},
+           {x:60,y:214,w:110},{x:250,y:214,w:120},{x:150,y:166,w:130},{x:330,y:118,w:110}],
+    start:{x:430,p:2}, key:{x:372,p:6}, door:{x:20,p:0},
+    guards:[{p:1,lo:175,hi:310},{lift:true,x:296,y0:112,y1:236,dir:-1}] },
+
+  { name:'THE SECURITY WING',
+    hint:'FREDS EVERYWHERE - WAIT FOR YOUR MOMENT',
+    plats:[{x:0,y:262,w:130},{x:190,y:262,w:130},{x:380,y:262,w:100},
+           {x:70,y:214,w:100},{x:250,y:214,w:110},
+           {x:150,y:166,w:120},{x:350,y:166,w:110},
+           {x:40,y:118,w:110},{x:230,y:118,w:120},{x:390,y:118,w:90}],
+    start:{x:420,p:9}, key:{x:300,p:4}, door:{x:16,p:0},
+    guards:[{p:5,lo:155,hi:255},{p:1,lo:195,hi:305},{lift:true,x:140,y0:112,y1:230,dir:1}] },
+
+  { name:'THE FRONT DOOR',
+    hint:'LAST ONE. GET THE KEY AND RUN',
+    plats:[{x:0,y:262,w:110},{x:160,y:262,w:160},{x:370,y:262,w:110},
+           {x:60,y:214,w:90},{x:230,y:214,w:100},{x:380,y:214,w:90},
+           {x:130,y:166,w:120},{x:300,y:166,w:110}],
+    start:{x:14,p:0}, key:{x:180,p:6}, door:{x:425,p:2},
+    guards:[{p:1,lo:165,hi:310},{p:6,lo:135,hi:240},{lift:true,x:348,y0:120,y1:240,dir:1}] }
+];
+
+/* ---------- state ---------- */
+let state = 'title';
+let timer = 0, level = 0, lives = 3, score = 0, best = 0;
+let frame = 0, shake = 0, hintT = 0, susp = 0, alertFlash = 0;
+let plats = [], guards = [], key = null, door = null, penny = null, sparks = [];
+
+function rectsHit(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
+function loadLevel(n, keepKey){
+  const L = LEVELS[n];
+  plats = L.plats.map(p => ({ x:p.x, y:p.y, w:p.w, h:10 }));
+
+  const kp = plats[L.key.p];
+  const hadKey = keepKey && key && key.taken;
+  key = { x:L.key.x, y:kp.y - 14, w:11, h:8, taken: !!hadKey };
+
+  const dp = plats[L.door.p];
+  door = { x:L.door.x - 12, y:dp.y - 34, w:24, h:34, open:false };
+
+  guards = L.guards.map((g,i) => {
+    if(g.lift){
+      return { lift:true, x:g.x, y:g.y0, y0:g.y0, y1:g.y1, w:GW, h:GH,
+               vy:0.55, dir:g.dir, aim:0, phase:i*1.7, alerted:0 };
+    }
+    const p = plats[g.p];
+    return { lift:false, x:g.lo, y:p.y - GH, w:GW, h:GH, lo:g.lo, hi:g.hi - GW,
+             dir:1, aim:0, phase:i*1.7, alerted:0 };
+  });
+
+  const sp = plats[L.start.p];
+  penny = { x:L.start.x, y:sp.y - PH_STAND, vx:0, vy:0, w:PW, h:PH_STAND,
+            dir:1, onGround:true, duck:false, anim:0, grace:60 };
+  susp = 0; sparks = [];
+  hintT = 280;
+}
+
+function startGame(){ level = 0; lives = 3; score = 0; loadLevel(0); state='play'; timer=0; }
+
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*1.7,vy:-Math.random()*2.2,t:24,c:col});
+}
+
+/* ---------- torch beam maths ----------
+   The beam is a straight band, not a widening cone, and Fred never
+   points it below waist height. That makes DUCK a rule you can trust. */
+function beamAngle(g){ return g.dir > 0 ? g.aim : Math.PI - g.aim; }
+
+function beamHits(g, box){
+  const a = beamAngle(g), ca = Math.cos(a), sa = Math.sin(a);
+  const tx = g.x + (g.dir > 0 ? g.w - 3 : 3), ty = g.y + 7;
+  const pts = [
+    [box.x, box.y], [box.x+box.w, box.y],
+    [box.x, box.y+box.h], [box.x+box.w, box.y+box.h],
+    [box.x+box.w/2, box.y+box.h/2]
+  ];
+  for(const p of pts){
+    const dx = p[0]-tx, dy = p[1]-ty;
+    const u = dx*ca + dy*sa, v = -dx*sa + dy*ca;
+    if(u >= 0 && u <= BEAM_LEN && Math.abs(v) <= BEAM_THICK) return true;
+  }
+  return false;
+}
+
+function loseLife(reason){
+  if(state !== 'play') return;
+  lives--; score = Math.max(0, score - 10);
+  state = 'caught'; timer = 0; shake = 16;
+  penny.msg = reason;
+  sadSound();
+  puff(penny.x + penny.w/2, penny.y + penny.h/2, reason === 'FALL' ? '#8a8aa0' : C.warn, 14);
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake > 0) shake--;
+  if(hintT > 0) hintT--;
+  if(alertFlash > 0) alertFlash--;
+
+  if(state === 'title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; beep(660,0.09);} return; }
+  if(state === 'howto'){ timer++; if(anyPress && timer>20){ anyPress=false; startGame(); beep(880,0.1);} return; }
+  if(state === 'over' || state === 'win'){ timer++; if(anyPress && timer>60){ anyPress=false; state='title'; timer=0; } return; }
+
+  if(state === 'clear'){
+    timer++; updateSparks();
+    if(timer > 120){
+      level++;
+      if(level >= LEVELS.length){ best = Math.max(best, score); state='win'; timer=0; happySound(); }
+      else { loadLevel(level); state='play'; timer=0; }
+    }
+    return;
+  }
+  if(state === 'caught'){
+    timer++; updateSparks();
+    if(timer > 80){
+      if(lives <= 0){
+        best = Math.max(best, score);
+        score = 0;                       /* the design says: lose all lives, lose all points */
+        state = 'over'; timer = 0;
+      } else { loadLevel(level, true); state='play'; timer=0; }
+    }
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress = false;
+  const p = penny;
+  if(p.grace > 0) p.grace--;
+
+  /* duck (button 2) */
+  const wantDuck = keys.d && p.onGround;
+  if(wantDuck && !p.duck){ p.duck = true; p.y += (PH_STAND - PH_DUCK); p.h = PH_DUCK; }
+  else if(!wantDuck && p.duck){ p.duck = false; p.y -= (PH_STAND - PH_DUCK); p.h = PH_STAND; }
+
+  /* move */
+  const spd = p.duck ? SNEAK : SPEED;
+  p.vx = 0;
+  if(keys.l && !keys.r){ p.vx = -spd; p.dir = -1; }
+  if(keys.r && !keys.l){ p.vx =  spd; p.dir =  1; }
+  p.anim = (p.vx !== 0 && p.onGround) ? p.anim + 0.22 : 0;
+
+  if(jumpEdge){
+    jumpEdge = false;
+    if(p.onGround && !p.duck){ p.vy = JUMP; p.onGround = false; beep(500,0.08,'square',0.05); }
+  }
+
+  p.vy = Math.min(p.vy + GRAV, MAXFALL);
+  p.x += p.vx;
+  if(p.x < 0) p.x = 0;
+  if(p.x + p.w > W) p.x = W - p.w;
+
+  const prevBottom = p.y + p.h;
+  p.y += p.vy;
+  p.onGround = false;
+  if(p.y < CEIL_Y){ p.y = CEIL_Y; p.vy = 0.4; }
+
+  if(p.vy >= 0){
+    for(const pl of plats){
+      if(p.x + p.w > pl.x + 1 && p.x < pl.x + pl.w - 1 &&
+         prevBottom <= pl.y + 2 && p.y + p.h >= pl.y){
+        p.y = pl.y - p.h; p.vy = 0; p.onGround = true;
+      }
+    }
+  }
+
+  /* fall off the bottom = a life, exactly as written */
+  if(p.y > H + 6){ loseLife('FALL'); return; }
+
+  /* ---------- guards ---------- */
+  let seen = false;
+  for(const g of guards){
+    g.aim = -0.15 + Math.sin(frame * 0.018 + g.phase) * 0.15;   /* sweeps level to up, never down */
+    if(g.lift){
+      g.y += g.vy;
+      if(g.y <= g.y0){ g.y = g.y0; g.vy = Math.abs(g.vy); g.dir *= -1; }
+      if(g.y >= g.y1){ g.y = g.y1; g.vy = -Math.abs(g.vy); g.dir *= -1; }
+    } else {
+      g.x += g.dir * 0.62;
+      if(g.x <= g.lo){ g.x = g.lo; g.dir = 1; }
+      if(g.x >= g.hi){ g.x = g.hi; g.dir = -1; }
+    }
+    const hit = p.grace <= 0 && beamHits(g, p);
+    g.alerted = hit ? Math.min(30, g.alerted + 2) : Math.max(0, g.alerted - 1);
+    if(hit) seen = true;
+  }
+
+  if(seen){
+    susp += p.duck ? 0.7 : 2.0;
+    if(susp > 30 && frame % 22 === 0) beep(880, 0.05, 'square', 0.04);
+    if(susp >= 100){ alertFlash = 30; sweepTone(900, 300, 0.4, 'sawtooth', 0.09); loseLife('SPOTTED'); return; }
+  } else {
+    susp = Math.max(0, susp - 1.3);
+  }
+
+  /* ---------- grab (button 1) ---------- */
+  if(grabEdge){
+    grabEdge = false;
+    if(!key.taken && rectsHit(p, key)){
+      key.taken = true; score += 50;
+      puff(key.x+5, key.y+4, C.key, 12);
+      beep(1046,0.09,'square'); setTimeout(()=>beep(1318,0.12,'square'), 70);
+    } else if(key.taken && !door.open && rectsHit(p, door)){
+      door.open = true; score += 100 + lives * 20;
+      puff(door.x+12, door.y+16, C.good, 16);
+      happySound();
+      state = 'clear'; timer = 0;
+    } else {
+      beep(200, 0.05, 'square', 0.04);
+    }
+  }
+
+  updateSparks();
+}
+
+function updateSparks(){
+  for(const s of sparks){ s.x += s.vx; s.y += s.vy; s.vy += 0.13; s.t--; }
+  sparks = sparks.filter(s => s.t > 0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle = col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle = col; ctx.font = 'bold '+size+'px "Courier New",monospace';
+  ctx.textAlign = align||'left'; ctx.textBaseline = 'middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(0,0,0,.65)',align); txt(s,x,y,size,col,align);
+}
+
+function drawBands(lit){
+  const pal = lit ? BANDS_LIT : BANDS_DIM;
+  for(let i = 0; i < pal.length; i++) px(0, CEIL_Y + i*BAND_H, W, BAND_H, pal[i]);
+}
+function drawPlats(lit){
+  for(const pl of plats){
+    px(pl.x, pl.y, pl.w, pl.h, lit ? C.platLit : C.plat);
+    px(pl.x, pl.y, pl.w, 2, lit ? C.platTopLit : C.platTop);
+  }
+}
+
+function beamPath(g){
+  const a = beamAngle(g), ca = Math.cos(a), sa = Math.sin(a);
+  const tx = g.x + (g.dir > 0 ? g.w - 3 : 3), ty = g.y + 7;
+  const nx = -sa * BEAM_THICK, ny = ca * BEAM_THICK;
+  const ex = tx + ca*BEAM_LEN, ey = ty + sa*BEAM_LEN;
+  ctx.beginPath();
+  ctx.moveTo(tx + nx*0.45, ty + ny*0.45);
+  ctx.lineTo(ex + nx, ey + ny);
+  ctx.lineTo(ex - nx, ey - ny);
+  ctx.lineTo(tx - nx*0.45, ty - ny*0.45);
+  ctx.closePath();
+}
+
+/* ---- Penny Puppy ---- */
+function drawPenny(p){
+  ctx.save();
+  ctx.translate((p.x|0) + PW/2, (p.y|0));
+  if(p.dir < 0) ctx.scale(-1,1);
+  const step = p.anim ? (Math.floor(p.anim) % 2) : 0;
+
+  if(p.duck){
+    px(-9, 0, 17, 8, C.dog);          /* pancake sneak */
+    px(-9, 1, 4, 5, C.dogSpot);       /* ear */
+    px(6, 2, 3, 3, C.dogSpot);        /* nose */
+    px(2, 1, 2, 2, C.dogSpot);        /* eye */
+    px(-2, 4, 3, 3, C.dogSpot);       /* spot */
+    px(-9, 3, 2, 2, C.collar);
+    px(-12, 2, 4, 2, C.dog);          /* tail */
+  } else {
+    px(-7, 0, 11, 9, C.dog);          /* head */
+    px(-8, -1, 4, 6, C.dogSpot);      /* ear */
+    px(3, 4, 5, 4, C.dog);            /* snout */
+    px(7, 5, 2, 2, C.dogSpot);        /* nose */
+    px(0, 3, 2, 2, C.dogSpot);        /* eye */
+    px(-5, 9, 11, 7, C.dog);          /* body */
+    px(-5, 9, 11, 2, C.collar);       /* collar */
+    px(-2, 12, 3, 3, C.dogSpot);      /* spots */
+    px(3, 11, 2, 2, C.dogSpot);
+    px(-4, 3, 2, 2, C.dogSpot);
+    px(-9, 10, 4, 2, C.dog);          /* tail */
+    px(-4+step, 16, 4, 4, C.dog);
+    px(1-step, 16, 4, 4, C.dog);
+  }
+  ctx.restore();
+}
+
+/* ---- Security Guard Fred ---- */
+function drawFred(g){
+  ctx.save();
+  ctx.translate((g.x|0) + GW/2, (g.y|0));
+  if(g.dir < 0) ctx.scale(-1,1);
+
+  px(-7, 2, 14, 8, C.skin);           /* face */
+  px(-8, -2, 16, 4, C.uniDark);       /* cap */
+  px(-8, 1, 16, 2, C.uniDark);        /* brim */
+  px(-2, -1, 4, 2, C.torch);          /* badge */
+  px(-6, 4, 12, 3, '#0d0d12');        /* sunglasses */
+  px(-7, 10, 14, 11, C.uni);          /* body */
+  px(-7, 15, 14, 2, C.uniDark);       /* belt */
+  px(-2, 15, 4, 2, C.torch);          /* buckle */
+  px(-6, 21, 5, 5, C.uniDark);        /* legs */
+  px(1, 21, 5, 5, C.uniDark);
+  px(6, 6, 5, 4, C.torch);            /* torch in hand */
+  px(5, 7, 2, 2, '#fff6c8');
+  ctx.restore();
+
+  if(g.alerted > 8){
+    const c = g.alerted > 20 ? C.warn : C.torch;
+    txtS(g.alerted > 20 ? '!' : '?', g.x + GW/2, g.y - 8, 14, c, 'center');
+  }
+  if(g.lift){                          /* the rail the lift guard rides */
+    px(g.x + GW/2 - 1, g.y0 - 6, 2, (g.y1 - g.y0) + GH + 12, 'rgba(180,190,220,.25)');
+  }
+}
+
+function drawKey(){
+  if(key.taken) return;
+  const bob = Math.sin(frame * 0.09) * 2;
+  const x = key.x, y = key.y + bob;
+  px(x, y+2, 5, 5, C.key);            /* bow */
+  px(x+1, y+3, 3, 3, C.keyDark);
+  px(x+5, y+3, 6, 2, C.key);          /* shaft */
+  px(x+9, y+5, 2, 2, C.key);          /* teeth */
+  px(x+6, y+5, 2, 2, C.key);
+  ctx.globalAlpha = 0.25 + 0.15*Math.sin(frame*0.09);
+  px(x-2, y, 15, 9, C.key);
+  ctx.globalAlpha = 1;
+}
+
+function drawDoor(){
+  px(door.x, door.y, door.w, door.h, door.open ? '#122a1a' : C.door);
+  px(door.x, door.y, door.w, 2, C.doorDark);
+  px(door.x+2, door.y+2, door.w-4, door.h-4, door.open ? '#0a1a10' : C.doorDark);
+  if(door.open){
+    ctx.globalAlpha = 0.35 + 0.2*Math.sin(frame*0.15);
+    px(door.x+2, door.y+2, door.w-4, door.h-4, C.good);
+    ctx.globalAlpha = 1;
+    txtS('OPEN', door.x + door.w/2, door.y - 8, 9, C.good, 'center');
+  } else {
+    px(door.x + door.w/2 - 4, door.y + 14, 8, 7, key.taken ? C.good : C.lock);   /* padlock */
+    ctx.strokeStyle = key.taken ? C.good : C.lock; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(door.x + door.w/2, door.y + 14, 3, Math.PI, 0); ctx.stroke();
+    px(door.x + door.w/2 - 1, door.y + 16, 2, 3, C.doorDark);
+    if(key.taken && frame % 50 < 32) txtS('GRAB', door.x + door.w/2, door.y - 8, 9, C.good, 'center');
+  }
+}
+
+function drawHUD(){
+  px(0, 0, W, CEIL_Y, '#0b0f1c');
+  px(0, CEIL_Y-2, W, 2, '#1c2338');
+  txtS('LIVES', 8, 13, 10, '#8a94b8');
+  for(let i = 0; i < Math.max(0, lives); i++){
+    px(52 + i*15, 7, 11, 9, C.dog); px(52 + i*15, 7, 4, 4, C.dogSpot);
+  }
+  txtS('SCORE ' + String(score).padStart(4,'0'), 118, 13, 11, C.paper);
+  txtS('LEVEL ' + (level+1) + '/' + LEVELS.length, W-8, 13, 11, '#8a94b8', 'right');
+
+  /* key indicator */
+  if(key && key.taken){ px(258, 9, 5, 5, C.key); px(263, 10, 6, 2, C.key); txtS('KEY', 274, 13, 10, C.key); }
+  else txtS('NO KEY', 258, 13, 10, '#5a6488');
+
+  /* suspicion meter */
+  const col = susp > 66 ? C.warn : (susp > 30 ? C.torch : '#3d6ad6');
+  px(320, 8, 82, 8, '#1c2338');
+  px(321, 9, 80 * (susp/100), 6, col);
+  if(susp > 60 && frame % 20 < 12) txtS('HIDE!', 366, 12, 9, '#0b0a12', 'center');
+}
+
+function drawTitle(){
+  ctx.fillStyle = '#0b0a14'; ctx.fillRect(0,0,W,H);
+  /* the yellow diamond cabinet pattern from the artwork */
+  ctx.strokeStyle = 'rgba(255,214,84,.22)'; ctx.lineWidth = 1;
+  for(let i = -H; i < W + H; i += 26){
+    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+H,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i,H); ctx.lineTo(i+H,0); ctx.stroke();
+  }
+  px(40, 40, W-80, 78, '#12172a');
+  ctx.strokeStyle = C.torch; ctx.lineWidth = 2; ctx.strokeRect(40,40,W-80,78);
+  txtS('SECURITY', W/2, 68, 30, C.torch, 'center');
+  txtS('ESCAPE', W/2, 98, 30, C.paper, 'center');
+  txtS('- for pups -', W/2, 128, 11, '#8a94b8', 'center');
+
+  /* the standoff from the cabinet drawing */
+  const t = Math.sin(frame*0.05)*6;
+  drawPenny({x:120+t, y:180, w:PW, h:PH_STAND, dir:1, anim:frame*0.12, duck:false});
+  const fred = {x:310-t, y:174, w:GW, h:GH, dir:-1, aim:-0.1, alerted:0, lift:false};
+  ctx.save(); beamPath(fred); ctx.clip();
+  ctx.globalAlpha = 0.22; px(0,0,W,H,C.torch); ctx.globalAlpha = 1; ctx.restore();
+  drawFred(fred);
+  txtS('VS', W/2 + 6, 168, 16, C.warn, 'center');
+  px(0, 200, W, 4, '#1c2338'); px(0, 204, W, H-204, '#0d1120');
+
+  txtS('SNEAK PAST FRED, FIND THE KEY, UNLOCK THE DOOR', W/2, 232, 11, '#a8b0d0', 'center');
+  if(frame % 60 < 38) txtS('PRESS ANY BUTTON TO START', W/2, 266, 13, C.torch, 'center');
+  if(best > 0) txtS('BEST ' + String(best).padStart(4,'0'), 10, 288, 10, '#5a6488');
+}
+
+function drawHowTo(){
+  ctx.fillStyle = '#0b0a14'; ctx.fillRect(0,0,W,H);
+  px(14, 10, W-28, H-20, '#12172a');
+  ctx.strokeStyle = C.torch; ctx.lineWidth = 2; ctx.strokeRect(14,10,W-28,H-20);
+  txtS('HOW TO PLAY', W/2, 30, 16, C.torch, 'center');
+
+  txtS('DUCK', 44, 62, 12, C.paper);
+  txtS('Fred never shines the torch low.', 120, 58, 10, '#a8b0d0');
+  txtS('Duck and the beam goes over you.', 120, 72, 10, '#a8b0d0');
+  drawPenny({x:44, y:86, w:PW, h:PH_DUCK, dir:1, anim:0, duck:true});
+
+  txtS('GRAB', 44, 118, 12, C.paper);
+  txtS('Stand on the key and press GRAB.', 120, 114, 10, '#a8b0d0');
+  txtS('Then press GRAB at the door.', 120, 128, 10, '#a8b0d0');
+
+  txtS('JUMP', 44, 156, 12, C.paper);
+  txtS('Hop between platforms. Fall off', 120, 152, 10, '#a8b0d0');
+  txtS('the bottom and you lose a life.', 120, 166, 10, '#a8b0d0');
+
+  px(44, 186, W-88, 1, '#2a3350');
+  txtS('3 LIVES. SPOTTED = -10 POINTS AND A LIFE.', W/2, 202, 10, C.warn, 'center');
+  txtS('LOSE ALL 3 LIVES AND YOU LOSE ALL YOUR POINTS.', W/2, 218, 10, C.warn, 'center');
+  txtS('KEYBOARD: ARROWS  SPACE=JUMP  DOWN=DUCK  X=GRAB', W/2, 244, 9, '#5a6488', 'center');
+  if(frame % 60 < 38) txtS('PRESS ANY BUTTON', W/2, 270, 13, C.torch, 'center');
+}
+
+function drawOverlay(){
+  if(state === 'clear'){
+    px(0, 118, W, 64, 'rgba(6,10,20,.85)');
+    txtS('DOOR UNLOCKED!', W/2, 140, 20, C.good, 'center');
+    txtS('SCORE ' + String(score).padStart(4,'0'), W/2, 166, 12, C.paper, 'center');
+  }
+  if(state === 'caught'){
+    px(0, 122, W, 56, 'rgba(6,10,20,.85)');
+    txtS(penny.msg === 'FALL' ? 'PENNY FELL!' : 'FRED SPOTTED YOU!', W/2, 142, 18, C.warn, 'center');
+    txtS(lives > 0 ? lives + ' LIVES LEFT' : 'NO LIVES LEFT', W/2, 166, 11, C.paper, 'center');
+  }
+  if(state === 'over'){
+    ctx.fillStyle = 'rgba(6,6,12,.92)'; ctx.fillRect(0,0,W,H);
+    txtS('CAUGHT!', W/2, 100, 30, C.warn, 'center');
+    txtS('PENNY NEVER FOUND THE DOOR', W/2, 138, 12, C.paper, 'center');
+    txtS('ALL POINTS LOST', W/2, 166, 14, C.torch, 'center');
+    txtS('BEST ' + String(best).padStart(4,'0'), W/2, 190, 11, '#8a94b8', 'center');
+    if(timer > 60 && frame % 60 < 38) txtS('PRESS ANY BUTTON', W/2, 236, 12, C.paper, 'center');
+  }
+  if(state === 'win'){
+    ctx.fillStyle = '#08160e'; ctx.fillRect(0,0,W,H);
+    for(let i = 0; i < BANDS_LIT.length; i++){
+      ctx.globalAlpha = 0.18; px(0, CEIL_Y + i*BAND_H, W, BAND_H, BANDS_LIT[i]); ctx.globalAlpha = 1;
+    }
+    txtS('PENNY ESCAPED!', W/2, 74, 26, C.torch, 'center');
+    drawPenny({x:W/2-9, y:120, w:PW, h:PH_STAND, dir:1, anim:frame*0.16, duck:false});
+    txtS('EVERY DOOR UNLOCKED', W/2, 176, 13, C.good, 'center');
+    txtS('FINAL SCORE ' + String(score).padStart(4,'0'), W/2, 204, 14, C.paper, 'center');
+    if(timer > 60 && frame % 60 < 38) txtS('PRESS ANY BUTTON', W/2, 244, 12, C.paper, 'center');
+  }
+  if(state === 'play' && hintT > 0){
+    ctx.globalAlpha = Math.min(1, hintT/60);
+    px(0, 32, W, 30, 'rgba(6,10,20,.78)');
+    txtS(LEVELS[level].name, W/2, 42, 11, C.torch, 'center');
+    txtS(LEVELS[level].hint, W/2, 55, 10, C.paper, 'center');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake > 0) ctx.translate((Math.random()*2-1)*shake*0.35, (Math.random()*2-1)*shake*0.35);
+  ctx.fillStyle = '#07060c'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state === 'title'){ drawTitle(); return; }
+  if(state === 'howto'){ drawHowTo(); return; }
+
+  /* lights off */
+  drawBands(false);
+  drawPlats(false);
+
+  /* the torch is the only thing that brings the colour back */
+  for(const g of guards){
+    ctx.save(); beamPath(g); ctx.clip();
+    drawBands(true); drawPlats(true);
+    ctx.globalAlpha = 0.20; px(0,0,W,H,C.torch); ctx.globalAlpha = 1;
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha = 0.16; ctx.fillStyle = C.torch;
+    beamPath(g); ctx.fill(); ctx.restore();
+  }
+
+  drawDoor();
+  drawKey();
+  for(const g of guards) drawFred(g);
+
+  if(state !== 'caught' || timer % 8 < 4){
+    if(!(penny.grace > 0 && frame % 6 < 3)) drawPenny(penny);
+  }
+
+  for(const s of sparks){
+    ctx.globalAlpha = Math.min(1, s.t/12); px(s.x, s.y, 2, 2, s.c); ctx.globalAlpha = 1;
+  }
+
+  if(alertFlash > 0){
+    ctx.globalAlpha = alertFlash/60; px(0,0,W,H,C.warn); ctx.globalAlpha = 1;
+  }
+
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last = performance.now(), acc = 0;
+const STEP = 1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now - last, 100); last = now;
+  while(acc >= STEP){ update(); acc -= STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
