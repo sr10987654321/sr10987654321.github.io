@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Farm The Cows!!!</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#1b2a14;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #f2a0c0,0 0 40px rgba(0,0,0,.7);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(50,60,40,.45);border-radius:16px;user-select:none;-webkit-user-select:none;
+    text-align:center;line-height:1.05;}
+  .btn:active,.btn.on{background:rgba(242,160,192,.72);border-color:#ffc4dd;color:#3a1a28;}
+  #bU{left:calc(3vw + 13vh);bottom:17vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bD{left:calc(3vw + 13vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bL{left:3vw;bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bR{left:calc(3vw + 26vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bBL{right:calc(3vw + 20vh);bottom:5vh;width:18vh;height:18vh;border-radius:50%;font-size:2.5vh;
+       background:rgba(150,210,120,.42);border-color:#b0e88a;}
+  #bBR{right:3vw;bottom:5vh;width:18vh;height:18vh;border-radius:50%;font-size:2.5vh;
+       background:rgba(242,160,192,.42);border-color:#ffc4dd;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#1b2a14;color:#f2d06a;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bU">&#9650;</div>
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bD">&#9660;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bBL">L<br>COWS<br>FOLLOW</div>
+  <div class="btn" id="bBR">R<br>JUMP<br>/ BUILD</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   FARM THE COWS!!!
+   You are the farmer. Build the farm, buy the cows, milk them,
+   and get all five into the barn before the wolf comes out.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+const HUD_H = 34, PY0 = 34, PY1 = 300;
+
+/* ---------- palette ---------- */
+const C = {
+  grass:'#7fbf4a', grass2:'#6faa3f', grassLite:'#96d45f',
+  path:'#c9a06a', pathDark:'#a87f4a',
+  forest:'#2f6b34', forestDark:'#1e4a24', forestLite:'#3f8a44',
+  barn:'#c0392b', barnDark:'#8a2418', barnRoof:'#e0564a',
+  paddock:'#a8e06a', paddockFence:'#8a6a3a',
+  house:'#f2a0c0', houseDark:'#c96a94', houseRoof:'#e0564a',
+  milk:'#eaf4ff', milkDark:'#a8c4e0', milkBlue:'#5aa8e0',
+  feed:'#f0a03a', feedDark:'#c07020',
+  market:'#f2d06a', marketDark:'#c9a83a',
+  kennel:'#a8763a', kennelDark:'#7a5020',
+  cow:'#fdfdf8', cowSpot:'#2a2a2a', cowPink:'#f2a0c0', cowHorn:'#e0d0a0',
+  farmer:'#3a6fd0', farmerSkin:'#f0c9a0', farmerHat:'#c9853a',
+  wolf:'#6a6a78', wolfDark:'#44444f', wolfEye:'#ff5a3a',
+  dog:'#b58a4a', dogDark:'#8a6030',
+  mud:'#7a5a3a', mudDark:'#5c4028',
+  gold:'#f2d06a', paper:'#fffaf0', hot:'#ff5a5a', ink:'#1b2a14', night:'#1a2050'
+};
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function mooSound(){ slide(220,150,0.4,'sawtooth',0.05); setTimeout(()=>slide(180,130,0.3,'sawtooth',0.04),260); }
+function cashSound(){ [784,988,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.08,'square',0.05), i*55)); }
+function buildSound(){ tone(300,0.08,'square',0.05); setTimeout(()=>tone(420,0.1,'square',0.05),80); setTimeout(()=>tone(600,0.12,'square',0.05),170); }
+function milkSound(){ tone(880,0.06,'sine',0.05); setTimeout(()=>tone(1175,0.09,'sine',0.05),55); }
+function howlSound(){ slide(300,520,0.5,'sawtooth',0.06); setTimeout(()=>slide(520,240,0.6,'sawtooth',0.05),420); }
+function barkSound(){ tone(420,0.06,'square',0.05); setTimeout(()=>tone(330,0.07,'square',0.05),70); }
+function loseCowSound(){ slide(400,90,0.5,'sawtooth',0.08); }
+function winSound(){ [523,659,784,1046,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.18,'square',0.07), i*100)); }
+
+/* ---------- input ---------- */
+const keys={u:false,d:false,l:false,r:false,follow:false};
+let rEdge=false, anyPress=false;
+const KEYMAP={ArrowUp:'u',KeyW:'u', ArrowDown:'d',KeyS:'d', ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r',
+              ShiftLeft:'follow', KeyQ:'follow'};
+addEventListener('keydown',e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Space'||e.code==='KeyE'||e.code==='Enter'){ e.preventDefault(); rEdge=true; return; }
+  const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='rbtn') rEdge=true; else keys[key]=true;
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='rbtn') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bU','u'); bindBtn('bD','d'); bindBtn('bL','l'); bindBtn('bR','r');
+bindBtn('bBL','follow'); bindBtn('bBR','rbtn');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- the farm, laid out from her map ---------- */
+const PLOTS = {
+  milk:   { name:'MILKING SPOT', cost:200, x:24,  y:52,  w:84,  h:58, bought:false, note:'$10 EVERY MILKING' },
+  house:  { name:'FARM HOUSE',   cost:200, x:170, y:44,  w:78,  h:58, bought:false, note:'+$50 EVERY MORNING' },
+  feed:   { name:'FEEDING SPOT', cost:100, x:196, y:134, w:88,  h:54, bought:false, note:'FED COWS WILL FOLLOW' },
+  dog:    { name:'THE DOG',      cost:500, x:388, y:150, w:70,  h:54, bought:false, note:'CHASES THE WOLF OFF' },
+  barn:   { name:'BARN',         cost:200, x:24,  y:204, w:104, h:80, bought:false, note:'COWS ARE SAFE INSIDE' },
+  paddock:{ name:'PADDOCK',      cost:150, x:168, y:200, w:132, h:86, bought:false, note:'COWS STAY PUT INSIDE' }
+};
+const MARKET = { x:358, y:212, w:112, h:74, cost:50 };
+const FOREST = { x:368, y:36, w:112, h:82 };
+const MUD = [ {x:132,y:126,w:44,h:26}, {x:300,y:96,w:38,h:24}, {x:312,y:250,w:40,h:24}, {x:120,y:186,w:36,h:22} ];
+const COWS_TO_WIN = 5;
+const DAY_FRAMES = 55*60, NIGHT_FRAMES = 22*60;
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0;
+let money=1000, day=1, phase='day', phaseT=DAY_FRAMES;
+let farmer=null, cows=[], wolf=null, dog=null, pops=[], sparks=[];
+let hintT=0, shake=0, cowsBought=0, cowsLost=0, milkEarned=0, bestDays=0;
+
+function rectsHit(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+function inRect(x,y,r){ return x>r.x && x<r.x+r.w && y>r.y && y<r.y+r.h; }
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:80}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*1.8,vy:(Math.random()*2-1)*1.8,t:26,c:col});
+}
+
+function startGame(){
+  money=1000; day=1; phase='day'; phaseT=DAY_FRAMES;
+  cowsBought=0; cowsLost=0; milkEarned=0;
+  for(const k in PLOTS) PLOTS[k].bought=false;
+  farmer = { x:20, y:150, w:14, h:18, dir:1, anim:0, hop:0, hopT:0 };
+  cows=[]; pops=[]; sparks=[];
+  wolf = { x:FOREST.x+40, y:FOREST.y+40, w:22, h:14, dir:-1, active:false,
+           target:null, carrying:null, scared:0, anim:0 };
+  dog = { x:60, y:170, w:16, h:11, dir:1, anim:0, barkCD:0 };
+  hintT=340; state='play'; timer=0;
+}
+
+function buyCow(){
+  if(cowsBought >= COWS_TO_WIN + cowsLost) return false;
+  if(money < MARKET.cost) return false;
+  money -= MARKET.cost; cowsBought++;
+  cows.push({ x:MARKET.x+20+Math.random()*60, y:MARKET.y+18+Math.random()*36,
+              w:20, h:14, vx:0, vy:0, dir:-1, fed:100, following:false,
+              inBarn:false, milkCD:0, wt:Math.random()*120, anim:Math.random()*6 });
+  cashSound(); pop(MARKET.x+56, MARKET.y-6, 'COW BOUGHT -$50', C.gold);
+  return true;
+}
+
+/* how many cows could still possibly end up in the barn */
+function stillPossible(){
+  const alive = cows.filter(c=>!c.gone).length;
+  if(alive + Math.floor(money/MARKET.cost) >= COWS_TO_WIN) return true;
+  /* a milking spot with a cow on it, or the farm house, still brings money in */
+  const canEarn = (PLOTS.milk.bought && alive>0) || PLOTS.house.bought;
+  return canEarn;
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; tone(700,0.09);} return; }
+  if(state==='howto'){ timer++; if(anyPress&&timer>20){ anyPress=false; startGame(); tone(950,0.1);} return; }
+  if(state==='won'||state==='lost'){ timer++; if(anyPress&&timer>80){ anyPress=false; state='title'; timer=0; } return; }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  const f = farmer;
+
+  /* ----- day and night ----- */
+  phaseT--;
+  if(phaseT<=0){
+    if(phase==='day'){
+      phase='night'; phaseT=NIGHT_FRAMES;
+      wolf.active=true; wolf.x=FOREST.x+40; wolf.y=FOREST.y+50; wolf.scared=0; wolf.carrying=null;
+      howlSound(); pop(240,120,'NIGHT! THE WOLF IS OUT', C.hot);
+    } else {
+      phase='day'; phaseT=DAY_FRAMES; day++;
+      wolf.active=false; wolf.carrying=null;
+      if(PLOTS.house.bought){ money+=50; pop(PLOTS.house.x+39, PLOTS.house.y-8, 'FARM HOUSE +$50', C.gold); cashSound(); }
+      pop(240,120,'DAY '+day, C.paper);
+    }
+  }
+
+  /* ----- the farmer ----- */
+  let mx=0,my=0;
+  if(keys.l) mx-=1; if(keys.r) mx+=1;
+  if(keys.u) my-=1; if(keys.d) my+=1;
+  const inMud = MUD.some(m=>inRect(f.x+f.w/2, f.y+f.h, m)) && f.hop<=0;
+  let sp = inMud ? 0.85 : 2.0;
+  if(mx||my){
+    const L=Math.hypot(mx,my);
+    f.x += mx/L*sp; f.y += my/L*sp;
+    if(mx) f.dir = mx>0?1:-1;
+    f.anim += 0.22;
+  }
+  f.x = Math.max(2, Math.min(W-2-f.w, f.x));
+  f.y = Math.max(PY0+2, Math.min(PY1-2-f.h, f.y));
+
+  if(f.hop>0){ f.hopT++; f.lift = Math.sin(f.hopT/f.hop*Math.PI)*7; if(f.hopT>=f.hop){ f.hop=0; f.lift=0; } }
+
+  /* ----- R: build what you are standing on, or jump ----- */
+  let standing = null;
+  for(const k in PLOTS){ if(!PLOTS[k].bought && inRect(f.x+f.w/2, f.y+f.h, PLOTS[k])) standing = k; }
+  const atMarket = inRect(f.x+f.w/2, f.y+f.h, MARKET);
+  if(rEdge){
+    rEdge=false;
+    if(standing){
+      const p = PLOTS[standing];
+      if(money >= p.cost){
+        money -= p.cost; p.bought = true;
+        buildSound(); puff(p.x+p.w/2, p.y+p.h/2, C.gold, 16);
+        pop(p.x+p.w/2, p.y-8, p.name+' BUILT!', C.gold);
+        if(standing==='dog') barkSound();
+      } else { tone(170,0.09,'square',0.05); pop(f.x, f.y-14, 'NOT ENOUGH MONEY', C.hot); }
+    } else if(atMarket){
+      if(!buyCow()){ tone(170,0.09,'square',0.05); pop(f.x, f.y-14, money<50?'NOT ENOUGH MONEY':'THAT IS ENOUGH COWS', C.hot); }
+    } else if(f.hop<=0){
+      f.hop=22; f.hopT=0; tone(520,0.07,'square',0.045);
+    }
+  }
+
+  /* ----- the cows ----- */
+  const whistling = keys.follow;
+  for(const c of cows){
+    if(c.gone) continue;
+    c.anim += 0.08;
+    if(c.milkCD>0) c.milkCD--;
+
+    if(c.inBarn){ continue; }                      /* safe and staying put */
+
+    if(c.fed>0) c.fed -= 0.055;                    /* they get hungry */
+    if(c.fed<0) c.fed=0;
+
+    const dx=(f.x+f.w/2)-(c.x+c.w/2), dy=(f.y+f.h/2)-(c.y+c.h/2);
+    const d=Math.hypot(dx,dy)||1;
+    c.following = whistling && c.fed>0 && d<86 && !c.carried;
+
+    if(c.carried){
+      /* the wolf has it */
+      c.x += (wolf.x-c.x)*0.3; c.y += (wolf.y+6-c.y)*0.3;
+    } else if(c.following && d>24){
+      const cs = MUD.some(m=>inRect(c.x+c.w/2,c.y+c.h,m)) ? 0.7 : 1.35;
+      c.x += dx/d*cs; c.y += dy/d*cs;
+      if(dx) c.dir = dx>0?1:-1;
+    } else {
+      /* wander, and stay in the paddock if you built one */
+      c.wt--;
+      if(c.wt<=0){
+        c.wt = 90+Math.random()*150;
+        const inPad = PLOTS.paddock.bought && inRect(c.x+c.w/2,c.y+c.h,PLOTS.paddock);
+        if(inPad && Math.random()<0.75){ c.vx=0; c.vy=0; }
+        else { const a=Math.random()*Math.PI*2; c.vx=Math.cos(a)*0.32; c.vy=Math.sin(a)*0.32; }
+      }
+      c.x += c.vx; c.y += c.vy;
+      if(PLOTS.paddock.bought){
+        const P=PLOTS.paddock;
+        if(inRect(c.x+c.w/2,c.y+c.h,P) || (c.px!==undefined && inRect(c.px,c.py,P))){
+          c.x = Math.max(P.x+2, Math.min(P.x+P.w-2-c.w, c.x));
+          c.y = Math.max(P.y+2, Math.min(P.y+P.h-2-c.h, c.y));
+        }
+      }
+      c.px = c.x+c.w/2; c.py = c.y+c.h;
+    }
+    c.x = Math.max(2, Math.min(W-2-c.w, c.x));
+    c.y = Math.max(PY0+2, Math.min(PY1-2-c.h, c.y));
+
+    /* feeding */
+    if(PLOTS.feed.bought && inRect(c.x+c.w/2,c.y+c.h,PLOTS.feed) && c.fed<99){
+      c.fed = Math.min(100, c.fed+1.4);
+      if(frame%40===0) puff(c.x+10,c.y+4,C.feed,3);
+    }
+    /* milking - "$10 per milking" */
+    if(PLOTS.milk.bought && inRect(c.x+c.w/2,c.y+c.h,PLOTS.milk) && c.milkCD<=0){
+      c.milkCD = 900; money += 10; milkEarned += 10;
+      milkSound(); pop(c.x+10, c.y-8, 'MILKED +$10', C.milkBlue);
+    }
+    /* into the barn */
+    if(PLOTS.barn.bought && inRect(c.x+c.w/2,c.y+c.h,PLOTS.barn)){
+      c.inBarn = true; c.following=false;
+      const idx = cows.filter(q=>q.inBarn).length-1;
+      c.x = PLOTS.barn.x + 12 + (idx%3)*30;
+      c.y = PLOTS.barn.y + 30 + Math.floor(idx/3)*24;
+      mooSound(); pop(c.x+10, c.y-10, 'SAFE!', C.paper);
+    }
+  }
+
+  /* ----- the wolf ----- */
+  if(wolf.active){
+    wolf.anim += 0.1;
+    if(wolf.scared>0){
+      wolf.scared--;
+      const dx=(FOREST.x+50)-wolf.x, dy=(FOREST.y+40)-wolf.y, d=Math.hypot(dx,dy)||1;
+      wolf.x += dx/d*2.1; wolf.y += dy/d*2.1;
+      wolf.dir = dx>0?1:-1;
+    } else if(wolf.carrying){
+      const dx=(FOREST.x+50)-wolf.x, dy=(FOREST.y+40)-wolf.y, d=Math.hypot(dx,dy)||1;
+      wolf.x += dx/d*1.5; wolf.y += dy/d*1.5;
+      wolf.dir = dx>0?1:-1;
+      if(d<26){
+        wolf.carrying.gone = true;
+        cowsLost++;
+        loseCowSound(); pop(wolf.x, wolf.y-14, 'THE WOLF TOOK A COW!', C.hot);
+        wolf.carrying=null; shake=14;
+        if(!stillPossible()){ state='lost'; timer=0; return; }
+      }
+    } else {
+      /* hunt the nearest loose cow */
+      let bestC=null, bestD=1e9;
+      for(const c of cows){
+        if(c.gone||c.inBarn||c.carried) continue;
+        const d=Math.hypot((c.x)-wolf.x,(c.y)-wolf.y);
+        if(d<bestD){ bestD=d; bestC=c; }
+      }
+      if(bestC){
+        const dx=bestC.x-wolf.x, dy=bestC.y-wolf.y, d=Math.hypot(dx,dy)||1;
+        wolf.x += dx/d*1.5; wolf.y += dy/d*1.5;
+        wolf.dir = dx>0?1:-1;
+        if(d<16){ bestC.carried=true; wolf.carrying=bestC; howlSound(); }
+      } else {
+        const dx=(FOREST.x+50)-wolf.x, dy=(FOREST.y+40)-wolf.y, d=Math.hypot(dx,dy)||1;
+        if(d>20){ wolf.x += dx/d*1.2; wolf.y += dy/d*1.2; }
+      }
+    }
+    /* the farmer can shoo it, the dog does it properly */
+    if(Math.hypot((f.x+7)-wolf.x,(f.y+9)-wolf.y) < 22 && wolf.scared<=0){
+      wolf.scared = 150;
+      if(wolf.carrying){ wolf.carrying.carried=false; wolf.carrying=null; }
+      pop(wolf.x, wolf.y-14, 'SHOO!', C.paper); tone(600,0.1,'square',0.05);
+    }
+  }
+
+  /* ----- the dog ----- */
+  if(PLOTS.dog.bought){
+    dog.anim += 0.14;
+    let tx=f.x-18, ty=f.y+10;
+    if(wolf.active && wolf.scared<=0){ tx=wolf.x; ty=wolf.y; }
+    const dx=tx-dog.x, dy=ty-dog.y, d=Math.hypot(dx,dy)||1;
+    if(d>10){ dog.x += dx/d*2.15; dog.y += dy/d*2.15; dog.dir = dx>0?1:-1; }
+    if(wolf.active && Math.hypot(dog.x-wolf.x,dog.y-wolf.y)<18 && wolf.scared<=0){
+      wolf.scared=260;
+      if(wolf.carrying){ wolf.carrying.carried=false; wolf.carrying=null; }
+      barkSound(); pop(dog.x, dog.y-12, 'WOOF!', C.paper);
+    }
+    if(dog.barkCD>0) dog.barkCD--;
+  }
+
+  /* ----- win ----- */
+  if(cows.filter(c=>c.inBarn).length >= COWS_TO_WIN){
+    bestDays = (bestDays===0) ? day : Math.min(bestDays, day);
+    state='won'; timer=0; winSound();
+    return;
+  }
+  if(!stillPossible()){ state='lost'; timer=0; return; }
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y-=0.3; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(20,30,12,.55)',align); txt(s,x,y,size,col,align);
+}
+
+function drawField(){
+  px(0,PY0,W,PY1-PY0,C.grass);
+  for(let y=PY0;y<PY1;y+=14)
+    for(let x=((y/14)%2)*16;x<W;x+=32) px(x,y,28,11,C.grass2);
+  ctx.globalAlpha=0.5;
+  for(let i=0;i<90;i++){
+    const x=(i*53)%W, y=PY0+((i*37)%(PY1-PY0));
+    px(x,y,2,4,C.grassLite);
+  }
+  ctx.globalAlpha=1;
+  /* her brown paths */
+  px(140,PY0+10,26,PY1-PY0-20,C.path);
+  px(20,150,440,22,C.path);
+  px(300,PY0+8,24,120,C.path);
+  ctx.globalAlpha=0.35;
+  for(let i=0;i<60;i++){ const x=(i*67)%W, y=PY0+((i*29)%(PY1-PY0)); px(x,y,3,2,C.pathDark); }
+  ctx.globalAlpha=1;
+  for(const m of MUD){
+    px(m.x,m.y,m.w,m.h,C.mud);
+    px(m.x+3,m.y+3,m.w-6,m.h-6,C.mudDark);
+    for(let i=0;i<4;i++) px(m.x+5+i*8, m.y+5+((i%2)*8), 4, 3, C.mud);
+  }
+}
+
+function drawForest(){
+  px(FOREST.x,FOREST.y,FOREST.w,FOREST.h,C.forestDark);
+  for(let i=0;i<16;i++){
+    const tx=FOREST.x+8+(i%4)*28, ty=FOREST.y+10+Math.floor(i/4)*20;
+    px(tx+4,ty+10,4,7,'#5a3a1a');
+    px(tx,ty,13,12,C.forest);
+    px(tx+2,ty-3,9,7,C.forestLite);
+  }
+  txtS('FOREST - WOLF HOME', FOREST.x+FOREST.w/2, FOREST.y+FOREST.h-8, 8, '#c8e8b8', 'center');
+}
+
+function drawPlot(k){
+  const p = PLOTS[k];
+  if(!p.bought){
+    ctx.globalAlpha=0.35;
+    px(p.x,p.y,p.w,p.h,'#e8e0c8');
+    ctx.globalAlpha=1;
+    ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.strokeRect(p.x+1,p.y+1,p.w-2,p.h-2); ctx.setLineDash([]);
+    txtS(p.name, p.x+p.w/2, p.y+p.h/2-8, 9, '#3a4a2a', 'center');
+    txtS('$'+p.cost, p.x+p.w/2, p.y+p.h/2+6, 12, money>=p.cost?C.gold:C.hot, 'center');
+    return;
+  }
+  if(k==='barn'){
+    px(p.x,p.y+14,p.w,p.h-14,C.barn);
+    px(p.x,p.y+14,p.w,3,C.barnDark);
+    for(let i=0;i<6;i++) px(p.x+4+i*17,p.y+14,3,p.h-14,C.barnDark);
+    for(let i=0;i<7;i++) px(p.x+i*15, p.y, 17, 15, C.barnRoof);
+    px(p.x,p.y+12,p.w,3,C.barnDark);
+    px(p.x+p.w/2-16,p.y+p.h-30,32,30,C.barnDark);
+    px(p.x+p.w/2-13,p.y+p.h-27,26,27,'#5a1a10');
+    txtS('BARN', p.x+p.w/2, p.y+7, 9, '#fff0e0', 'center');
+  } else if(k==='paddock'){
+    px(p.x,p.y,p.w,p.h,C.paddock);
+    ctx.globalAlpha=0.4;
+    for(let i=0;i<24;i++) px(p.x+6+(i%6)*21, p.y+8+Math.floor(i/6)*20, 3, 5, '#6faa3f');
+    ctx.globalAlpha=1;
+    for(let i=0;i<p.w;i+=14) px(p.x+i,p.y,3,p.h,C.paddockFence);
+    px(p.x,p.y,p.w,3,C.paddockFence); px(p.x,p.y+p.h-3,p.w,3,C.paddockFence);
+    txtS('PADDOCK', p.x+p.w/2, p.y+p.h-9, 8, '#3a5a20', 'center');
+  } else if(k==='house'){
+    px(p.x+6,p.y+18,p.w-12,p.h-18,C.house);
+    px(p.x+6,p.y+18,p.w-12,3,C.houseDark);
+    for(let i=0;i<6;i++) px(p.x+i*13, p.y+4, 15, 15, C.houseRoof);
+    px(p.x+p.w/2-9,p.y+p.h-22,18,22,C.houseDark);
+    px(p.x+12,p.y+26,12,12,'#c8e8ff');
+    px(p.x+p.w-24,p.y+26,12,12,'#c8e8ff');
+    txtS('HOUSE', p.x+p.w/2, p.y+12, 8, '#fff0f6', 'center');
+  } else if(k==='milk'){
+    px(p.x,p.y,p.w,p.h,C.milk);
+    px(p.x,p.y,p.w,4,C.milkDark);
+    for(let i=0;i<3;i++){
+      const bx=p.x+12+i*24, by=p.y+18;
+      px(bx,by,12,22,'#ffffff'); px(bx,by,12,4,C.milkBlue); px(bx+3,by-5,6,6,C.milkDark);
+    }
+    txtS('MILKING $10', p.x+p.w/2, p.y+p.h-8, 8, '#3a5a7a', 'center');
+  } else if(k==='feed'){
+    px(p.x,p.y,p.w,p.h,C.feed);
+    px(p.x,p.y,p.w,4,C.feedDark);
+    for(let i=0;i<4;i++){
+      const hx=p.x+10+i*20, hy=p.y+16;
+      px(hx,hy,14,16,'#e8c060'); px(hx+2,hy+2,10,12,'#c9a040');
+    }
+    txtS('FEED', p.x+p.w/2, p.y+p.h-8, 8, '#5a3a10', 'center');
+  } else if(k==='dog'){
+    px(p.x+10,p.y+16,p.w-20,p.h-16,C.kennel);
+    for(let i=0;i<5;i++) px(p.x+6+i*12, p.y+4, 14, 14, C.kennelDark);
+    px(p.x+p.w/2-9,p.y+p.h-22,18,22,'#3a2410');
+    txtS('DOG', p.x+p.w/2, p.y+11, 8, '#f0e0c0', 'center');
+  }
+}
+
+function drawMarket(){
+  px(MARKET.x,MARKET.y,MARKET.w,MARKET.h,C.market);
+  px(MARKET.x,MARKET.y,MARKET.w,4,C.marketDark);
+  for(let i=0;i<5;i++) px(MARKET.x+6+i*22, MARKET.y+MARKET.h-4, 4, 4, C.marketDark);
+  ctx.save(); ctx.translate(MARKET.x+34, MARKET.y+40); ctx.scale(0.9,0.9);
+  drawCowSprite(0,0,1,0,false); ctx.restore();
+  txtS('COWS $50', MARKET.x+MARKET.w/2, MARKET.y+12, 10, '#5a4a10', 'center');
+  const left = COWS_TO_WIN + cowsLost - cowsBought;
+  txtS(left>0 ? left+' LEFT TO BUY' : 'ALL BOUGHT', MARKET.x+MARKET.w/2, MARKET.y+MARKET.h-9, 8, '#5a4a10', 'center');
+}
+
+function drawCowSprite(x,y,dir,anim,hungry){
+  ctx.save(); ctx.translate(x|0,y|0);
+  if(dir<0) ctx.scale(-1,1);
+  const step = Math.floor(anim)%2;
+  px(-10,-6,19,12,C.cow);
+  px(-10,-6,19,3,'#e8e8e0');
+  px(-6,-4,6,5,C.cowSpot); px(2,0,5,4,C.cowSpot);
+  px(-9+step,6,4,4,C.cow); px(3-step,6,4,4,C.cow);
+  px(8,-8,9,9,C.cow);
+  px(9,-6,2,2,C.cowSpot); px(13,-6,2,2,C.cowSpot);
+  px(12,-1,5,4,C.cowPink);
+  px(13,0,1,1,C.cowSpot); px(15,0,1,1,C.cowSpot);
+  px(8,-11,3,3,C.cowHorn); px(14,-11,3,3,C.cowHorn);
+  px(-13,-4,4,3,C.cow);
+  ctx.restore();
+  if(hungry) txtS('!', x+4, y-18, 11, C.hot, 'center');
+}
+function drawCow(c){
+  if(c.gone) return;
+  drawCowSprite(c.x+10, c.y+7, c.dir, c.anim, c.fed<=0 && !c.inBarn);
+  if(!c.inBarn && c.fed>0 && c.fed<100){
+    px(c.x, c.y-8, 20, 3, 'rgba(0,0,0,.35)');
+    px(c.x+1, c.y-7, 18*(c.fed/100), 1, c.fed>35 ? C.feed : C.hot);
+  }
+  if(c.following) txtS('~', c.x+10, c.y-14, 10, C.paper, 'center');
+}
+
+function drawFarmer(f){
+  const y = f.y - (f.lift||0);
+  if(f.lift>1){ ctx.globalAlpha=0.2; px(f.x+1, f.y+16, 12, 4, '#000000'); ctx.globalAlpha=1; }
+  ctx.save(); ctx.translate((f.x+f.w/2)|0, y|0);
+  if(f.dir<0) ctx.scale(-1,1);
+  const step = Math.floor(f.anim)%2;
+  px(-5,7,10,8,C.farmer);
+  px(-5,7,10,2,'#5a8fe0');
+  px(-4+step,15,4,4,'#3a2a1a'); px(1-step,15,4,4,'#3a2a1a');
+  px(-6,8,2,5,C.farmerSkin); px(4,8,2,5,C.farmerSkin);
+  px(-4,0,9,8,C.farmerSkin);
+  px(-7,-2,15,3,C.farmerHat); px(-4,-6,9,4,C.farmerHat);
+  px(-2,3,2,2,C.ink); px(2,3,2,2,C.ink);
+  ctx.restore();
+}
+
+function drawWolf(w){
+  if(!w.active) return;
+  ctx.save(); ctx.translate(w.x|0,w.y|0);
+  if(w.dir<0) ctx.scale(-1,1);
+  const step=Math.floor(w.anim)%2;
+  px(-11,-5,20,10,C.wolf);
+  px(-11,-5,20,3,'#8a8a96');
+  px(-10+step,5,4,4,C.wolfDark); px(3-step,5,4,4,C.wolfDark);
+  px(-15,-4,5,5,C.wolf);
+  px(8,-8,9,9,C.wolf);
+  px(8,-11,3,4,C.wolfDark); px(14,-11,3,4,C.wolfDark);
+  px(10,-6,2,2,C.wolfEye); px(14,-6,2,2,C.wolfEye);
+  px(15,-2,3,3,C.wolfDark);
+  ctx.restore();
+  if(w.scared>0) txtS('!!', w.x, w.y-16, 11, C.paper, 'center');
+}
+
+function drawDog(d){
+  if(!PLOTS.dog.bought) return;
+  ctx.save(); ctx.translate(d.x|0,d.y|0);
+  if(d.dir<0) ctx.scale(-1,1);
+  const step=Math.floor(d.anim)%2;
+  px(-8,-4,15,8,C.dog);
+  px(-7+step,4,3,3,C.dogDark); px(2-step,4,3,3,C.dogDark);
+  px(-11,-5,4,4,C.dog);
+  px(6,-6,7,7,C.dog);
+  px(6,-9,3,4,C.dogDark);
+  px(8,-4,2,2,C.ink);
+  px(11,-1,3,2,C.dogDark);
+  ctx.restore();
+}
+
+function drawNight(){
+  if(phase!=='night') return;
+  const t = Math.min(1, (NIGHT_FRAMES-phaseT)/60);
+  ctx.globalAlpha = 0.42*t;
+  px(0,PY0,W,PY1-PY0,C.night);
+  ctx.globalAlpha = 1;
+  /* the barn stays lit */
+  if(PLOTS.barn.bought){
+    const b=PLOTS.barn;
+    ctx.globalAlpha=0.18; px(b.x-10,b.y-10,b.w+20,b.h+20,'#ffd88a'); ctx.globalAlpha=1;
+  }
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#243318');
+  px(0,HUD_H-2,W,2,C.gold);
+  txtS('$'+money, 8, 12, 15, money>=50?C.gold:C.hot);
+  txtS('DAY '+day, 8, 26, 10, C.paper);
+
+  const inBarn = cows.filter(c=>c.inBarn).length;
+  const outside = cows.filter(c=>!c.gone && !c.inBarn).length;
+  ctx.save(); ctx.translate(112,14); ctx.scale(0.62,0.62); drawCowSprite(0,0,1,0,false); ctx.restore();
+  txtS(inBarn+' / '+COWS_TO_WIN+' IN BARN', 128, 12, 11, inBarn>=COWS_TO_WIN?C.gold:C.paper);
+  txtS(outside+' OUT IN THE FIELD', 128, 26, 9, (phase==='night'&&outside>0)?C.hot:'#b8d0a0');
+
+  const secs = Math.ceil(phaseT/60);
+  const isNight = phase==='night';
+  txtS(isNight?'NIGHT':'DAY', 300, 11, 12, isNight?'#9ab0ff':C.gold);
+  px(300,18,96,8,'#3a4a28');
+  px(301,19,94*(phaseT/(isNight?NIGHT_FRAMES:DAY_FRAMES)),6, isNight?'#6a7ae0':'#e0c04a');
+  txtS(secs+'s', 402, 22, 10, C.paper);
+
+  /* what you own */
+  let ox = 300;
+  const owned = [];
+  if(PLOTS.barn.bought) owned.push('BARN');
+  if(PLOTS.feed.bought) owned.push('FEED');
+  if(PLOTS.milk.bought) owned.push('MILK');
+  if(PLOTS.paddock.bought) owned.push('PADDOCK');
+  if(PLOTS.house.bought) owned.push('HOUSE');
+  if(PLOTS.dog.bought) owned.push('DOG');
+  txtS(owned.length?owned.join(' '):'NOTHING BUILT YET', W-8, 31, 7, '#b8d0a0', 'right');
+}
+
+function drawPrompt(){
+  const f=farmer;
+  let standing=null;
+  for(const k in PLOTS){ if(!PLOTS[k].bought && inRect(f.x+f.w/2,f.y+f.h,PLOTS[k])) standing=k; }
+  const atMarket = inRect(f.x+f.w/2,f.y+f.h,MARKET);
+  let msg=null, col=C.gold;
+  if(standing){
+    const p=PLOTS[standing];
+    msg = money>=p.cost ? ('PRESS R TO BUILD '+p.name+' - $'+p.cost) : ('NEED $'+p.cost+' FOR THE '+p.name);
+    col = money>=p.cost ? C.gold : C.hot;
+  } else if(atMarket){
+    const left = COWS_TO_WIN + cowsLost - cowsBought;
+    if(left<=0){ msg='YOU HAVE ALL THE COWS YOU NEED'; col='#b8d0a0'; }
+    else if(money>=50){ msg='PRESS R TO BUY A COW - $50'; }
+    else { msg='NEED $50 FOR A COW'; col=C.hot; }
+  }
+  if(msg){
+    const w = msg.length*6.4+16;
+    px(W/2-w/2, PY1-26, w, 18, 'rgba(20,30,12,.85)');
+    txtS(msg, W/2, PY1-17, 10, col, 'center');
+  }
+  if(standing){
+    const p=PLOTS[standing];
+    txtS(p.note, p.x+p.w/2, p.y+p.h+9, 8, '#e8f0d8', 'center');
+  }
+}
+
+function drawTitle(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#9fd8f0'); g.addColorStop(0.5,'#bfe8a0'); g.addColorStop(1,C.grass);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  px(0,196,W,H-196,C.grass);
+  for(let y=196;y<H;y+=14) for(let x=((y/14)%2)*16;x<W;x+=32) px(x,y,28,11,C.grass2);
+  for(const [x,y] of [[60,44],[200,30],[350,50],[430,36]]){
+    px(x,y,30,10,'#ffffff'); px(x+7,y-6,18,9,'#ffffff'); px(x+4,y+8,22,5,'#ffffff');
+  }
+  px(30,150,90,48,C.barn); for(let i=0;i<6;i++) px(30+i*15,138,17,14,C.barnRoof);
+  px(360,148,90,50,C.house); for(let i=0;i<7;i++) px(360+i*13,136,15,14,C.houseRoof);
+
+  txtS('FARM', W/2-96, 92, 40, '#3a6b1a', 'center');
+  txtS('THE COWS!!!', W/2+58, 96, 30, '#f2a0c0', 'center');
+  ctx.save(); ctx.translate(W/2-14, 132); ctx.scale(1.5,1.5); drawCowSprite(0,0,1,0,false); ctx.restore();
+
+  const t=Math.sin(frame*0.05)*10;
+  drawFarmer({x:170+t,y:206,w:14,h:18,dir:1,anim:frame*0.2,lift:0});
+  ctx.save(); ctx.translate(250+t,224); drawCowSprite(0,0,-1,frame*0.1,false); ctx.restore();
+  ctx.save(); ctx.translate(330,222); drawCowSprite(0,0,-1,frame*0.1,false); ctx.restore();
+
+  txtS('START MONEY $1000 - GET 5 COWS IN THE BARN', W/2, 258, 10, '#2a4a12', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON TO START', W/2, 282, 13, '#2a4a12', 'center');
+}
+
+function drawHowTo(){
+  ctx.fillStyle='#243318'; ctx.fillRect(0,0,W,H);
+  px(12,8,W-24,H-16,'#31441f');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(12,8,W-24,H-16);
+  txtS('HOW TO FARM', W/2, 26, 15, C.gold, 'center');
+
+  txtS('You start with $1000. You cannot afford', 28, 48, 10, C.paper);
+  txtS('everything, so choose carefully.', 28, 61, 10, C.gold);
+
+  txtS('BARN $200', 28, 80, 10, C.hot);
+  txtS('cows are only safe in here', 128, 80, 9, C.paper);
+  txtS('COWS $50 each', 28, 94, 10, C.hot);
+  txtS('you need five of them', 128, 94, 9, C.paper);
+  txtS('FEED $100', 28, 108, 10, C.gold);
+  txtS('a hungry cow will not follow you', 128, 108, 9, C.paper);
+  txtS('MILK $200', 28, 122, 10, C.gold);
+  txtS('$10 every time a cow stands on it', 128, 122, 9, C.paper);
+  txtS('PADDOCK $150', 28, 136, 10, '#b8d0a0');
+  txtS('cows stay put instead of wandering', 128, 136, 9, C.paper);
+  txtS('HOUSE $200', 28, 150, 10, '#b8d0a0');
+  txtS('+$50 every morning', 128, 150, 9, C.paper);
+  txtS('DOG $500', 28, 164, 10, '#b8d0a0');
+  txtS('chases the wolf right off the farm', 128, 164, 9, C.paper);
+
+  txtS('HOLD L and fed cows follow you. R builds what', 28, 190, 10, C.paper);
+  txtS('you are standing on, or jumps a mud patch.', 28, 203, 10, C.paper);
+  txtS('AT NIGHT THE WOLF COMES OUT OF THE FOREST.', W/2, 224, 10, C.hot, 'center');
+  txtS('KEYS: ARROWS  SHIFT=COWS FOLLOW  SPACE=R', W/2, 244, 9, '#b8d0a0', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 268, 12, C.gold, 'center');
+}
+
+function drawOverlay(){
+  if(state==='won'){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#9fd8f0'); g.addColorStop(1,C.grass);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    txtS('ALL FIVE COWS IN THE BARN!', W/2, 56, 19, '#2a4a12', 'center');
+    for(let i=0;i<5;i++){
+      ctx.save(); ctx.translate(90+i*76, 120+Math.sin(frame*0.08+i)*4);
+      ctx.scale(1.1,1.1); drawCowSprite(0,0,1,frame*0.08+i,false); ctx.restore();
+    }
+    txtS('YOU FARMED THEM IN '+day+' DAY'+(day>1?'S':''), W/2, 176, 13, '#2a4a12', 'center');
+    txtS('MONEY LEFT $'+money+'    MILK EARNED $'+milkEarned, W/2, 200, 11, '#2a4a12', 'center');
+    txtS(cowsLost>0 ? ('THE WOLF GOT '+cowsLost+' ALONG THE WAY') : 'AND THE WOLF GOT NOTHING', W/2, 222, 10,
+         cowsLost>0?'#7a4a1a':'#2a6a12', 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 258, 11, '#2a4a12', 'center');
+  }
+  if(state==='lost'){
+    ctx.fillStyle='rgba(16,20,30,.94)'; ctx.fillRect(0,0,W,H);
+    txtS('THE WOLF WON', W/2, 108, 26, C.hot, 'center');
+    txtS('NO COWS LEFT AND NO MONEY TO BUY MORE', W/2, 146, 11, '#b8c0d0', 'center');
+    txtS('YOU LASTED '+day+' DAY'+(day>1?'S':''), W/2, 176, 12, C.paper, 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 236, 11, '#b8c0d0', 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,30,'rgba(20,30,12,.82)');
+    txtS('BUILD THE BARN, BUY 5 COWS, HERD THEM IN', W/2, HUD_H+12, 10, C.gold, 'center');
+    txtS('HOLD L SO THE COWS FOLLOW YOU', W/2, HUD_H+25, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#1b2a14'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='howto'){ drawHowTo(); return; }
+  if(state==='won'||state==='lost'){ drawOverlay(); return; }
+
+  drawField();
+  drawForest();
+  drawPlot('paddock'); drawPlot('feed'); drawPlot('milk');
+  drawPlot('house'); drawPlot('dog');
+  drawMarket();
+  drawPlot('barn');
+
+  const order = cows.filter(c=>!c.gone).slice().sort((a,b)=>a.y-b.y);
+  for(const c of order) drawCow(c);
+  drawDog(dog);
+  drawWolf(wolf);
+  drawFarmer(farmer);
+
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/13); px(s.x,s.y,2,2,s.c); ctx.globalAlpha=1; }
+  drawNight();
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/28);
+    txtS(p.s, p.x, p.y, 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+  drawPrompt();
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
