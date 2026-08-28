@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Escape the Lava</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#1c0e10;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #ff7a3a,0 0 44px rgba(255,90,40,.35);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(60,32,30,.45);border-radius:16px;user-select:none;-webkit-user-select:none;}
+  .btn:active,.btn.on{background:rgba(255,201,74,.72);border-color:#ffd76a;color:#3a2010;}
+  #bU{left:calc(3vw + 13vh);bottom:17vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bD{left:calc(3vw + 13vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bL{left:3vw;bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bR{left:calc(3vw + 26vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bA{right:3vw;bottom:5vh;width:17vh;height:17vh;border-radius:50%;font-size:4vh;
+      background:rgba(255,201,74,.4);border-color:#ffd76a;}
+  #bB{right:calc(3vw + 19vh);bottom:5vh;width:16vh;height:16vh;border-radius:50%;font-size:4vh;
+      background:rgba(232,110,190,.4);border-color:#ff9ad8;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#1c0e10;color:#ffc94a;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bU">&#9650;</div>
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bD">&#9660;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bB">B</div>
+  <div class="btn" id="bA">A</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   ESCAPE THE LAVA
+   Jump the brown blocks up to the chest. Stars are checkpoints,
+   but a pink villain guards every one of them.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+const HUD_H = 30;
+
+/* ---------- palette ---------- */
+const C = {
+  rock:'#2e2028', rock2:'#3a2830', rockDark:'#1e1418',
+  block:'#8a5a30', blockLite:'#ad7642', blockDark:'#5c3a1c',
+  ladder:'#c0392b', ladderLite:'#e8564a', ladderRung:'#8a2a20',
+  lava:'#ff6a1a', lava2:'#ff9a3a', lavaDeep:'#c9350a', lavaGlow:'#ffd07a',
+  star:'#ffd23f', starDark:'#c9a010', starGot:'#fff0a0',
+  villain:'#f06ac0', villainDark:'#c93a94', villainEye:'#2a1020',
+  bullet:'#ff9ad8',
+  chest:'#a8763a', chestLite:'#d6a05a', chestGold:'#ffd23f', chestDark:'#5c3a1c',
+  portal:'#8a5ae0', portalLite:'#c0a0ff',
+  coin:'#ffd23f', coinDark:'#c9a010',
+  skin:'#f0c9a0', skin2:'#c98a5a', hair:'#5a3a24', hair2:'#2a1a12',
+  paper:'#fff2e0', gold:'#ffd23f', hot:'#ff5a5a', ink:'#1e1418'
+};
+/* the clothing you win at the end */
+const OUTFITS = [
+  { name:'RED',    top:'#e0453a', legs:'#3a5fd0' },
+  { name:'BLUE',   top:'#3a7fd0', legs:'#2a3a6a' },
+  { name:'PINK',   top:'#f06ac0', legs:'#8a3a70' },
+  { name:'GREEN',  top:'#4faf50', legs:'#2f6b34' },
+  { name:'PURPLE', top:'#8a5ae0', legs:'#4a2a8a' },
+  { name:'GOLD',   top:'#ffc94a', legs:'#a87a20' }
+];
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sawtooth';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.07:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function noise(dur,vol){
+  if(!AC) return;
+  try{
+    const n=Math.floor(AC.sampleRate*dur), buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource(), g=AC.createGain();
+    src.buffer=buf; g.gain.value=vol||0.1;
+    src.connect(g); g.connect(AC.destination); src.start();
+  }catch(e){}
+}
+function jumpSound(){ tone(480,0.07,'square',0.045); setTimeout(()=>tone(700,0.06,'square',0.04),55); }
+function coinSound(){ tone(988,0.05,'square',0.045); setTimeout(()=>tone(1319,0.07,'square',0.045),45); }
+function starSound(){ [659,880,1175,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.12,'square',0.06), i*70)); }
+function burnSound(){ slide(500,90,0.45,'sawtooth',0.09); noise(0.3,0.12); }
+function hitSound(){ slide(420,110,0.35,'square',0.08); }
+function chestSound(){ [523,659,784,1046,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.18,'square',0.07), i*100)); }
+function portalSound(){ slide(300,1100,0.28,'sine',0.06); }
+function shootSound(){ tone(300,0.05,'square',0.04); }
+
+/* ---------- input ---------- */
+const keys={u:false,d:false,l:false,r:false};
+let aEdge=false, bEdge=false, anyPress=false;
+const KEYMAP={ArrowUp:'u',KeyW:'u', ArrowDown:'d',KeyS:'d', ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r'};
+addEventListener('keydown',e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Space'||e.code==='KeyZ'){ e.preventDefault(); aEdge=true; return; }
+  if(e.code==='KeyX'||e.code==='Enter'){ e.preventDefault(); bEdge=true; return; }
+  const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='a') aEdge=true; else if(key==='b') bEdge=true; else keys[key]=true;
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='a'&&key!=='b') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bU','u'); bindBtn('bD','d'); bindBtn('bL','l'); bindBtn('bR','r');
+bindBtn('bA','a'); bindBtn('bB','b');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- constants ---------- */
+const GRAV=0.24, JUMP=-5.45, MAXFALL=6.3, SPEED=1.85, CLIMB=1.35;
+const PW=13, PH=20;
+
+/* ---------- levels ---------- */
+/* block tiers 232 / 190 / 148 / 106 / 64 - 42 apart, one jump each */
+const LEVELS = [
+  { name:'THE FIRST CLIMB', hint:'A JUMPS. B TAKES A STAR OR OPENS THE CHEST',
+    lavaY:262, ballRate:190,
+    blocks:[ {x:360,y:232,w:110},{x:200,y:232,w:100},{x:40,y:232,w:110},
+             {x:110,y:190,w:100},{x:280,y:190,w:110},
+             {x:30,y:148,w:100},{x:190,y:148,w:100},{x:350,y:148,w:110},
+             {x:90,y:106,w:110},{x:270,y:106,w:110},
+             {x:180,y:64,w:100},{x:350,y:64,w:120} ],
+    ladders:[ {x:152,y0:106,y1:232},{x:420,y0:148,y1:232} ],
+    stars:[ {x:236,y:218},{x:62,y:134},{x:302,y:92} ],
+    villains:[ {b:1},{b:5},{b:9} ],
+    portals:[ {ax:70,ay:174,bx:214,by:48} ],
+    coins:[[400,214],[250,172],[130,172],[60,130],[220,130],[390,130],[120,88],[310,88],[210,46]],
+    start:{x:396,y:212}, chest:{x:424,y:36} },
+
+  { name:'THE PINK GUARDS', hint:'A LAVA BALL DIES IF IT HITS A STAR',
+    lavaY:262, ballRate:150,
+    blocks:[ {x:340,y:232,w:130},{x:170,y:232,w:110},{x:20,y:232,w:110},
+             {x:80,y:190,w:110},{x:250,y:190,w:110},
+             {x:20,y:148,w:110},{x:200,y:148,w:100},{x:360,y:148,w:110},
+             {x:110,y:106,w:110},{x:290,y:106,w:110},
+             {x:40,y:64,w:110},{x:220,y:64,w:100},{x:370,y:64,w:100} ],
+    ladders:[ {x:140,y0:64,y1:190},{x:330,y0:106,y1:232} ],
+    stars:[ {x:206,y:218},{x:44,y:134},{x:326,y:92},{x:256,y:50} ],
+    villains:[ {b:1},{b:5},{b:9},{b:11} ],
+    portals:[ {ax:50,ay:174,bx:400,by:48} ],
+    coins:[[380,214],[120,214],[110,172],[290,172],[60,130],[240,130],[400,130],[150,88],[330,88],[80,46],[410,46]],
+    start:{x:380,y:212}, chest:{x:394,y:36} },
+
+  { name:'THROUGH THE BLOCKS', hint:'LAVA BALLS GO STRAIGHT THROUGH BLOCKS',
+    lavaY:258, ballRate:120,
+    blocks:[ {x:350,y:232,w:120},{x:180,y:232,w:100},{x:20,y:232,w:100},
+             {x:100,y:190,w:100},{x:270,y:190,w:100},
+             {x:20,y:148,w:100},{x:180,y:148,w:110},{x:360,y:148,w:110},
+             {x:80,y:106,w:110},{x:270,y:106,w:100},
+             {x:20,y:64,w:100},{x:190,y:64,w:110},{x:360,y:64,w:110} ],
+    ladders:[ {x:130,y0:64,y1:148},{x:310,y0:64,y1:190},{x:440,y0:148,y1:232} ],
+    stars:[ {x:216,y:218},{x:44,y:134},{x:300,y:92} ],
+    villains:[ {b:1},{b:5},{b:9},{b:3},{b:7} ],
+    portals:[ {ax:44,ay:216,bx:236,by:48} ],
+    coins:[[390,214],[130,214],[130,172],[300,172],[50,130],[220,130],[400,130],[110,88],[300,88],[50,46],[400,46]],
+    start:{x:396,y:212}, chest:{x:404,y:36} },
+
+  { name:'THE LAST CHEST', hint:'LAST ONE. THE CHEST IS AT THE TOP',
+    lavaY:254, ballRate:100,
+    blocks:[ {x:340,y:232,w:130},{x:180,y:232,w:90},{x:20,y:232,w:100},
+             {x:90,y:190,w:100},{x:250,y:190,w:100},
+             {x:20,y:148,w:90},{x:170,y:148,w:100},{x:340,y:148,w:110},
+             {x:80,y:106,w:100},{x:250,y:106,w:100},{x:410,y:106,w:60},
+             {x:30,y:64,w:100},{x:200,y:64,w:100},{x:360,y:64,w:110} ],
+    ladders:[ {x:126,y0:64,y1:190},{x:296,y0:64,y1:232},{x:436,y0:106,y1:148} ],
+    stars:[ {x:212,y:218},{x:40,y:134},{x:284,y:92},{x:230,y:50} ],
+    villains:[ {b:1},{b:5},{b:9},{b:3},{b:12},{b:7} ],
+    portals:[ {ax:40,ay:216,bx:436,by:90} ],
+    coins:[[390,214],[120,214],[120,172],[280,172],[50,130],[200,130],[380,130],[110,88],[280,88],[60,46],[400,46]],
+    start:{x:390,y:212}, chest:{x:400,y:36} }
+];
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0, level=0, score=0, best=0, deaths=0;
+let blocks=[], ladders=[], stars=[], villains=[], bullets=[], balls=[], coins=[], portals=[];
+let chest=null, lavaY=260, hero=null, respawn={x:0,y:0}, hintT=0, shake=0, pops=[], sparks=[];
+let charSel=0, outfit=0, ballTimer=0;
+
+function rectsHit(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:74}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*1.9,vy:-Math.random()*2.4,t:26,c:col});
+}
+
+function loadLevel(n){
+  const L = LEVELS[n];
+  blocks = L.blocks.map(b=>({x:b.x,y:b.y,w:b.w,h:10}));
+  ladders = L.ladders.map(l=>({x:l.x, y0:l.y0, y1:l.y1}));
+  stars = L.stars.map(s=>({x:s.x, y:s.y, w:16, h:16, got:false}));
+  villains = L.villains.map((v,i)=>{
+    const b = blocks[v.b];
+    return { x:b.x+10, y:b.y-18, w:14, h:18, lo:b.x+3, hi:b.x+b.w-17,
+             dir:1, cd:90+i*40, anim:i*2 };
+  });
+  coins = L.coins.map(c=>({x:c[0], y:c[1], taken:false}));
+  portals = L.portals.map(p=>({ ax:p.ax, ay:p.ay, bx:p.bx, by:p.by, used:false, t:0 }));
+  chest = { x:L.chest.x, y:L.chest.y, w:26, h:20, open:false };
+  lavaY = L.lavaY;
+  bullets=[]; balls=[]; pops=[]; sparks=[];
+  ballTimer = L.ballRate;
+
+  respawn = { x:L.start.x, y:L.start.y };
+  hero = { x:L.start.x, y:L.start.y, w:PW, h:PH, vx:0, vy:0, dir:-1,
+           onGround:true, onLadder:false, anim:0, grace:60 };
+  hintT = 300;
+}
+function startGame(){ level=0; score=0; deaths=0; loadLevel(0); state='play'; timer=0; }
+
+function die(how){
+  if(state!=='play' || hero.grace>0) return;
+  deaths++; shake=18;
+  if(how==='lava') burnSound(); else hitSound();
+  puff(hero.x+PW/2, hero.y+PH/2, how==='lava'?C.lava2:C.villain, 16);
+  hero.deathMsg = how;
+  state='dead'; timer=0;
+}
+function doRespawn(){
+  hero.x=respawn.x; hero.y=respawn.y;
+  hero.vx=0; hero.vy=0; hero.onLadder=false; hero.grace=80;
+  bullets=[]; balls=[];
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='select'; timer=0; tone(700,0.09);} return; }
+  if(state==='select'){
+    timer++;
+    if(keys.l && frame%10===0) charSel=0;
+    if(keys.r && frame%10===0) charSel=1;
+    if(aEdge||bEdge){ aEdge=false; bEdge=false; if(timer>15){ startGame(); tone(950,0.1);} }
+    anyPress=false;
+    return;
+  }
+  if(state==='wardrobe'){
+    timer++;
+    if(keys.l && frame%12===0){ outfit=(outfit+OUTFITS.length-1)%OUTFITS.length; tone(660,0.05,'square',0.04); }
+    if(keys.r && frame%12===0){ outfit=(outfit+1)%OUTFITS.length; tone(660,0.05,'square',0.04); }
+    if((aEdge||bEdge) && timer>60){ aEdge=false; bEdge=false; state='title'; timer=0; }
+    aEdge=false; bEdge=false; anyPress=false;
+    return;
+  }
+  if(state==='clear'){
+    timer++; updateFx();
+    if(timer>150){
+      level++;
+      if(level>=LEVELS.length){ best=Math.max(best,score); state='wardrobe'; timer=0; chestSound(); }
+      else { loadLevel(level); state='play'; timer=0; }
+    }
+    return;
+  }
+  if(state==='dead'){
+    timer++; updateFx();
+    if(timer>70){ doRespawn(); state='play'; timer=0; }
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  const h = hero;
+  if(h.grace>0) h.grace--;
+
+  /* ----- ladders: joystick up and down ----- */
+  let onLadderNow = false;
+  for(const l of ladders){
+    if(Math.abs((h.x+PW/2) - l.x) < 11 && (h.y+PH) > l.y0-2 && h.y < l.y1+14){ onLadderNow = true; break; }
+  }
+  if(onLadderNow && (keys.u || keys.d)) h.onLadder = true;
+  if(!onLadderNow) h.onLadder = false;
+
+  h.vx = 0;
+  if(keys.l && !keys.r){ h.vx=-SPEED; h.dir=-1; }
+  if(keys.r && !keys.l){ h.vx= SPEED; h.dir= 1; }
+  h.anim = (h.vx!==0 && (h.onGround||h.onLadder)) ? h.anim+0.22 : h.anim;
+
+  if(aEdge){
+    aEdge=false;
+    if(h.onGround || h.onLadder){ h.vy=JUMP; h.onGround=false; h.onLadder=false; jumpSound(); }
+  }
+
+  if(h.onLadder){
+    h.vy = keys.u ? -CLIMB : (keys.d ? CLIMB : 0);
+    h.y += h.vy;
+    h.x += h.vx;
+  } else {
+    h.vy = Math.min(h.vy+GRAV, MAXFALL);
+    h.x += h.vx;
+    const prevBottom = h.y + h.h;
+    h.y += h.vy;
+    h.onGround=false;
+    if(h.y < HUD_H){ h.y = HUD_H; h.vy = 0.4; }
+    if(h.vy >= 0){
+      for(const b of blocks){
+        if(h.x+h.w > b.x+1 && h.x < b.x+b.w-1 && prevBottom <= b.y+2 && h.y+h.h >= b.y){
+          h.y = b.y-h.h; h.vy=0; h.onGround=true;
+        }
+      }
+    }
+  }
+  h.x = Math.max(0, Math.min(W-h.w, h.x));
+  if(h.y > H+8) die('lava');
+  if(h.y + h.h > lavaY + 4){ die('lava'); return; }
+
+  /* ----- coins ----- */
+  for(const c of coins){
+    if(c.taken) continue;
+    if(Math.abs((c.x+4)-(h.x+h.w/2))<13 && Math.abs((c.y+5)-(h.y+h.h/2))<16){
+      c.taken=true; score+=10; coinSound(); pop(c.x,c.y-6,'+10',C.coin);
+    }
+  }
+
+  /* ----- B button: take a star, or open the chest ----- */
+  if(bEdge){
+    bEdge=false;
+    let did=false;
+    for(const s of stars){
+      if(!s.got && rectsHit(h,s)){
+        s.got=true; did=true; score+=25;
+        respawn={x:h.x, y:h.y};          /* "your restart point is where the star you collected is" */
+        starSound(); puff(s.x+8,s.y+8,C.star,14);
+        pop(s.x+8,s.y-8,'CHECKPOINT!',C.star);
+      }
+    }
+    if(!did && rectsHit(h,chest)){
+      chest.open=true; score+=100;       /* her number, to the point */
+      chestSound(); puff(chest.x+13, chest.y+8, C.chestGold, 22);
+      pop(chest.x+13, chest.y-12, 'CHEST! +100', C.gold);
+      state='clear'; timer=0;
+      return;
+    }
+    if(!did && !chest.open) tone(190,0.06,'square',0.04);
+  }
+
+  /* ----- portals: step in, and it takes you and then vanishes ----- */
+  for(const p of portals){
+    if(p.used) continue;
+    p.t++;
+    const inA = Math.abs((h.x+h.w/2)-(p.ax+9)) < 14 && Math.abs((h.y+h.h/2)-(p.ay+12)) < 16;
+    const inB = Math.abs((h.x+h.w/2)-(p.bx+9)) < 14 && Math.abs((h.y+h.h/2)-(p.by+12)) < 16;
+    if(inA || inB){
+      p.used=true; portalSound();
+      puff(h.x+h.w/2, h.y+h.h/2, C.portalLite, 16);
+      if(inA){ h.x=p.bx+2; h.y=p.by+2; } else { h.x=p.ax+2; h.y=p.ay+2; }
+      h.vy=0; h.onLadder=false;
+      puff(h.x+h.w/2, h.y+h.h/2, C.portalLite, 16);
+      pop(h.x, h.y-14, 'PORTAL!', C.portalLite);
+    }
+  }
+
+  /* ----- pink villains ----- */
+  for(const v of villains){
+    v.anim += 0.1;
+    v.x += v.dir*0.55;
+    if(v.x < v.lo){ v.x=v.lo; v.dir=1; }
+    if(v.x > v.hi){ v.x=v.hi; v.dir=-1; }
+    if(Math.abs((h.y+h.h)-(v.y+v.h)) < 30) v.dir = (h.x > v.x) ? 1 : -1;
+    v.cd--;
+    if(v.cd<=0){
+      v.cd = 120 + Math.floor(Math.random()*90);
+      bullets.push({ x:v.x+(v.dir>0?v.w:-6), y:v.y+7, vx:v.dir*2.3, w:6, h:4 });
+      shootSound();
+    }
+    if(h.grace<=0 && rectsHit(h,v)){ die('villain'); return; }
+  }
+  for(const b of bullets){
+    b.x += b.vx;
+    if(b.x<-10||b.x>W+10){ b.dead=true; continue; }
+    if(h.grace<=0 && rectsHit(h,b)){ b.dead=true; die('villain'); return; }
+  }
+  bullets = bullets.filter(b=>!b.dead);
+
+  /* ----- lava balls: straight up through everything ----- */
+  ballTimer--;
+  if(ballTimer<=0){
+    ballTimer = LEVELS[level].ballRate + Math.floor(Math.random()*60);
+    const bx = 30 + Math.random()*(W-60);
+    balls.push({ x:bx, y:lavaY-6, vx:(Math.random()*2-1)*0.7, vy:-(4.4+Math.random()*1.1), w:12, h:12 });
+    slide(180,320,0.2,'sawtooth',0.05);
+  }
+  for(const b of balls){
+    b.vy += 0.055;
+    b.x += b.vx; b.y += b.vy;
+    if(b.y > lavaY+20 || b.y < -30){ b.dead=true; continue; }
+    /* "if it hits a checkpoint it disappears" - the stars swallow them */
+    for(const s of stars){
+      if(rectsHit(b,s)){ b.dead=true; puff(b.x+6,b.y+6,C.star,10); tone(700,0.07,'square',0.04); break; }
+    }
+    if(!b.dead && h.grace<=0 && rectsHit(h,b)){ b.dead=true; die('lava'); return; }
+  }
+  balls = balls.filter(b=>!b.dead);
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y-=0.35; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.vy+=0.13; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(20,10,8,.6)',align); txt(s,x,y,size,col,align);
+}
+
+function drawCave(){
+  const g=ctx.createLinearGradient(0,HUD_H,0,H);
+  g.addColorStop(0,C.rock); g.addColorStop(0.6,C.rock2); g.addColorStop(1,'#5a2a1a');
+  ctx.fillStyle=g; ctx.fillRect(0,HUD_H,W,H-HUD_H);
+  ctx.globalAlpha=0.16;
+  for(let y=HUD_H;y<H;y+=18)
+    for(let x=((y/18)%2)*20;x<W;x+=40) px(x,y,36,15,C.rockDark);
+  ctx.globalAlpha=1;
+  /* glow off the lava */
+  const gg=ctx.createLinearGradient(0,lavaY-70,0,lavaY);
+  gg.addColorStop(0,'rgba(255,120,40,0)'); gg.addColorStop(1,'rgba(255,120,40,.28)');
+  ctx.fillStyle=gg; ctx.fillRect(0,lavaY-70,W,70);
+}
+
+function drawLava(){
+  const wob = Math.sin(frame*0.06)*2;
+  px(0,lavaY,W,H-lavaY,C.lava);
+  for(let x=0;x<W;x+=10){
+    const y = lavaY + Math.sin(frame*0.07 + x*0.09)*2.5 - 3;
+    px(x,y,10,6,C.lava2);
+    px(x,y+5,10,3,C.lavaGlow);
+  }
+  px(0,lavaY+12,W,H-lavaY-12,C.lavaDeep);
+  for(let i=0;i<12;i++){
+    const bx = (i*47 + frame*0.3)%W;
+    const by = lavaY + 14 + ((i*13 + frame*0.6)%(H-lavaY-16));
+    ctx.globalAlpha=0.55; px(bx,by,4,4,C.lava2); ctx.globalAlpha=1;
+  }
+  txtS('L A V A', W/2, lavaY+30+wob*0.3, 15, 'rgba(255,220,150,.55)', 'center');
+}
+
+function drawBlock(b){
+  px(b.x,b.y,b.w,b.h,C.block);
+  px(b.x,b.y,b.w,2,C.blockLite);
+  px(b.x,b.y+b.h-2,b.w,2,C.blockDark);
+  for(let i=8;i<b.w-4;i+=16) px(b.x+i,b.y+3,2,4,C.blockDark);
+}
+
+function drawLadder(l){
+  px(l.x-8,l.y0,3,l.y1-l.y0+12,C.ladder);
+  px(l.x+5,l.y0,3,l.y1-l.y0+12,C.ladder);
+  px(l.x-8,l.y0,3,4,C.ladderLite);
+  px(l.x+5,l.y0,3,4,C.ladderLite);
+  for(let y=l.y0+4;y<l.y1+10;y+=9) px(l.x-6,y,12,3,C.ladderRung);
+}
+
+function drawStar(s){
+  const x=s.x+8, y=s.y+8;
+  const b = Math.sin(frame*0.08 + s.x*0.05)*1.5;
+  ctx.save(); ctx.translate(x, y+b);
+  if(s.got){ ctx.globalAlpha=0.35+0.2*Math.sin(frame*0.14); ctx.fillStyle=C.starGot;
+             ctx.beginPath(); ctx.arc(0,0,14,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+  ctx.fillStyle = s.got ? C.starGot : C.star;
+  ctx.strokeStyle = C.starDark; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let i=0;i<10;i++){
+    const r = i%2 ? 4 : 9, a = -Math.PI/2 + i*Math.PI/5;
+    ctx[i?'lineTo':'moveTo'](Math.cos(a)*r, Math.sin(a)*r);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawVillain(v){
+  const b = Math.sin(v.anim)*1.2;
+  ctx.save(); ctx.translate((v.x+v.w/2)|0, (v.y+b)|0);
+  if(v.dir<0) ctx.scale(-1,1);
+  px(-7,4,14,11,C.villain);              /* blobby body */
+  px(-7,4,14,3,'#ff9ad8');
+  px(-8,13,5,5,C.villainDark);
+  px(3,13,5,5,C.villainDark);
+  px(-6,-3,12,8,C.villain);              /* head */
+  px(-4,-1,3,3,C.villainEye); px(1,-1,3,3,C.villainEye);
+  px(-3,3,6,1,C.villainDark);
+  px(-5,-6,3,4,C.villainDark); px(2,-6,3,4,C.villainDark);   /* horns */
+  ctx.restore();
+}
+
+function drawCoin(c){
+  const b=Math.sin(frame*0.1+c.x*0.05)*1.5;
+  px(c.x,c.y+b,8,9,C.coin);
+  px(c.x+1,c.y+1+b,6,7,C.coinDark);
+  px(c.x+2,c.y+2+b,4,5,C.coin);
+}
+
+function drawPortal(p, which){
+  const x = which==='a' ? p.ax : p.bx, y = which==='a' ? p.ay : p.by;
+  if(p.used){ ctx.globalAlpha=0.12; px(x,y,18,24,C.portal); ctx.globalAlpha=1; return; }
+  ctx.globalAlpha=0.3+0.2*Math.sin(frame*0.12);
+  px(x-3,y-3,24,30,C.portal);
+  ctx.globalAlpha=1;
+  px(x,y,18,24,'#2a1a4a');
+  for(let i=0;i<5;i++){
+    const a = frame*0.07 + i*1.25;
+    px(x+9+Math.cos(a)*5-1, y+12+Math.sin(a)*9-1, 3, 3, C.portalLite);
+  }
+  px(x,y,18,2,C.portalLite); px(x,y+22,18,2,C.portalLite);
+}
+
+function drawChest(){
+  const x=chest.x, y=chest.y;
+  const glow = 0.3+0.2*Math.sin(frame*0.1);
+  ctx.globalAlpha=glow; px(x-6,y-6,38,32,C.chestGold); ctx.globalAlpha=1;
+  px(x,y+6,26,14,C.chest);
+  px(x,y,26,8,C.chestLite);
+  px(x,y+5,26,3,C.chestDark);
+  px(x+10,y+7,6,7,C.chestGold);
+  px(x+12,y+9,2,3,C.chestDark);
+  px(x,y+18,26,2,C.chestDark);
+  if(frame%56<36) txtS('B TO OPEN', x+13, y-12, 8, C.gold, 'center');
+}
+
+function drawBall(b){
+  const t=Math.sin(frame*0.3+b.x)*1;
+  ctx.globalAlpha=0.35; px(b.x-4,b.y-4,20,20,C.lava2); ctx.globalAlpha=1;
+  px(b.x,b.y,12,12,C.lava);
+  px(b.x+2,b.y+2,8,8,C.lava2);
+  px(b.x+4,b.y+3,4,4,C.lavaGlow);
+  px(b.x+3,b.y+12+t,6,4,C.lava2);
+}
+
+function drawHero(h){
+  const o = OUTFITS[outfit];
+  ctx.save(); ctx.translate((h.x+h.w/2)|0, h.y|0);
+  if(h.dir<0) ctx.scale(-1,1);
+  const step = (h.vx!==0) ? Math.floor(h.anim)%2 : 0;
+  px(-5,9,10,7,o.top);                    /* top */
+  px(-5,9,10,2,'#ffffff');
+  px(-4+step,16,4,4,o.legs);              /* legs */
+  px(1-step,16,4,4,o.legs);
+  px(-6,10,2,5,C.skin); px(4,10,2,5,C.skin);
+  px(-4,1,9,8,C.skin);                    /* head */
+  if(charSel===0){ px(-5,-1,11,4,C.hair); px(-5,1,2,4,C.hair); px(4,1,2,4,C.hair); }
+  else { px(-5,-1,11,4,C.hair2); px(-6,1,3,8,C.hair2); px(4,1,3,8,C.hair2); }
+  px(-2,4,2,2,C.ink); px(2,4,2,2,C.ink);
+  px(-1,7,3,1,'#c96a6a');
+  ctx.restore();
+  if(h.grace>0 && frame%8<4){ ctx.globalAlpha=0.3; px(h.x-4,h.y-4,h.w+8,h.h+8,'#ffffff'); ctx.globalAlpha=1; }
+  if(h.onLadder && frame%30<18) txtS('CLIMBING', h.x+h.w/2, h.y-12, 7, C.ladderLite, 'center');
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#2a1616');
+  px(0,HUD_H-2,W,2,C.lava);
+  txtS('SCORE '+String(score).padStart(5,'0'), 8, 11, 12, C.gold);
+  const got = stars.filter(s=>s.got).length;
+  drawStarIcon(120, 8);
+  txtS(got+'/'+stars.length, 134, 13, 11, C.star);
+  const cn = coins.filter(c=>!c.taken).length;
+  px(180,8,8,9,C.coin); px(181,9,6,7,C.coinDark);
+  txtS('x'+cn+' LEFT', 192, 13, 10, C.coin);
+  txtS('DEATHS '+deaths, 280, 13, 10, deaths>6 ? C.hot : '#c9a898');
+  txtS(LEVELS[level].name, W-8, 9, 10, C.paper, 'right');
+  txtS('LEVEL '+(level+1)+'/'+LEVELS.length, W-8, 22, 9, '#c9a898', 'right');
+}
+function drawStarIcon(x,y){
+  ctx.save(); ctx.translate(x+5,y+5);
+  ctx.fillStyle=C.star;
+  ctx.beginPath();
+  for(let i=0;i<10;i++){ const r=i%2?2.5:6, a=-Math.PI/2+i*Math.PI/5;
+    ctx[i?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r); }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+function drawTitle(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#2e2028'); g.addColorStop(1,'#7a2a12');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const savedLava = lavaY; lavaY = 232; drawLava(); lavaY = savedLava;
+
+  for(const b of [{x:60,y:196,w:90,h:10},{x:200,y:172,w:80,h:10},{x:330,y:200,w:100,h:10}]) drawBlock(b);
+  txtS('ESCAPE', W/2, 76, 42, C.lava2, 'center');
+  txtS('THE', W/2-92, 116, 18, C.paper, 'center');
+  txtS('LAVA!', W/2+42, 118, 42, C.gold, 'center');
+
+  const t=Math.floor(frame/26)%3;
+  const spots=[[100,176],[236,152],[376,180]];
+  drawHero({x:spots[t][0], y:spots[t][1], w:PW, h:PH, dir:1, vx:1, anim:frame*0.2, grace:0, onLadder:false});
+  drawStar({x:220,y:120,got:false});
+  drawVillain({x:340,y:174,w:14,h:18,dir:-1,anim:frame*0.1});
+
+  txtS('JUMP THE BLOCKS. GET TO THE CHEST.', W/2, 250, 11, C.paper, 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 276, 13, C.gold, 'center');
+  if(best>0) txtS('BEST '+String(best).padStart(5,'0'), 10, 288, 9, '#c9a898');
+}
+
+function drawSelect(){
+  ctx.fillStyle='#2a1c22'; ctx.fillRect(0,0,W,H);
+  px(14,10,W-28,H-20,'#3a2830');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(14,10,W-28,H-20);
+  txtS('CHOOSE YOUR CHARACTER', W/2, 34, 15, C.gold, 'center');
+  txtS('you can be a boy or a girl', W/2, 52, 10, '#c9a898', 'center');
+
+  for(let i=0;i<2;i++){
+    const bx = i===0 ? 150 : 310;
+    const sel = charSel===i;
+    ctx.globalAlpha = sel ? 0.35+0.15*Math.sin(frame*0.14) : 0.12;
+    px(bx-42,86,84,96,sel?C.gold:'#6a5a50'); ctx.globalAlpha=1;
+    px(bx-38,90,76,88,'#2a1c22');
+    const savedSel = charSel; charSel = i;
+    ctx.save(); ctx.translate(bx, 118); ctx.scale(2.4,2.4);
+    drawHero({x:-PW/2, y:0, w:PW, h:PH, dir:1, vx:0, anim:0, grace:0, onLadder:false});
+    ctx.restore();
+    charSel = savedSel;
+    txtS(i===0?'BOY':'GIRL', bx, 192, 12, sel?C.gold:'#8a7a70', 'center');
+  }
+  txtS('LEFT / RIGHT TO CHOOSE', W/2, 224, 11, C.paper, 'center');
+  if(frame%60<38) txtS('A OR B TO START', W/2, 252, 13, C.gold, 'center');
+}
+
+function drawWardrobe(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#2e2028'); g.addColorStop(1,'#5a2a1a');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<36;i++){ const x=(i*97+frame)%W, y=(i*41+frame*2)%H; px(x,y,2,2, i%3?C.gold:C.lava2); }
+  txtS('YOU GOT THE CHEST!', W/2, 44, 21, C.gold, 'center');
+  txtS('AND THE CLOTHES INSIDE IT', W/2, 68, 11, C.paper, 'center');
+
+  px(W/2-52,88,104,110,'#3a2830');
+  ctx.strokeStyle=C.gold; ctx.lineWidth=2; ctx.strokeRect(W/2-52,88,104,110);
+  ctx.save(); ctx.translate(W/2, 118); ctx.scale(2.8,2.8);
+  drawHero({x:-PW/2, y:0, w:PW, h:PH, dir:1, vx:0, anim:0, grace:0, onLadder:false});
+  ctx.restore();
+  txtS(OUTFITS[outfit].name, W/2, 210, 13, OUTFITS[outfit].top, 'center');
+  txtS('< LEFT / RIGHT TO TRY THE CLOTHES >', W/2, 232, 10, C.paper, 'center');
+  txtS('FINAL SCORE '+String(score).padStart(5,'0')+'   DEATHS '+deaths, W/2, 256, 11, C.gold, 'center');
+  if(timer>60 && frame%60<38) txtS('A OR B FOR THE TITLE', W/2, 278, 10, '#c9a898', 'center');
+}
+
+function drawOverlay(){
+  if(state==='clear'){
+    px(0,116,W,70,'rgba(30,18,14,.88)');
+    txtS('CHEST OPENED!', W/2, 140, 21, C.gold, 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 166, 12, C.paper, 'center');
+  }
+  if(state==='dead'){
+    px(0,124,W,56,'rgba(30,18,14,.86)');
+    txtS(hero.deathMsg==='lava' ? 'THE LAVA GOT YOU!' : 'A PINK VILLAN GOT YOU!', W/2, 144, 16, C.hot, 'center');
+    const got = stars.filter(s=>s.got).length;
+    txtS(got>0 ? 'BACK TO YOUR LAST STAR' : 'BACK TO THE START', W/2, 166, 10, C.paper, 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,18,'rgba(30,18,14,.8)');
+    txtS(LEVELS[level].hint, W/2, HUD_H+11, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#1c0e10'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='select'){ drawSelect(); return; }
+  if(state==='wardrobe'){ drawWardrobe(); return; }
+
+  drawCave();
+  for(const l of ladders) drawLadder(l);
+  for(const b of blocks) drawBlock(b);
+  for(const p of portals){ drawPortal(p,'a'); drawPortal(p,'b'); }
+  for(const c of coins) if(!c.taken) drawCoin(c);
+  for(const s of stars) drawStar(s);
+  drawChest();
+  for(const v of villains) drawVillain(v);
+  for(const b of bullets){ px(b.x,b.y,6,4,C.bullet); px(b.x+1,b.y+1,4,2,'#ffffff'); }
+  drawLava();
+  for(const b of balls) drawBall(b);
+  if(state!=='dead' || timer%8<5) drawHero(hero);
+
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/13); px(s.x,s.y,2,2,s.c); ctx.globalAlpha=1; }
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/26);
+    txtS(p.s, p.x, p.y, 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
