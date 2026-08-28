@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Death Jump</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0d1a12;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #6ef03a,0 0 44px rgba(110,240,58,.28);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(30,60,40,.45);border-radius:16px;user-select:none;-webkit-user-select:none;
+    text-align:center;line-height:1.1;}
+  .btn:active,.btn.on{background:rgba(110,240,58,.7);border-color:#a8ff7a;color:#10240f;}
+  #bL{left:3vw;bottom:5vh;width:15vh;height:14vh;font-size:5vh;}
+  #bR{left:calc(3vw + 17vh);bottom:5vh;width:15vh;height:14vh;font-size:5vh;}
+  #bA{right:3vw;bottom:5vh;width:19vh;height:19vh;border-radius:50%;font-size:2.9vh;
+      background:rgba(110,240,58,.4);border-color:#a8ff7a;}
+  #bB{right:calc(3vw + 21vh);bottom:5vh;width:15vh;height:15vh;border-radius:50%;font-size:2.7vh;
+      background:rgba(90,190,240,.4);border-color:#9adcff;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#0d1a12;color:#6ef03a;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bB">DIVE</div>
+  <div class="btn" id="bA">FLAP</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   DEATH JUMP
+   You are a flying fish stuck on an acid parkour. Get up to the
+   chest of diamonds before the acid catches up.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+const HUD_H = 30, VIEW_H = H - HUD_H;
+
+/* ---------- palette ---------- */
+const C = {
+  cave:'#16241a', cave2:'#1d2f22', caveDark:'#0f1a12',
+  stone:'#6a7a68', stoneLite:'#8a9a86', stoneDark:'#44503f',
+  acid:'#6ef03a', acid2:'#a8ff7a', acidDark:'#3aa81a', acidGlow:'#d6ffb0',
+  fish:'#4fd0e8', fishDark:'#2a90b0', fishPale:'#c0f0ff', fin:'#ffd76a', eye:'#10240f',
+  monster:'#3aa81a', monsterDark:'#26700f', crown:'#ffd23f', monEye:'#ff4d4d',
+  blob:'#8aff4a',
+  chest:'#c9853a', chestLite:'#e8ab5a', chestDark:'#7a4a1a', gem:'#5fe8ff', gemDark:'#2a9ab0',
+  gold:'#ffd23f', paper:'#eaffe0', hot:'#ff5a5a', ink:'#0f1a12'
+};
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sawtooth';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.07:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function noise(dur,vol){
+  if(!AC) return;
+  try{
+    const n=Math.floor(AC.sampleRate*dur), buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource(), g=AC.createGain();
+    src.buffer=buf; g.gain.value=vol||0.1;
+    src.connect(g); g.connect(AC.destination); src.start();
+  }catch(e){}
+}
+function flapSound(){ tone(520+Math.random()*80,0.05,'sine',0.04); }
+function stompSound(){ slide(700,180,0.16,'square',0.07); noise(0.1,0.07); }
+function gemSound(){ tone(1175,0.05,'square',0.045); setTimeout(()=>tone(1568,0.08,'square',0.045),45); }
+function meltSound(){ slide(560,80,0.5,'sawtooth',0.09); noise(0.34,0.13); }
+function riseSound(){ slide(90,220,0.7,'sawtooth',0.07); }
+function chestSound(){ [523,659,784,1046,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.18,'square',0.07), i*100)); }
+function blobSound(){ tone(240,0.06,'square',0.04); }
+
+/* ---------- input ---------- */
+const keys={l:false,r:false,b:false};
+let flapEdge=false, anyPress=false;
+const KEYMAP={ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r', ArrowDown:'b',KeyS:'b'};
+addEventListener('keydown',e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'||e.code==='KeyZ'){ e.preventDefault(); flapEdge=true; return; }
+  const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='a') flapEdge=true; else keys[key]=true;
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='a') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bL','l'); bindBtn('bR','r'); bindBtn('bA','a'); bindBtn('bB','b');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- constants ---------- */
+const GRAV=0.22, FLAP=-3.25, MAXFALL=5.6, DIVE=6.8, SPEED=2.0;
+const FW=18, FH=13;
+const WING_MAX=100, FLAP_COST=8, WING_GROUND=1.6, WING_AIR=0.12;
+const TIER_GAP=70;
+
+/* ---------- levels ---------- */
+const LEVELS = [
+  { name:'THE SHALLOW END', hint:'FLAP TO FLY. YOUR WINGS REFILL ON A BLOCK',
+    h:900,  seed:9,  moveChance:0.25, acidChance:0.18, monChance:0.30, acidStep:96,  acidPeriod:1200 },
+  { name:'ACID PARKOUR',    hint:'GREEN BLOCKS ARE ACID. DO NOT LAND ON THEM',
+    h:1050, seed:27, moveChance:0.40, acidChance:0.30, monChance:0.45, acidStep:108, acidPeriod:1200 },
+  { name:'THE KING MONSTERS', hint:'DROP ON A MONSTER TO SQUASH IT. 50 POINTS',
+    h:1180, seed:45, moveChance:0.50, acidChance:0.34, monChance:0.60, acidStep:120, acidPeriod:1200 },
+  { name:'DEATH JUMP',      hint:'LAST CLIMB. THE ACID IS COMING FASTER',
+    h:1300, seed:63, moveChance:0.58, acidChance:0.38, monChance:0.70, acidStep:132, acidPeriod:1200 }
+];
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0, level=0, score=0, best=0, lives=3;
+let plats=[], monsters=[], blobs=[], gems=[], chest=null;
+let fish=null, worldH=900, acidY=0, acidT=0, camY=0;
+let wing=WING_MAX, hintT=0, shake=0, pops=[], sparks=[], bubbles=[];
+
+function rngFrom(seed){ let s=seed>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+function rectsHit(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:74}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*2,vy:-Math.random()*2.4,t:26,c:col});
+}
+
+/* the climb is laid out tier by tier, each one placed within reach of the
+   tier below it, so there is always a way up */
+function buildShaft(n){
+  const L = LEVELS[n], rnd = rngFrom(L.seed);
+  worldH = L.h;
+  plats=[]; monsters=[]; blobs=[]; gems=[]; bubbles=[];
+
+  const tiers=[];
+  for(let y = worldH-46; y >= 110; y -= TIER_GAP) tiers.push(y);
+
+  let pathX = 60 + rnd()*(W-200);
+  let startPlat = null;
+
+  tiers.forEach((y,i)=>{
+    const w = 62 + Math.floor(rnd()*30);
+    pathX = Math.max(8, Math.min(W-8-w, pathX + (rnd()*240-120)));
+    const mover = (i>0 && rnd()<L.moveChance);
+    const p = { x:pathX, y:y, w:w, h:9, acid:false, path:true,
+                base:pathX, range: mover?30:0,
+                period: mover ? (rnd()<0.5?120:180) : 0, t: rnd()*180 };
+    plats.push(p);
+    if(i===0) startPlat = p;
+
+    const extras = 1 + Math.floor(rnd()*2);
+    for(let k=0;k<extras;k++){
+      const ww = 48 + Math.floor(rnd()*40);
+      const xx = 8 + rnd()*(W-16-ww);
+      if(Math.abs(xx - pathX) < w + 26) continue;
+      plats.push({ x:xx, y:y, w:ww, h:9, acid: rnd()<L.acidChance, path:false,
+                   base:xx, range:0, period:0, t:0 });
+    }
+
+    /* king monsters hover over a platform and spit acid blobs */
+    if(i>0 && rnd() < L.monChance){
+      const opts = plats.filter(q=>q.y===y && !q.acid);
+      const q = opts[Math.floor(rnd()*opts.length)];
+      monsters.push({ x:q.x+q.w/2-9, y:y-40, w:18, h:16, base:y-40,
+                      dir: rnd()<0.5?-1:1, lo:q.x-10, hi:q.x+q.w-8,
+                      cd: 90+Math.floor(rnd()*120), anim:rnd()*6, dead:false });
+    }
+    if(rnd() < 0.55){
+      const opts = plats.filter(q=>q.y===y && !q.acid);
+      const q = opts[Math.floor(rnd()*opts.length)];
+      gems.push({ x:q.x+q.w/2-5, y:y-22, w:10, h:12, taken:false });
+    }
+  });
+
+  const top = tiers[tiers.length-1];
+  chest = { x: Math.max(10, Math.min(W-40, pathX + 6)), y: top-34, w:30, h:22, open:false };
+
+  acidY = worldH + 6; acidT = LEVELS[n].acidPeriod;
+  fish = { x:startPlat.x + startPlat.w/2 - FW/2, y:startPlat.y - FH,
+           w:FW, h:FH, vx:0, vy:0, dir:1, onGround:true, anim:0, grace:70 };
+  wing = WING_MAX;
+  camY = Math.max(0, Math.min(worldH-VIEW_H, fish.y - VIEW_H*0.6));
+  pops=[]; sparks=[];
+  for(let i=0;i<40;i++) bubbles.push({x:Math.random()*W, y:Math.random()*worldH, v:0.3+Math.random()*0.6, s:2+Math.floor(Math.random()*3)});
+  hintT=300;
+}
+function startGame(){ level=0; score=0; lives=3; buildShaft(0); state='play'; timer=0; }
+
+function die(how){
+  if(state!=='play' || fish.grace>0) return;
+  lives--; shake=20; meltSound();
+  puff(fish.x+FW/2, fish.y+FH/2, how==='acid'?C.acid2:C.monster, 18);
+  fish.deathMsg = how;
+  state='dead'; timer=0;
+  if(lives<=0) best=Math.max(best,score);
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; tone(700,0.09);} return; }
+  if(state==='howto'){ timer++; if(anyPress&&timer>20){ anyPress=false; startGame(); tone(950,0.1);} return; }
+  if(state==='over'||state==='won'){ timer++; if(anyPress&&timer>80){ anyPress=false; state='title'; timer=0; } return; }
+  if(state==='clear'){
+    timer++; updateFx();
+    if(timer>150){
+      level++;
+      if(level>=LEVELS.length){ best=Math.max(best,score); state='won'; timer=0; chestSound(); }
+      else { buildShaft(level); state='play'; timer=0; }
+    }
+    return;
+  }
+  if(state==='dead'){
+    timer++; updateFx();
+    if(timer>75){
+      if(lives<=0){ state='over'; timer=0; }
+      else { buildShaft(level); state='play'; timer=0; }
+    }
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  const f = fish;
+  if(f.grace>0) f.grace--;
+  f.anim += 0.2;
+
+  /* "the acid goes up every 20 seconds" */
+  acidT--;
+  if(acidT === 180) pop(f.x, f.y-24, 'ACID RISING!', C.acid2);
+  if(acidT <= 0){
+    acidT = LEVELS[level].acidPeriod;
+    acidY -= LEVELS[level].acidStep;
+    riseSound(); shake = 10;
+  }
+
+  /* moving blocks - "the ones that have dotted lines beside them move" */
+  for(const p of plats){
+    if(p.period>0){
+      p.t += 1;
+      p.x = p.base + Math.sin((p.t/p.period)*Math.PI*2) * p.range;
+    }
+  }
+
+  /* ----- the flying fish ----- */
+  f.vx = 0;
+  if(keys.l && !keys.r){ f.vx=-SPEED; f.dir=-1; }
+  if(keys.r && !keys.l){ f.vx= SPEED; f.dir= 1; }
+
+  if(flapEdge){
+    flapEdge=false;
+    if(wing >= FLAP_COST){
+      f.vy = FLAP; wing -= FLAP_COST; f.onGround=false;
+      flapSound(); puff(f.x+FW/2, f.y+FH, C.fishPale, 3);
+    } else tone(150,0.06,'square',0.04);
+  }
+  if(keys.b && !f.onGround) f.vy = Math.min(MAXFALL+2, f.vy + 0.55);   /* dive */
+
+  f.vy = Math.min(f.vy + GRAV, keys.b ? DIVE : MAXFALL);
+  f.x += f.vx;
+  f.x = Math.max(0, Math.min(W-FW, f.x));
+  const prevBottom = f.y + f.h;
+  f.y += f.vy;
+  const wasGround = f.onGround;
+  f.onGround = false;
+
+  if(f.y < 4){ f.y = 4; f.vy = 0.4; }
+
+  for(const p of plats){
+    if(f.x+f.w > p.x+1 && f.x < p.x+p.w-1 && f.vy >= 0 &&
+       prevBottom <= p.y+3 && f.y+f.h >= p.y){
+      if(p.acid){ die('acid'); return; }        /* "the green blocks are acid" */
+      f.y = p.y - f.h; f.vy = 0; f.onGround = true;
+      if(p.period>0) f.x += Math.cos((p.t/p.period)*Math.PI*2)*(Math.PI*2/p.period)*p.range;
+    }
+  }
+  /* the sides of an acid block burn too */
+  for(const p of plats){
+    if(p.acid && rectsHit(f,p)){ die('acid'); return; }
+  }
+
+  wing = Math.min(WING_MAX, wing + (f.onGround ? WING_GROUND : WING_AIR));
+
+  /* the rising acid */
+  if(f.y + f.h > acidY){ die('acid'); return; }
+  if(f.y > worldH + 20){ die('acid'); return; }
+
+  /* ----- gems ----- */
+  for(const g of gems){
+    if(g.taken) continue;
+    if(rectsHit(f,g)){ g.taken=true; score+=25; gemSound(); pop(g.x,g.y-8,'+25',C.gem); }
+  }
+
+  /* ----- king monsters ----- */
+  for(const m of monsters){
+    if(m.dead) continue;
+    m.anim += 0.09;
+    m.x += m.dir*0.5;
+    if(m.x < m.lo){ m.x=m.lo; m.dir=1; }
+    if(m.x > m.hi){ m.x=m.hi; m.dir=-1; }
+    m.y = m.base + Math.sin(m.anim)*4;
+    m.cd--;
+    if(m.cd<=0 && Math.abs((f.y)-(m.y)) < 220){
+      m.cd = 110 + Math.floor(Math.random()*90);
+      const dx = (f.x+FW/2)-(m.x+m.w/2), dy = (f.y+FH/2)-(m.y+m.h/2);
+      const d = Math.hypot(dx,dy)||1;
+      blobs.push({ x:m.x+m.w/2-4, y:m.y+m.h, vx:dx/d*1.9, vy:dy/d*1.9, w:9, h:9 });
+      blobSound();
+    }
+    if(f.grace<=0 && rectsHit(f,m)){
+      /* "if you jump on them they die, and you get fifty points" */
+      if(f.vy > 0.6 && prevBottom <= m.y + 9){
+        m.dead=true; score+=50; f.vy = FLAP*0.9; wing = Math.min(WING_MAX, wing+18);
+        stompSound(); puff(m.x+9,m.y+8,C.monster,14);
+        pop(m.x+9,m.y-10,'SQUASH +50',C.acid2);
+      } else { die('monster'); return; }
+    }
+  }
+
+  for(const b of blobs){
+    b.vy += 0.05;
+    b.x += b.vx; b.y += b.vy;
+    if(b.y > acidY || b.y > worldH+20 || b.x<-20 || b.x>W+20){ b.dead=true; continue; }
+    if(f.grace<=0 && rectsHit(f,b)){ b.dead=true; die('acid'); return; }
+  }
+  blobs = blobs.filter(b=>!b.dead);
+
+  /* ----- the chest ----- */
+  if(rectsHit(f,chest)){
+    score += 1000;                       /* her number for finishing */
+    chest.open=true;
+    chestSound(); puff(chest.x+15, chest.y+10, C.gem, 24);
+    pop(chest.x+15, chest.y-14, 'CHEST! +1000', C.gold);
+    state='clear'; timer=0;
+    return;
+  }
+
+  /* camera */
+  const want = f.y - VIEW_H*0.58;
+  camY += (Math.max(0, Math.min(worldH-VIEW_H, want)) - camY)*0.12;
+
+  for(const b of bubbles){ b.y -= b.v; if(b.y < camY-20) b.y = Math.min(worldH, acidY+20); }
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y-=0.35; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.vy+=0.13; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(8,20,10,.6)',align); txt(s,x,y,size,col,align);
+}
+function sy(y){ return y - camY + HUD_H; }
+
+function drawCave(){
+  const g=ctx.createLinearGradient(0,HUD_H,0,H);
+  g.addColorStop(0,C.cave); g.addColorStop(1,C.cave2);
+  ctx.fillStyle=g; ctx.fillRect(0,HUD_H,W,VIEW_H);
+  ctx.globalAlpha=0.16;
+  const y0=Math.floor(camY/22)*22;
+  for(let y=y0;y<camY+VIEW_H+22;y+=22)
+    for(let x=((y/22)%2)*24;x<W;x+=48) px(x,sy(y),44,18,C.caveDark);
+  ctx.globalAlpha=1;
+  /* glow off the acid below */
+  const top = sy(acidY)-80;
+  if(top < H){
+    const gg=ctx.createLinearGradient(0,top,0,sy(acidY));
+    gg.addColorStop(0,'rgba(110,240,58,0)'); gg.addColorStop(1,'rgba(110,240,58,.25)');
+    ctx.fillStyle=gg; ctx.fillRect(0,Math.max(HUD_H,top),W,Math.min(H,sy(acidY))-Math.max(HUD_H,top));
+  }
+  for(const b of bubbles){
+    const Y=sy(b.y);
+    if(Y<HUD_H||Y>H) continue;
+    ctx.globalAlpha=0.35; px(b.x,Y,b.s,b.s,C.acid2); ctx.globalAlpha=1;
+  }
+}
+
+function drawPlat(p){
+  const Y = sy(p.y);
+  if(Y < HUD_H-16 || Y > H+16) return;
+  if(p.acid){
+    px(p.x,Y,p.w,p.h,C.acidDark);
+    px(p.x,Y,p.w,3,C.acid);
+    for(let i=2;i<p.w-2;i+=7) px(p.x+i, Y+3+Math.sin(frame*0.1+i)*1, 4, 4, C.acid2);
+    ctx.globalAlpha=0.25+0.15*Math.sin(frame*0.13); px(p.x-2,Y-3,p.w+4,p.h+6,C.acid); ctx.globalAlpha=1;
+  } else {
+    px(p.x,Y,p.w,p.h,C.stone);
+    px(p.x,Y,p.w,2,C.stoneLite);
+    px(p.x,Y+p.h-2,p.w,2,C.stoneDark);
+    for(let i=6;i<p.w-4;i+=12) px(p.x+i,Y+3,2,3,C.stoneDark);
+  }
+  /* the dotted lines she drew beside every moving block */
+  if(p.period>0){
+    ctx.globalAlpha=0.6;
+    for(let d=0;d<5;d++){
+      px(p.base-p.range-8-d*4, Y+3, 2, 2, C.gold);
+      px(p.base+p.w+p.range+6+d*4, Y+3, 2, 2, C.gold);
+    }
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawAcid(){
+  const Y = sy(acidY);
+  if(Y > H) return;
+  const top = Math.max(HUD_H, Y);
+  px(0, top, W, H-top, C.acid);
+  for(let x=0;x<W;x+=10){
+    const yy = Y + Math.sin(frame*0.07 + x*0.09)*2.5 - 3;
+    if(yy > HUD_H-6){ px(x,yy,10,6,C.acid2); px(x,yy+5,10,3,C.acidGlow); }
+  }
+  if(Y+14 < H) px(0, Math.max(HUD_H,Y+14), W, H-Math.max(HUD_H,Y+14), C.acidDark);
+  for(let i=0;i<14;i++){
+    const bx=(i*41+frame*0.4)%W, by=Y+18+((i*17+frame*0.7)%Math.max(10,(H-Y-18)));
+    if(by<H&&by>HUD_H){ ctx.globalAlpha=0.5; px(bx,by,4,4,C.acid2); ctx.globalAlpha=1; }
+  }
+  if(Y>HUD_H && Y<H-20) txtS('A C I D', W/2, Math.min(H-14, Y+28), 15, 'rgba(20,60,10,.65)', 'center');
+}
+
+function drawFish(f){
+  const Y = sy(f.y);
+  ctx.save(); ctx.translate((f.x+FW/2)|0, (Y+FH/2)|0);
+  if(f.dir<0) ctx.scale(-1,1);
+  const flap = Math.sin(f.anim*1.6)*3;
+  /* wings, the bit she drew an arrow to */
+  px(-6,-8-flap,11,5,C.fin);
+  px(-4,-11-flap,7,4,C.fin);
+  px(-6,4+flap,11,4,C.fin);
+  px(-9,-2,6,5,C.fishDark);              /* tail */
+  px(-11,-4,4,9,C.fishDark);
+  px(-6,-5,15,11,C.fish);                /* body */
+  px(-6,-5,15,3,C.fishPale);
+  px(-2,2,9,3,C.fishDark);
+  px(5,-3,4,4,C.fishPale);               /* eye */
+  px(6,-2,2,2,C.eye);
+  px(8,0,3,2,C.fishDark);                /* mouth */
+  ctx.restore();
+  if(f.grace>0 && frame%8<4){ ctx.globalAlpha=0.3; px(f.x-4,Y-6,FW+8,FH+12,'#ffffff'); ctx.globalAlpha=1; }
+}
+
+function drawMonster(m){
+  if(m.dead) return;
+  const Y = sy(m.y);
+  if(Y<HUD_H-20||Y>H+20) return;
+  ctx.save(); ctx.translate((m.x+m.w/2)|0, Y|0);
+  if(m.dir<0) ctx.scale(-1,1);
+  px(-9,2,18,13,C.monster);
+  px(-9,2,18,3,'#5fd03a');
+  px(-9,13,5,4,C.monsterDark); px(4,13,5,4,C.monsterDark);
+  px(-6,5,4,4,C.monEye); px(2,5,4,4,C.monEye);
+  px(-5,11,10,2,C.monsterDark);
+  for(let i=0;i<4;i++) px(-4+i*3,11,2,3,'#eaffe0');       /* teeth */
+  px(-8,-4,16,4,C.crown);                                  /* the king part */
+  px(-8,-8,3,5,C.crown); px(-2,-9,3,6,C.crown); px(5,-8,3,5,C.crown);
+  ctx.restore();
+}
+
+function drawGem(g){
+  const Y = sy(g.y);
+  if(Y<HUD_H-14||Y>H+14) return;
+  const b=Math.sin(frame*0.1+g.x*0.05)*1.5;
+  ctx.globalAlpha=0.3; px(g.x-3,Y-3+b,16,18,C.gem); ctx.globalAlpha=1;
+  px(g.x+1,Y+b,8,3,C.gem);
+  px(g.x,Y+3+b,10,4,C.gem);
+  px(g.x+2,Y+7+b,6,4,C.gemDark);
+  px(g.x+4,Y+11+b,2,2,C.gemDark);
+  px(g.x+2,Y+1+b,3,3,'#ffffff');
+}
+
+function drawChest(){
+  const Y = sy(chest.y);
+  if(Y<HUD_H-30||Y>H+30) return;
+  ctx.globalAlpha=0.3+0.2*Math.sin(frame*0.1);
+  px(chest.x-8,Y-8,46,38,C.gold); ctx.globalAlpha=1;
+  px(chest.x,Y+8,30,14,C.chest);
+  px(chest.x,Y,30,9,C.chestLite);
+  px(chest.x,Y+7,30,3,C.chestDark);
+  px(chest.x+12,Y+9,7,7,C.gold);
+  px(chest.x+14,Y+11,2,3,C.chestDark);
+  for(let i=0;i<3;i++){
+    const gx=chest.x+5+i*9, gy=Y-6+Math.sin(frame*0.1+i)*2;
+    px(gx,gy,5,3,C.gem); px(gx+1,gy+3,3,3,C.gemDark);
+  }
+  if(frame%54<34) txtS('DIAMONDS!', chest.x+15, Y-18, 9, C.gem, 'center');
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#12281a');
+  px(0,HUD_H-2,W,2,C.acid);
+  txtS('SCORE '+String(score).padStart(5,'0'), 8, 11, 12, C.gold);
+  for(let i=0;i<Math.max(0,lives);i++){
+    const x=8+i*17, y=20;
+    px(x,y,11,6,C.fish); px(x-2,y+1,3,4,C.fishDark); px(x+2,y-2,6,3,C.fin);
+  }
+  txtS('WINGS', 122, 9, 9, wing<FLAP_COST ? C.hot : '#8ab88a');
+  px(122,16,86,8,'#1e3a22');
+  px(123,17,84*(wing/WING_MAX),6, wing<FLAP_COST ? C.hot : C.fin);
+
+  /* how far up you are, and how close the acid is */
+  const climbed = 1 - (fish.y / worldH);
+  txtS('HEIGHT', 224, 9, 9, '#8ab88a');
+  px(224,16,80,8,'#1e3a22');
+  px(225,17,78*Math.max(0,Math.min(1,climbed)),6,C.gem);
+
+  const secs = Math.ceil(acidT/60);
+  const soon = secs<=4;
+  txtS('ACID UP IN '+secs+'s', W-8, 11, 10, soon && frame%16<10 ? C.hot : C.acid2, 'right');
+  txtS(LEVELS[level].name, W-8, 23, 9, '#8ab88a', 'right');
+}
+
+function drawTitle(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#16241a'); g.addColorStop(1,'#2a5a1a');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const sa=acidY, sc=camY, sw=worldH;
+  acidY=252; camY=HUD_H; worldH=300;
+  drawAcid();
+  acidY=sa; worldH=sw;
+
+  for(const p of [{x:60,y:190,w:80,h:9,acid:false,period:0},
+                  {x:200,y:160,w:70,h:9,acid:true,period:0},
+                  {x:330,y:196,w:90,h:9,acid:false,period:120,base:330,range:30}]){
+    drawPlat(p);
+  }
+
+  txtS('DEATH', W/2-6, 70, 44, C.acid, 'center');
+  txtS('JUMP', W/2+8, 116, 44, C.paper, 'center');
+
+  const t=Math.sin(frame*0.05)*14;
+  drawFish({x:150+t, y:158, dir:1, anim:frame*0.6, grace:0});
+  drawMonster({x:320-t, y:152, w:18, h:16, dir:-1, anim:frame*0.1, dead:false});
+  camY=sc;
+
+  txtS('A FLYING FISH ON AN ACID PARKOUR', W/2, 230, 11, C.paper, 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON TO START', W/2, 262, 13, C.gold, 'center');
+  txtS('GOOD LUCK... YOU WILL NEED IT', W/2, 284, 9, C.acid2, 'center');
+}
+
+function drawHowTo(){
+  ctx.fillStyle='#16241a'; ctx.fillRect(0,0,W,H);
+  px(12,8,W-24,H-16,'#1d2f22');
+  ctx.strokeStyle=C.acid; ctx.lineWidth=2; ctx.strokeRect(12,8,W-24,H-16);
+  txtS('HOW TO PLAY', W/2, 28, 15, C.gold, 'center');
+
+  txtS('FLAP', 34, 54, 12, C.fin);
+  txtS('beats your wings. Wings run out, and only', 96, 50, 10, C.paper);
+  txtS('refill when you are standing on a block.', 96, 63, 10, C.paper);
+  txtS('So the blocks are rest stops, not decoration.', 96, 76, 10, '#a8d8a0');
+
+  txtS('DIVE', 34, 100, 12, '#9adcff');
+  txtS('drops you fast. Land on a King Monster', 96, 96, 10, C.paper);
+  txtS('to squash it: 50 points. Touch one any', 96, 109, 10, C.paper);
+  txtS('other way and you die.', 96, 122, 10, C.hot);
+
+  txtS('GREEN blocks are acid. Do not touch them.', 34, 146, 10, C.acid2);
+  txtS('Yellow dots beside a block mean it moves.', 34, 162, 10, C.gold);
+  txtS('THE ACID RISES EVERY 20 SECONDS.', 34, 182, 11, C.hot);
+  txtS('Diamonds are 25. The chest at the top is 1000.', 34, 200, 10, C.gem);
+
+  txtS('3 LIVES. KEYS: ARROWS  SPACE=FLAP  DOWN=DIVE', W/2, 226, 9, '#8ab88a', 'center');
+  txtS('GOOD LUCK... YOU WILL NEED IT', W/2, 246, 11, C.acid2, 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 270, 12, C.gold, 'center');
+}
+
+function drawOverlay(){
+  if(state==='clear'){
+    px(0,116,W,72,'rgba(10,24,14,.88)');
+    txtS('YOU GOT THE DIAMONDS!', W/2, 140, 19, C.gem, 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 168, 12, C.paper, 'center');
+  }
+  if(state==='dead'){
+    px(0,124,W,56,'rgba(10,24,14,.86)');
+    txtS(fish.deathMsg==='acid' ? 'MELTED IN THE ACID!' : 'A KING MONSTER GOT YOU!', W/2, 144, 16, C.hot, 'center');
+    txtS(lives>0 ? lives+' FISH LEFT' : 'NO FISH LEFT', W/2, 166, 11, C.paper, 'center');
+  }
+  if(state==='over'){
+    ctx.fillStyle='rgba(8,20,10,.94)'; ctx.fillRect(0,0,W,H);
+    txtS('DEATH GOT YOU', W/2, 112, 26, C.acid, 'center');
+    txtS('THE ACID CAUGHT UP', W/2, 148, 12, '#8ab88a', 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 180, 12, C.gold, 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 236, 11, '#8ab88a', 'center');
+  }
+  if(state==='won'){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#1a3a4a'); g.addColorStop(1,'#16241a');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<40;i++){ const x=(i*97+frame)%W, y=(i*41+frame*2)%H; px(x,y,2,2, i%3?C.gem:C.gold); }
+    txtS('OUT OF THE ACID!', W/2, 62, 22, C.gem, 'center');
+    const svc=camY; camY=HUD_H;
+    drawFish({x:W/2-9, y:118, dir:1, anim:frame*0.6, grace:0});
+    camY=svc;
+    txtS('EVERY CHEST, EVERY DIAMOND', W/2, 176, 11, C.paper, 'center');
+    txtS('FINAL SCORE '+String(score).padStart(5,'0'), W/2, 206, 14, C.gold, 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 244, 11, C.paper, 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,18,'rgba(10,24,14,.8)');
+    txtS(LEVELS[level].hint, W/2, HUD_H+11, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#0d1a12'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='howto'){ drawHowTo(); return; }
+  if(state==='over'||state==='won'){ drawOverlay(); return; }
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,HUD_H,W,VIEW_H); ctx.clip();
+  drawCave();
+  for(const p of plats) drawPlat(p);
+  drawChest();
+  for(const g of gems) if(!g.taken) drawGem(g);
+  for(const m of monsters) drawMonster(m);
+  for(const b of blobs){
+    const Y=sy(b.y);
+    px(b.x,Y,9,9,C.blob); px(b.x+2,Y+2,5,5,C.acidGlow);
+  }
+  drawAcid();
+  if(state!=='dead' || timer%8<5) drawFish(fish);
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/13); px(s.x,sy(s.y),2,2,s.c); ctx.globalAlpha=1; }
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/26);
+    txtS(p.s, p.x, sy(p.y), 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+  ctx.restore();
+
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
