@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>The Legend of Moondyne Joe — Year 4 History</title>
+<style>
+/* ============================================================
+   FEDERATION — lesson slides + poster studio
+   Palette: colonial ink, aged paper, stamp red, brass, gum green
+   ============================================================ */
+:root{
+  --ink:#1A1410;
+  --ink-2:#261E17;
+  --ink-3:#3A2E22;
+  --paper:#F0E3C8;
+  --paper-2:#DCCBA6;
+  --stamp:#A8321F;
+  --brass:#D9A441;
+  --gum:#7A9464;
+
+  --display:Baskerville,"Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --body:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --tw:"American Typewriter","Courier New",Courier,monospace;
+
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden}
+body{
+  background:var(--ink);color:var(--paper);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.screen{position:fixed;inset:0;display:none;flex-direction:column}
+.screen.on{display:flex}
+
+/* ---------- paper grain ---------- */
+.grain::after{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(rgba(242,233,214,.05) 1px,transparent 1px);
+  background-size:4px 4px;
+}
+
+/* ============ HOME ============ */
+#home{align-items:center;justify-content:center;text-align:center;padding:28px;position:relative}
+#home .eyebrow{font-family:var(--tw);font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:var(--brass)}
+#home h1{
+  font-family:var(--display);font-weight:400;
+  font-size:clamp(46px,10.5vw,124px);line-height:.92;letter-spacing:-.02em;
+  margin:18px 0 6px;
+}
+#home h1 em{font-style:italic;color:var(--brass)}
+#home .sub{max-width:44ch;margin:14px auto 0;font-size:clamp(15px,2.1vw,20px);line-height:1.55;color:rgba(242,233,214,.78)}
+#home .rule{width:min(560px,80vw);height:1px;background:var(--line);margin:30px auto}
+.homebtns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.bigbtn{
+  font-family:var(--tw);font-size:15px;letter-spacing:.12em;text-transform:uppercase;
+  padding:17px 30px;border:1px solid var(--brass);color:var(--brass);border-radius:2px;
+  transition:background .18s,color .18s,transform .18s;min-height:56px;
+}
+.bigbtn:hover{background:var(--brass);color:var(--ink)}
+.bigbtn:active{transform:translateY(1px)}
+.bigbtn.solid{background:var(--brass);color:var(--ink)}
+.bigbtn.solid:hover{background:var(--paper);border-color:var(--paper)}
+.bigbtn.ghost{border-color:var(--line);color:rgba(242,233,214,.75)}
+.bigbtn.ghost:hover{background:rgba(242,233,214,.1);color:var(--paper)}
+
+/* ============ COLONY STRIP (signature) ============ */
+.strip{display:flex;justify-content:center;gap:8px;transition:gap .7s cubic-bezier(.6,0,.2,1)}
+.strip.united{gap:0}
+.tile{
+  font-family:var(--tw);font-size:10px;letter-spacing:.1em;
+  padding:7px 4px;width:80px;text-align:center;line-height:1.25;
+  border:1px dashed var(--line);color:rgba(240,227,200,.4);
+  border-radius:2px;
+  transition:all .5s cubic-bezier(.6,0,.2,1);
+}
+.tile b{display:block;font-size:12px;letter-spacing:.06em;color:var(--brass);opacity:.5;margin-bottom:2px;font-weight:400}
+.tile.past{border-style:solid;border-color:rgba(240,227,200,.2);color:rgba(240,227,200,.6)}
+.tile.past b{opacity:.75}
+.tile.lit{color:var(--paper);border-color:var(--stamp);border-style:solid;background:rgba(168,50,31,.2)}
+.tile.lit b{color:var(--brass);opacity:1}
+.strip.united .tile{border-color:var(--brass);border-style:solid}
+#home .strip{margin-top:34px}
+.readcue{
+  margin-top:20px;font-family:var(--tw);font-size:11.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gum);border-left:2px solid var(--gum);padding-left:13px;
+}
+
+/* ============ SLIDES ============ */
+#slides{background:var(--ink)}
+.topbar{
+  display:flex;align-items:center;gap:14px;padding:14px 18px;
+  border-bottom:1px solid var(--line);flex:0 0 auto;
+}
+.topbar .spacer{flex:1}
+.tbtn{
+  font-family:var(--tw);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  padding:10px 14px;border:1px solid var(--line);border-radius:2px;color:rgba(242,233,214,.8);
+  min-height:44px;display:inline-flex;align-items:center;gap:8px;
+}
+.tbtn:hover{border-color:var(--brass);color:var(--brass)}
+.tbtn.key{border-color:var(--brass);color:var(--brass)}
+.tbtn.key:hover{background:var(--brass);color:var(--ink)}
+
+.slidewrap{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:min(4vh,34px) min(5vw,54px)}
+.slide{width:100%;max-width:1080px;display:none}
+.slide.on{display:block;animation:rise .5s cubic-bezier(.2,.7,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.slide .stamp{
+  display:inline-block;font-family:var(--tw);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--stamp);border:1px solid var(--stamp);padding:5px 11px;border-radius:2px;
+  transform:rotate(-1.2deg);
+}
+.slide h2{
+  font-family:var(--display);font-weight:400;letter-spacing:-.015em;
+  font-size:clamp(30px,5.4vw,60px);line-height:1.03;margin:16px 0 4px;
+}
+.slide h2 em{font-style:italic;color:var(--brass)}
+.slide .lede{font-size:clamp(16px,2.3vw,22px);line-height:1.5;color:rgba(242,233,214,.8);max-width:60ch;margin:10px 0 0}
+.cols{display:grid;grid-template-columns:1.15fr .85fr;gap:min(5vw,46px);margin-top:min(3.4vh,26px);align-items:start}
+.cols.single{grid-template-columns:1fr}
+ul.pts{list-style:none;margin:0;padding:0}
+ul.pts li{
+  position:relative;padding-left:34px;margin:0 0 14px;
+  font-size:clamp(15px,2vw,19px);line-height:1.5;
+}
+ul.pts li::before{
+  content:"";position:absolute;left:0;top:.62em;width:20px;height:1px;background:var(--brass);
+}
+ul.pts li b{color:var(--brass);font-weight:600}
+.aside{border-left:1px solid var(--line);padding-left:min(4vw,26px)}
+.aside .lbl{font-family:var(--tw);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gum);margin-bottom:9px}
+.aside p{margin:0;font-size:clamp(14px,1.8vw,17px);line-height:1.55;color:rgba(242,233,214,.8)}
+.pull{font-family:var(--display);font-style:italic;font-size:clamp(20px,3vw,30px);line-height:1.28;color:var(--paper);margin:0}
+.pull cite{display:block;font-family:var(--tw);font-style:normal;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);margin-top:12px}
+.art{width:100%;height:auto;display:block}
+.slide .figcap{font-family:var(--tw);font-size:11px;letter-spacing:.1em;color:rgba(242,233,214,.5);margin-top:9px}
+
+.navbar{
+  display:flex;align-items:center;gap:14px;padding:12px 18px calc(12px + var(--safe-b));
+  border-top:1px solid var(--line);flex:0 0 auto;
+}
+.dots{flex:1;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.dot{width:26px;height:5px;border-radius:3px;background:rgba(242,233,214,.2);border:none;padding:0;cursor:pointer;transition:background .2s}
+.dot:hover{background:rgba(242,233,214,.45)}
+.dot.on{background:var(--brass)}
+.dot.done{background:rgba(201,154,62,.45)}
+.count{font-family:var(--tw);font-size:12px;letter-spacing:.12em;color:rgba(242,233,214,.55)}
+
+/* ============ EDITOR ============ */
+#editor{background:#0B1322;flex-direction:column}
+.ebar{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;
+  background:var(--ink);border-bottom:1px solid var(--line);flex:0 0 auto;z-index:30;
+}
+.ebar .name{font-family:var(--tw);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);white-space:nowrap}
+.ebar .spacer{flex:1}
+.ib{
+  min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:0 12px;border-radius:3px;border:1px solid transparent;color:rgba(242,233,214,.85);
+  font-family:var(--tw);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+}
+.ib:hover{background:rgba(242,233,214,.09)}
+.ib[disabled]{opacity:.3;pointer-events:none}
+.ib.key{border-color:var(--brass);color:var(--brass)}
+.ib.key:hover{background:var(--brass);color:var(--ink)}
+.ib svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+.ebody{flex:1;display:flex;min-height:0;position:relative}
+.rail{
+  width:78px;flex:0 0 auto;background:var(--ink);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:4px;padding:10px 6px;overflow-y:auto;z-index:20;
+}
+.tool{
+  display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 2px;border-radius:5px;
+  font-family:var(--tw);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(242,233,214,.7);min-height:60px;
+}
+.tool:hover{background:rgba(242,233,214,.08);color:var(--paper)}
+.tool.on{background:rgba(201,154,62,.16);color:var(--brass)}
+.tool svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+.panel{
+  width:280px;flex:0 0 auto;background:var(--ink-2);border-right:1px solid var(--line);
+  overflow-y:auto;padding:16px;display:none;z-index:19;-webkit-overflow-scrolling:touch;
+}
+.panel.on{display:block}
+.panel h3{font-family:var(--tw);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin:0 0 12px}
+.panel h4{font-family:var(--tw);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,233,214,.55);margin:18px 0 8px}
+.panel h4:first-of-type{margin-top:0}
+
+.canvasarea{flex:1;min-width:0;min-height:0;position:relative;overflow:hidden;background:
+  radial-gradient(ellipse at 50% 0%,#152238,#0B1322 70%);
+  display:flex;align-items:center;justify-content:center;padding:18px;}
+#stagebox{position:relative;flex:0 0 auto}
+#stage{
+  position:absolute;top:0;left:0;transform-origin:top left;overflow:hidden;
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+}
+#overlay{position:absolute;inset:0;pointer-events:none;z-index:10}
+#overlay .hnd{
+  position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--ink);pointer-events:auto;touch-action:none;cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+#overlay .hnd.rot{background:var(--brass)}
+#overlay svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+
+.ob{position:absolute;transform-origin:center center;touch-action:none;user-select:none}
+.ob.txt{
+  white-space:pre-wrap;word-break:break-word;overflow:hidden;padding:2px 4px;
+  -webkit-user-select:none;
+}
+.ob.txt[contenteditable="true"]{
+  user-select:text;-webkit-user-select:text;outline:2px dashed rgba(0,0,0,.35);cursor:text;
+}
+.ob img{width:100%;height:100%;display:block;pointer-events:none}
+.ob svg{width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
+.ob.locked{pointer-events:none}
+
+/* controls */
+.row{display:flex;gap:7px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+.fld{
+  width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);
+  padding:10px;border-radius:3px;font-family:var(--body);font-size:14px;min-height:42px;
+}
+select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--brass) 50%),linear-gradient(135deg,var(--brass) 50%,transparent 50%);background-position:calc(100% - 16px) 19px,calc(100% - 11px) 19px;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.swatches{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.sw{aspect-ratio:1;border-radius:3px;border:1px solid rgba(0,0,0,.35);min-height:0;padding:0}
+.sw.on{outline:2px solid var(--brass);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  padding:9px 12px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;
+  color:rgba(242,233,214,.85);min-height:40px;display:inline-flex;align-items:center;
+}
+.chip:hover{border-color:var(--brass);color:var(--brass)}
+.chip.on{background:var(--brass);color:var(--ink);border-color:var(--brass)}
+.chip.wide{flex:1;justify-content:center}
+.shapegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.shapebtn{aspect-ratio:1;border:1px solid var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;padding:9px}
+.shapebtn:hover{border-color:var(--brass);background:rgba(201,154,62,.1)}
+.shapebtn svg{width:100%;height:100%;fill:rgba(242,233,214,.85);stroke:none}
+.factbtn{
+  display:block;width:100%;text-align:left;padding:11px 12px;margin-bottom:7px;border-radius:4px;
+  border:1px solid var(--line);font-size:13.5px;line-height:1.4;color:rgba(242,233,214,.85);
+}
+.factbtn:hover{border-color:var(--gum);background:rgba(90,132,101,.14);color:var(--paper)}
+.hint{font-size:12px;line-height:1.5;color:rgba(242,233,214,.5);margin:10px 0 0}
+.slider{width:100%;accent-color:var(--brass);height:34px}
+.tmplbtn{display:flex;gap:10px;align-items:center;width:100%;padding:9px;border:1px solid var(--line);border-radius:4px;margin-bottom:8px;text-align:left;font-size:13px}
+.tmplbtn:hover{border-color:var(--brass)}
+.tmplbtn svg{width:34px;height:48px;flex:0 0 auto;background:#fff;border-radius:2px}
+
+/* toast + modal */
+#toast{
+  position:fixed;left:50%;bottom:calc(26px + var(--safe-b));transform:translateX(-50%) translateY(20px);
+  background:var(--paper);color:var(--ink);padding:13px 20px;border-radius:4px;font-size:14px;font-weight:600;
+  opacity:0;pointer-events:none;transition:.25s;z-index:2000;max-width:86vw;text-align:center;
+  box-shadow:0 10px 34px rgba(0,0,0,.5);
+}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.modal{position:fixed;inset:0;background:rgba(8,14,26,.86);display:none;align-items:center;justify-content:center;padding:20px;z-index:1500}
+.modal.on{display:flex}
+.mbox{background:var(--ink-2);border:1px solid var(--line);border-radius:6px;padding:24px;max-width:460px;width:100%;max-height:86vh;overflow:auto}
+.mbox h3{font-family:var(--tw);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin:0 0 14px}
+.mbox p{font-size:14px;line-height:1.6;color:rgba(242,233,214,.8);margin:0 0 14px}
+.mbox ul{font-size:14px;line-height:1.7;color:rgba(242,233,214,.8);padding-left:20px;margin:0 0 14px}
+
+/* narrow / iPad portrait: rail bottom, panel as sheet */
+@media (max-width:820px){
+  .ebody{flex-direction:column}
+  .rail{
+    width:100%;flex-direction:row;border-right:none;border-top:1px solid var(--line);
+    order:3;padding:6px calc(6px + env(safe-area-inset-left,0px)) calc(6px + var(--safe-b));
+    overflow-x:auto;overflow-y:hidden;
+  }
+  .tool{flex:0 0 74px}
+  .panel{
+    order:2;width:100%;max-height:44vh;border-right:none;border-top:1px solid var(--line);
+  }
+  .canvasarea{order:1;padding:10px}
+  .cols{grid-template-columns:1fr;gap:20px}
+  .aside{border-left:none;border-top:1px solid var(--line);padding-left:0;padding-top:18px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+
+/* ============ PRINT ============ */
+@media print{
+  html,body{overflow:visible;background:#fff}
+  .screen{position:static;display:none !important}
+  #editor.on{display:block !important}
+  .ebar,.rail,.panel,#overlay,#toast,.modal{display:none !important}
+  .ebody{display:block}
+  .canvasarea{display:block;padding:0;background:none;overflow:visible}
+  #stagebox{overflow:hidden;margin:0}
+  #stage{position:relative;box-shadow:none;transform-origin:top left}
+  @page{size:A4 portrait;margin:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<section id="home" class="screen on grain">
+  <div class="eyebrow">Year 4 &middot; HASS History &middot; Western Australia</div>
+  <h1>There wasn't a gaol<br>that could hold <em>Joe</em></h1>
+  <p class="sub">A hungry miner stole some food in Wales and was shipped to the other side of the world. In Western Australia he became the bushranger nobody could keep locked up. Work through his story, then build a poster that sorts the facts from the legend.</p>
+  <div class="strip" id="homestrip"></div>
+  <div class="rule"></div>
+  <div class="homebtns">
+    <button class="bigbtn solid" id="go-lesson">Start the lesson</button>
+    <button class="bigbtn ghost" id="go-poster">Go straight to my poster</button>
+  </div>
+  <p class="sub" style="font-size:13px;margin-top:26px;opacity:.55">Designed to be used alongside <i>The Legend of Moondyne Joe</i> by Mark Greenwood &amp; Fran&eacute; Lessac (Cygnet Books, 2002).</p>
+</section>
+
+<!-- ================= SLIDES ================= -->
+<section id="slides" class="screen">
+  <div class="topbar">
+    <button class="tbtn" id="s-home">&#8592; Home</button>
+    <div class="strip" id="slidestrip"></div>
+    <div class="spacer"></div>
+    <button class="tbtn key" id="s-poster">Make my poster &#8594;</button>
+  </div>
+  <div class="slidewrap" id="slidewrap"></div>
+  <div class="navbar">
+    <button class="tbtn" id="s-prev">&#8592; Back</button>
+    <div class="dots" id="dots"></div>
+    <span class="count" id="count"></span>
+    <button class="tbtn" id="s-next">Next &#8594;</button>
+  </div>
+</section>
+
+<!-- ================= EDITOR ================= -->
+<section id="editor" class="screen">
+  <div class="ebar">
+    <button class="ib" id="e-back" title="Back to the lesson">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <span class="name">Poster studio</span>
+    <div class="spacer"></div>
+    <button class="ib" id="e-undo" title="Undo"><svg viewBox="0 0 24 24"><path d="M4 10h11a4.5 4.5 0 010 9h-6"/><path d="M8 6l-4 4 4 4"/></svg></button>
+    <button class="ib" id="e-redo" title="Redo"><svg viewBox="0 0 24 24"><path d="M20 10H9a4.5 4.5 0 000 9h6"/><path d="M16 6l4 4-4 4"/></svg></button>
+    <button class="ib" id="e-help" title="Help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 113 2.5v1.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
+    <button class="ib" id="e-save" title="Save a copy to my device"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/></svg><span class="lbl-txt">Save</span></button>
+    <button class="ib key" id="e-print"><svg viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7" rx="1.5"/><path d="M7 16h10v4H7z"/></svg>Print / PDF</button>
+  </div>
+
+  <div class="ebody">
+    <div class="rail" id="rail">
+      <button class="tool on" data-panel="text"><svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg>Text</button>
+      <button class="tool" data-panel="shapes"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="9" height="9" rx="1"/><circle cx="16" cy="15" r="5"/></svg>Shapes</button>
+      <button class="tool" data-panel="images"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l5-4 4 3 3-2 4 3"/></svg>Images</button>
+      <button class="tool" data-panel="draw"><svg viewBox="0 0 24 24"><path d="M4 20s1-4 3-6 5-3 7-5 3-4 3-4l3 3s-2 1-4 3-3 5-5 7-6 3-6 3z"/></svg>Draw</button>
+      <button class="tool" data-panel="bg"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>Page</button>
+      <button class="tool" data-panel="facts"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg>Facts</button>
+      <button class="tool" data-panel="layers"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 14l9 5 9-5"/></svg>Layers</button>
+    </div>
+
+    <div class="panel on" id="panel"></div>
+
+    <div class="canvasarea" id="canvasarea">
+      <div id="stagebox">
+        <div id="stage"></div>
+        <div id="overlay"><svg id="ovsvg"></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="toast"></div>
+
+<div class="modal" id="modal"><div class="mbox" id="mbox"></div></div>
+
+<input type="file" id="filepick" accept="image/*" style="display:none">
+<input type="file" id="jsonpick" accept="application/json,.json" style="display:none">
+
+<script>
+"use strict";
+/* =========================================================================
+   0. HELPERS
+   ========================================================================= */
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>[...(r||document).querySelectorAll(s)];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT;
+function toast(m,ms){clearTimeout(toastT);const t=$('#toast');t.textContent=m;t.classList.add('on');toastT=setTimeout(()=>t.classList.remove('on'),ms||2400);}
+function modal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on');}
+function closeModal(){$('#modal').classList.remove('on');}
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+
+/* =========================================================================
+   1. LESSON CONTENT
+   ========================================================================= */
+const STAGES=[['1848','WALES'],['1853','THE SHIP'],['1855','THE HILLS'],
+               ['1861','THE GAOL'],['1867','THE CAGE'],['1873','FREE']];
+
+const ART={
+  map:`<svg class="art" viewBox="0 0 700 540" role="img" aria-label="Map of south-west Western Australia showing Fremantle, Perth, the Darling Range and Moondyne Hills near Toodyay">
+    <rect width="700" height="540" fill="#2C4A63"/>
+    <path d="M150 0 C175 110 120 210 152 320 C178 420 132 480 168 540 L700 540 L700 0 Z" fill="#C98B3E"/>
+    <path d="M255 0 C268 120 246 240 262 360 C272 440 258 500 268 540 L318 540 C306 480 322 420 312 340 C296 220 320 110 306 0 Z" fill="#9E5F2A" opacity=".8"/>
+    <path d="M520 130 C440 190 400 250 330 300 C270 342 210 356 172 372" stroke="#5FA8C4" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <g stroke="#1A1410" stroke-width="2.5">
+      <circle cx="172" cy="374" r="10" fill="#A8321F"/>
+      <circle cx="252" cy="330" r="9" fill="#F0E3C8"/>
+      <circle cx="520" cy="130" r="10" fill="#D9A441"/>
+    </g>
+    <g font-family="American Typewriter, Courier New, monospace" fill="#1A1410" font-size="17">
+      <text x="190" y="380">Fremantle</text>
+      <text x="268" y="326">Perth</text>
+      <text x="436" y="122">Moondyne Hills</text>
+      <text x="470" y="150" font-size="14">nr Toodyay</text>
+      <text x="330" y="252" font-size="14" fill="#3B2A12" transform="rotate(-26 330 252)">Avon &#8594; Swan River</text>
+      <text x="268" y="200" font-size="13" fill="#F0E3C8" transform="rotate(-84 268 200)">DARLING RANGE</text>
+    </g>
+    <g font-family="American Typewriter, Courier New, monospace" font-size="13" fill="#4A3A1E" letter-spacing="1">
+      <text x="196" y="440">WHADJUK NOONGAR</text><text x="196" y="458">COUNTRY</text>
+      <text x="452" y="230">BALLARDONG</text><text x="452" y="248">NOONGAR COUNTRY</text>
+    </g>
+    <text x="60" y="60" font-family="American Typewriter, Courier New, monospace" font-size="15" fill="#BFD6E4" transform="rotate(-90 60 60)">INDIAN OCEAN</text>
+  </svg>`,
+
+  record:`<svg class="art" viewBox="0 0 640 470" role="img" aria-label="A convict record card for Joseph Bolitho Johns">
+    <rect x="40" y="30" width="560" height="410" rx="4" fill="#F0E3C8" stroke="#1A1410" stroke-width="3" transform="rotate(-1.4 320 235)"/>
+    <g transform="rotate(-1.4 320 235)" font-family="American Typewriter, Courier New, monospace" fill="#1A1410">
+      <text x="76" y="82" font-size="15" letter-spacing="3">CONVICT RECORD</text>
+      <line x1="76" y1="96" x2="564" y2="96" stroke="#1A1410" stroke-width="1.5"/>
+      <text x="76" y="140" font-size="17">Name</text><text x="250" y="140" font-size="17">Joseph Bolitho Johns</text>
+      <text x="76" y="180" font-size="17">Convict no.</text><text x="250" y="180" font-size="17" fill="#A8321F">1790</text>
+      <text x="76" y="220" font-size="17">Trade</text><text x="250" y="220" font-size="17">Miner</text>
+      <text x="76" y="260" font-size="17">Ship</text><text x="250" y="260" font-size="17">Pyrenees</text>
+      <text x="76" y="300" font-size="17">Left England</text><text x="250" y="300" font-size="17">2 February 1853</text>
+      <text x="76" y="340" font-size="17">Reached Fremantle</text><text x="250" y="340" font-size="17">30 April 1853</text>
+      <line x1="76" y1="364" x2="564" y2="364" stroke="#1A1410" stroke-width="1"/>
+      <text x="76" y="400" font-size="15" fill="#7A5A2A">87 days at sea &#183; 293 convicts &#183; 94 passengers</text>
+    </g>
+  </svg>`,
+
+  cell:`<svg class="art" viewBox="0 0 560 480" role="img" aria-label="The escape-proof cell door lined with timber and iron spikes">
+    <rect x="70" y="30" width="420" height="420" fill="#3A2A18" stroke="#1A1410" stroke-width="4"/>
+    <g stroke="#241809" stroke-width="2">
+      <line x1="130" y1="30" x2="130" y2="450"/><line x1="190" y1="30" x2="190" y2="450"/>
+      <line x1="250" y1="30" x2="250" y2="450"/><line x1="310" y1="30" x2="310" y2="450"/>
+      <line x1="370" y1="30" x2="370" y2="450"/><line x1="430" y1="30" x2="430" y2="450"/>
+    </g>
+    <g fill="#120C06">
+      <circle cx="100" cy="70" r="5"/><circle cx="160" cy="130" r="5"/><circle cx="220" cy="80" r="5"/>
+      <circle cx="280" cy="160" r="5"/><circle cx="340" cy="100" r="5"/><circle cx="400" cy="180" r="5"/>
+      <circle cx="460" cy="90" r="5"/><circle cx="120" cy="250" r="5"/><circle cx="230" cy="300" r="5"/>
+      <circle cx="350" cy="270" r="5"/><circle cx="440" cy="330" r="5"/><circle cx="180" cy="400" r="5"/>
+      <circle cx="300" cy="420" r="5"/><circle cx="420" cy="410" r="5"/>
+    </g>
+    <rect x="215" y="150" width="130" height="100" fill="#0B0805" stroke="#8A8A8A" stroke-width="5"/>
+    <g stroke="#8A8A8A" stroke-width="6">
+      <line x1="248" y1="150" x2="248" y2="250"/><line x1="280" y1="150" x2="280" y2="250"/><line x1="312" y1="150" x2="312" y2="250"/>
+    </g>
+    <rect x="205" y="140" width="150" height="52" fill="#6E6E6E" stroke="#3A3A3A" stroke-width="3"/>
+    <text x="280" y="172" font-family="American Typewriter, Courier New, monospace" font-size="14" fill="#F0E3C8" text-anchor="middle">STEEL PLATE</text>
+    <g fill="#B8B8B8"><rect x="150" y="300" width="60" height="16" rx="3"/><circle cx="180" cy="340" r="17" fill="none" stroke="#B8B8B8" stroke-width="7"/></g>
+  </svg>`,
+
+  irons:`<svg class="art" viewBox="0 0 640 300" role="img" aria-label="Leg irons joined by a chain">
+    <g stroke="#8C8C8C" stroke-width="16" fill="none">
+      <circle cx="120" cy="160" r="62"/><circle cx="520" cy="160" r="62"/>
+    </g>
+    <g stroke="#6E6E6E" stroke-width="11" fill="none">
+      <ellipse cx="215" cy="160" rx="30" ry="19"/><ellipse cx="268" cy="160" rx="30" ry="19"/>
+      <ellipse cx="321" cy="160" rx="30" ry="19"/><ellipse cx="374" cy="160" rx="30" ry="19"/>
+      <ellipse cx="427" cy="160" rx="30" ry="19"/>
+    </g>
+    <text x="320" y="270" font-family="American Typewriter, Courier New, monospace" font-size="15" fill="#9A8F7A" text-anchor="middle" letter-spacing="2">JOE SLIPPED OUT OF THESE</text>
+  </svg>`
+};
+
+const SLIDES=[
+ {stage:0,stamp:'Wales, 1848',title:'A hungry man and a <em>bag of food</em>',
+  lede:'Joseph Bolitho Johns was a miner. There was no work, and he was hungry. One cold night a policeman stopped him in the street and asked what was in his sack.',
+  pts:['Inside was food — cheese, bread and meat. Enough for a few days.','Joe was charged with <b>stealing</b>.','In 1849 a judge gave him <b>ten years</b> and ordered that he be sent away from Britain.','He waited four years in an English gaol before a ship was ready.'],
+  aside:{lbl:'A word to know',txt:'<b>Transportation</b> meant being sent by ship to a far-off colony as a punishment. Prisoners had to work there. Most never came home again.'},
+  read:'Read the opening pages of the book together, up to the policeman and the sack.'},
+
+ {stage:1,stamp:'At sea, 1853',title:'Sent to the <em>other side</em> of the world',
+  lede:'Joe was put aboard the convict ship <i>Pyrenees</i> and sailed almost right around the world to the Swan River Colony.',
+  pts:['The voyage took <b>87 days</b> — nearly three months at sea.','On board were <b>293 convicts</b> and 94 other passengers.','When land finally appeared, the convicts were allowed up on deck.','Joe looked at the hills behind the settlement and wondered if freedom was out there.'],
+  art:'record',figcap:'Real records like this one tell us what actually happened. Historians call them sources.'},
+
+ {stage:1,stamp:'Western Australia, 1850–1868',title:'A colony built by <em>convicts</em>',
+  lede:'Western Australia did not start as a convict colony. It began in 1829 with free settlers. But there were not enough workers, so the settlers asked Britain to send convicts.',
+  pts:['The first convict ship arrived in <b>1850</b>. The last one came in <b>1868</b>.','Convicts built roads, bridges, jetties and Fremantle Prison itself.','A <b>ticket-of-leave</b> was given to convicts who behaved well. They could work for wages, but had to report to the authorities and stay in their district.','A <b>conditional pardon</b> gave a convict back most of the rights of a free person. Joe got his in 1855.'],
+  aside:{lbl:'Think about it',txt:'Many buildings you can still visit in Fremantle and Perth were built by convict hands. What does that tell us about how the colony grew?'}},
+
+ {stage:2,stamp:'Whose Country?',title:'The hills were <em>already home</em>',
+  lede:'The story calls the hills wild and empty. They were not. Noongar people had lived there, and cared for that Country, for tens of thousands of years.',
+  pts:['Perth and Fremantle are on <b>Whadjuk Noongar</b> Country. The Avon Valley, where Moondyne Hills are, is <b>Ballardong Noongar</b> Country.','The name <b>Moondyne</b> itself comes from the Noongar language of that place.','The springs, tracks and bush foods Joe used were already known and looked after by Noongar families.','As settlers took up land and put up fences, it became harder for Noongar people to move across their own Country, hunt and reach water.'],
+  art:'map',figcap:'Joe’s hideout was about 100 km inland from Fremantle, up the Avon Valley.',
+  read:'Look closely at the map pages at the front of the book. What has the illustrator chosen to show — and what is missing?'},
+
+ {stage:2,stamp:'1855–1861',title:'Moondyne Joe the <em>bushman</em>',
+  lede:'With his pardon in his pocket, Joe headed for the hills and taught himself to live off the bush.',
+  pts:['He slept in a cave among granite boulders, on a bed of bark.','He washed under cold waterfalls.','When his clothes wore out he made a <b>kangaroo-skin cape</b> and <b>possum-skin slippers</b>.','He built fences around freshwater springs and caught stray stock and wild brumbies that came to drink.','Settlers began calling him <b>Moondyne Joe</b>, after the hills he knew so well.'],
+  aside:{lbl:'Historian’s question',txt:'Joe was famous for knowing every creek and valley. Who do you think taught the settlers — and perhaps Joe — how to find water in that Country?'}},
+
+ {stage:3,stamp:'1861',title:'Blamed for a <em>missing horse</em>',
+  lede:'A valuable stallion went missing. Its owner told the police to look in the convict’s trap. The troopers rode to Moondyne Hills and found the horse.',
+  pts:['“The horse is a stray,” Joe argued. The troopers did not believe him.','He was locked in the <b>Toodyay</b> lock-up.','That night, while the warders dozed, Joe scratched at the soft stone around the lock with his <b>knife and fork</b> until the door sprang open.','He hid in the prison stables, watched the troopers gallop off to search for him, then rode away on a horse they had left behind.'],
+  art:'irons',
+  read:'Read the escape from the lock-up. Notice how the author makes it sound clever rather than frightening.'},
+
+ {stage:3,stamp:'1861–1866',title:'Caught, and caught <em>again</em>',
+  lede:'Joe was recaptured within days, and it became a pattern: escape, a few days or weeks of freedom, then back behind bars.',
+  pts:['He served <b>three years</b> in Fremantle Prison, then went back to the hills.','Soon after, he was blamed for the disappearance of a farmer’s prize ox.','This time the judge gave him <b>ten years with hard labour</b> and ordered leg irons “so he cannot escape”.','Joe slipped out of his shackles and vanished again.'],
+  aside:{lbl:'Cause and effect',txt:'Each time Joe escaped, the punishment got harsher. Each harsher punishment made him more determined. Historians call this a cycle — one thing causing the next.'}},
+
+ {stage:3,stamp:'The public mood',title:'The settlers were <em>on his side</em>',
+  lede:'Troopers rode from farm to farm warning people to lock up their homesteads. But most settlers were not frightened of Moondyne Joe at all.',
+  pts:['Some farmers hid him in their cellars.','Others carried food out to his hide-outs.','Swagmen boiled a billy with him and swapped stories.','Children made up a cheeky rhyme about the Governor, sung to a tune everybody knew.'],
+  aside:{lbl:'Perspectives',txt:'The Governor saw a criminal. Many ordinary settlers saw a battler outsmarting the powerful. Same man, same events — very different points of view. Whose side would you have been on?'},
+  read:'The children’s rhyme is printed in the book. Read it aloud, then ask: who is being laughed at here?'},
+
+ {stage:4,stamp:'Fremantle Prison, 1866',title:'The <em>escape-proof</em> cell',
+  lede:'The Governor was fed up. He had a special cell built, and it was designed for one prisoner only.',
+  pts:['The stone walls were lined with thick <b>timber</b>, pegged in with hundreds of <b>iron spikes</b>.','A <b>steel plate</b> was bolted over the barred window.','Almost no light or fresh air got in. Outside the sky was blue; inside it was as dark as midnight.','Joe was chained by the neck in the prison yard first, as a warning to other prisoners.'],
+  art:'cell',
+  figcap:'You can still visit Joe’s Cell at Fremantle Prison today.'},
+
+ {stage:4,stamp:'1867',title:'The <em>rock pile</em> trick',
+  lede:'The prison doctor warned that Joe would die without fresh air. So the Governor put him to work breaking limestone in the prison yard — and made him a famous promise.',
+  pts:['“If you can escape from here, you can <b>have</b> your freedom,” the Governor sneered.','Week after week Joe swung the hammer, and the pile of broken stone grew higher and higher.','Hidden behind the pile, he began smashing a hole through the prison <b>wall</b>.','He propped his hat and shirt on the hammer to make a <b>dummy</b>, wriggled through the hole, and was gone.','He stayed free for nearly <b>two years</b> — until troopers stumbled across him hiding in a vineyard’s wine cellar.'],
+  aside:{lbl:'Think about it',txt:'The guards could see arms swinging and a hat above the rocks, so they assumed Joe was there. What does that tell you about believing what you think you can see?'}},
+
+ {stage:5,stamp:'1873 and after',title:'A promise <em>kept</em>',
+  lede:'Back in prison, Joe reminded the authorities of the old Governor’s promise. A new Governor decided the word of a Governor had to mean something.',
+  pts:['Joe was set free on the condition that he stay out of trouble.','He married Louisa Hearn in Fremantle in <b>1879</b>.','He spent his last years in the south-west, near the creeks and forests he loved.','He died in <b>1900</b> and was buried in a pauper’s grave in Fremantle Cemetery.','He never robbed a bank and never shot anybody. He was famous for one thing: <b>escaping</b>.']},
+
+ {stage:5,stamp:'Working like a historian',title:'Fact, or <em>legend</em>?',
+  lede:'A fact is something we can check in the records. A legend is a story that grows in the telling — a bit bolder and funnier every time.',
+  pts:['<b>Facts</b> come from sources: prison registers, court records, newspapers, ships’ lists.','<b>Legends</b> come from people retelling a story for a hundred years.','The book you have been reading was written in <b>2002</b> — about 150 years after these events.','That does not make it wrong. But a historian always asks: <b>how do we know?</b>'],
+  aside:{lbl:'Try it',txt:'“Convict number 1790” can be checked in a record. “The troopers were astonished” cannot — nobody wrote down how their faces looked. Sort the two kinds of statement as you read.'},
+  read:'Read the Glossary and Notes at the back of the book. Which parts of the story does it prove?'},
+
+ {stage:5,stamp:'Your turn',title:'Make an information <em>poster</em>',
+  lede:'Teach somebody who has never heard of Moondyne Joe. Your poster needs to answer four questions.',
+  pts:['<b>Who</b> was Joseph Bolitho Johns, and how did he end up in Western Australia?','<b>What</b> made him famous? Put his escapes in order, with dates.','<b>Whose Country</b> was he hiding on, and what was changing there?','<b>Which parts</b> are facts we can check, and which parts are legend?'],
+  aside:{lbl:'Marks are for',txt:'Correct dates in the right order &middot; your own words, not copied sentences &middot; clear headings a reader can follow &middot; at least one thing you can prove from a source.'},
+  last:true}
+];
+
+const FACT_GROUPS=[
+ {label:'Facts we can check in the records',c:'#7A9464',items:[
+  'Joseph Bolitho Johns was convicted of stealing in Wales in 1849.',
+  'He was sentenced to ten years and transported to Western Australia.',
+  'He sailed on the convict ship Pyrenees and reached Fremantle on 30 April 1853.',
+  'The voyage took 87 days and carried 293 convicts.',
+  'His convict number was 1790 and his trade was miner.',
+  'Western Australia began as a free colony in 1829.',
+  'Convicts were sent to Western Australia from 1850 until 1868.',
+  'A ticket-of-leave let a well-behaved convict work for wages.',
+  'Joe received a conditional pardon in 1855.',
+  'Settlers nicknamed him Moondyne Joe after the hills near Toodyay.',
+  'Moondyne Hills are in Ballardong Noongar Country in the Avon Valley.',
+  'Perth and Fremantle are on Whadjuk Noongar Country.',
+  'In 1861 he was accused of taking a stallion and locked in the Toodyay lock-up.',
+  'A special escape-proof cell was built for him at Fremantle Prison.',
+  'The cell was lined with timber and iron spikes, with a steel plate over the window.',
+  'He escaped from the prison yard in 1867 while breaking limestone.',
+  'He was free for nearly two years before being found in a wine cellar.',
+  'He was released in 1873 after a new Governor honoured the old promise.',
+  'He married Louisa Hearn in Fremantle in 1879.',
+  'He died in 1900 and was buried in Fremantle Cemetery.']},
+ {label:'Parts of the legend',c:'#D9A441',items:[
+  'People said Joe knew every inch of country, every creek, hill and valley.',
+  'He is said to have escaped using only a knife and fork.',
+  'The story says he wore a kangaroo-skin cape and possum-skin slippers.',
+  'It is said he watched the troopers ride off to hunt him, then took a horse.',
+  'Farmers were said to hide him in their cellars and carry food to his camps.',
+  'Children supposedly made up a rhyme teasing the Governor.',
+  'The tale says he propped his hat and shirt on a hammer to fool the guards.',
+  'People said there was not a gaol in the colony that could hold him.']}
+];
+
+/* =========================================================================
+   2. SCREENS
+   ========================================================================= */
+function show(id){
+  $$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  if(id==='editor'){requestAnimationFrame(fitStage);}
+}
+function buildStrip(node,stage,done){
+  node.innerHTML='';
+  node.classList.toggle('united',!!done);
+  STAGES.forEach((st,i)=>{
+    const cls='tile'+(i===stage?' lit':(i<stage?' past':''));
+    node.appendChild(el('div',cls,'<b>'+st[0]+'</b>'+st[1]));
+  });
+}
+buildStrip($('#homestrip'),-1,false);
+$('#go-lesson').onclick=()=>{show('slides');goto(0);};
+$('#go-poster').onclick=()=>show('editor');
+$('#s-home').onclick=()=>show('home');
+$('#s-poster').onclick=()=>show('editor');
+$('#e-back').onclick=()=>show('slides');
+
+/* ---- slide rendering ---- */
+let cur=0, seen=new Set();
+const wrap=$('#slidewrap');
+SLIDES.forEach((s,i)=>{
+  const d=el('div','slide');
+  d.dataset.i=i;
+  let mid='';
+  const left=`
+    ${s.pull?`<blockquote class="pull">&ldquo;${s.pull}&rdquo;<cite>${s.cite||''}</cite></blockquote>`:''}
+    ${s.pts?`<ul class="pts">${s.pts.map(p=>`<li>${p}</li>`).join('')}</ul>`:''}`;
+  const right=s.art
+    ? `${ART[s.art]}${s.figcap?`<div class="figcap">${s.figcap}</div>`:''}`
+    : (s.aside?`<div class="lbl">${s.aside.lbl}</div><p>${s.aside.txt}</p>`:'');
+  const hasRight=!!(s.art||s.aside);
+  mid=`<div class="cols${hasRight?'':' single'}">
+        <div>${left}</div>
+        ${hasRight?`<div class="${s.art?'':'aside'}">${right}</div>`:''}
+      </div>`;
+  d.innerHTML=`<span class="stamp">${s.stamp}</span>
+    <h2>${s.title}</h2>
+    <p class="lede">${s.lede}</p>
+    ${mid}
+    ${s.read?`<div class="readcue">${s.read}</div>`:''}
+    ${s.last?`<div style="margin-top:26px"><button class="bigbtn solid" onclick="show('editor')">Open the poster studio &#8594;</button></div>`:''}`;
+  wrap.appendChild(d);
+});
+const dots=$('#dots');
+SLIDES.forEach((s,i)=>{
+  const b=el('button','dot');b.type='button';b.title=s.stamp;
+  b.setAttribute('aria-label','Slide '+(i+1)+': '+s.stamp);
+  b.onclick=()=>goto(i);dots.appendChild(b);
+});
+function goto(i){
+  cur=clamp(i,0,SLIDES.length-1);seen.add(cur);
+  $$('.slide',wrap).forEach(s=>s.classList.toggle('on',+s.dataset.i===cur));
+  $$('.dot',dots).forEach((d,j)=>{d.classList.toggle('on',j===cur);d.classList.toggle('done',j!==cur&&seen.has(j));});
+  $('#count').textContent=String(cur+1).padStart(2,'0')+' / '+String(SLIDES.length).padStart(2,'0');
+  buildStrip($('#slidestrip'),SLIDES[cur].stage,SLIDES[cur].stage>=5);
+  $('#s-prev').disabled=cur===0;
+  wrap.scrollTop=0;
+}
+$('#s-next').onclick=()=>goto(cur+1);
+$('#s-prev').onclick=()=>goto(cur-1);
+document.addEventListener('keydown',e=>{
+  if(!$('#slides').classList.contains('on'))return;
+  if(e.key==='ArrowRight'||e.key===' ')  {e.preventDefault();goto(cur+1);}
+  if(e.key==='ArrowLeft')                {e.preventDefault();goto(cur-1);}
+});
+let tsx=0,tsy=0;
+wrap.addEventListener('touchstart',e=>{tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;},{passive:true});
+wrap.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tsx, dy=e.changedTouches[0].clientY-tsy;
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.6) goto(cur+(dx<0?1:-1));
+},{passive:true});
+
+/* =========================================================================
+   3. POSTER MODEL
+   ========================================================================= */
+const PW=1000, PH=1414;               // A4 portrait working size
+
+const FONTS=[
+ {id:'sans', name:'Poster Sans',  css:'"Avenir Next","Segoe UI",system-ui,sans-serif', w:600},
+ {id:'chunk',name:'Chunky',       css:'"Arial Black","Avenir Next",Impact,sans-serif', w:900},
+ {id:'serif',name:'Classic Serif',css:'Baskerville,"Palatino Linotype",Georgia,serif', w:400},
+ {id:'type', name:'Typewriter',   css:'"American Typewriter","Courier New",monospace', w:400},
+ {id:'hand', name:'Handwriting',  css:'"Bradley Hand","Segoe Print","Comic Sans MS",cursive', w:400},
+ {id:'marker',name:'Marker',      css:'"Marker Felt","Segoe Print","Comic Sans MS",cursive', w:400},
+ {id:'chalk',name:'Chalk',        css:'Chalkduster,"Segoe Print","Comic Sans MS",cursive', w:400},
+ {id:'script',name:'Script',      css:'"Snell Roundhand","Segoe Script","Brush Script MT",cursive', w:400},
+ {id:'round',name:'Rounded',      css:'"SF Pro Rounded","Trebuchet MS",Verdana,sans-serif', w:600},
+ {id:'geo',  name:'Futura',       css:'Futura,"Century Gothic","Trebuchet MS",sans-serif', w:500}
+];
+const fontCss=id=>(FONTS.find(f=>f.id===id)||FONTS[0]).css;
+const fontW  =id=>(FONTS.find(f=>f.id===id)||FONTS[0]).w;
+
+const PALETTE=['#000000','#3A3A3A','#7A7A7A','#FFFFFF','#F2E9D6','#E3D6BC',
+ '#0F1A2E','#22355A','#3F6FA5','#7FA6A0','#5A8465','#8DBF6A',
+ '#BE2B2B','#D97C3C','#C99A3E','#F0C64B','#8E7BB0','#C86B9E'];
+
+/* shape paths drawn inside a 0..100 box */
+const SHAPES={
+ rect:      'M0 0 H100 V100 H0 Z',
+ round:     'M14 0 H86 A14 14 0 0 1 100 14 V86 A14 14 0 0 1 86 100 H14 A14 14 0 0 1 0 86 V14 A14 14 0 0 1 14 0 Z',
+ ellipse:   'M50 0 A50 50 0 0 1 50 100 A50 50 0 0 1 50 0 Z',
+ triangle:  'M50 2 L98 98 L2 98 Z',
+ star:      'M50 2 L61.8 35.5 L97 36.5 L69 57.5 L79 91 L50 71 L21 91 L31 57.5 L3 36.5 L38.2 35.5 Z',
+ arrow:     'M0 32 H62 V6 L100 50 L62 94 V68 H0 Z',
+ line:      'M0 44 H100 V56 H0 Z',
+ bubble:    'M6 4 H94 A6 6 0 0 1 100 10 V68 A6 6 0 0 1 94 74 H40 L20 96 L24 74 H6 A6 6 0 0 1 0 68 V10 A6 6 0 0 1 6 4 Z',
+ banner:    'M0 18 H100 V82 L88 68 L76 82 L64 68 L52 82 L40 68 L28 82 L16 68 L4 82 Z',
+ badge:     'M50 0 L62 12 L79 8 L84 25 L100 33 L90 48 L100 63 L84 71 L79 88 L62 84 L50 96 L38 84 L21 88 L16 71 L0 63 L10 48 L0 33 L16 25 L21 8 L38 12 Z',
+ heart:     'M50 96 C10 66 0 44 0 28 A28 28 0 0 1 50 16 A28 28 0 0 1 100 28 C100 44 90 66 50 96 Z',
+ chevron:   'M0 6 L44 50 L0 94 L26 94 L70 50 L26 6 Z'
+};
+const PATTERNS=['none','dots','grid','rule','stripe','diag','graph'];
+
+function newDoc(){
+  return {v:1, bg:{color:'#F4EAD3', pattern:'none', patc:'#DBC9A4'}, objects:[]};
+}
+let doc=newDoc(), sel=null, scale=1, tool='select', drawing=null;
+let hist=[], hpos=-1, suppress=false;
+
+function snapshot(){
+  if(suppress)return;
+  const s=JSON.stringify(doc);
+  if(hist[hpos]===s)return;
+  hist=hist.slice(0,hpos+1);hist.push(s);
+  if(hist.length>40){hist.shift();}
+  hpos=hist.length-1;updateUndo();save();
+}
+function updateUndo(){$('#e-undo').disabled=hpos<=0;$('#e-redo').disabled=hpos>=hist.length-1;}
+function undo(){if(hpos<=0)return;hpos--;doc=JSON.parse(hist[hpos]);sel=null;render();updateUndo();save();}
+function redo(){if(hpos>=hist.length-1)return;hpos++;doc=JSON.parse(hist[hpos]);sel=null;render();updateUndo();save();}
+$('#e-undo').onclick=undo;$('#e-redo').onclick=redo;
+
+/* =========================================================================
+   4. STORAGE (IndexedDB, localStorage fallback)
+   ========================================================================= */
+const DB={db:null,ok:false};
+function openDB(){
+  return new Promise(res=>{
+    try{
+      const r=indexedDB.open('federation-poster',1);
+      r.onupgradeneeded=()=>{r.result.createObjectStore('kv');};
+      r.onsuccess=()=>{DB.db=r.result;DB.ok=true;res(true);};
+      r.onerror=()=>res(false);
+    }catch(e){res(false);}
+  });
+}
+function put(k,v){
+  if(!DB.ok){try{localStorage.setItem(k,v);}catch(e){}return;}
+  try{const t=DB.db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);}catch(e){}
+}
+function get(k){
+  return new Promise(res=>{
+    if(!DB.ok){res(localStorage.getItem(k));return;}
+    try{const r=DB.db.transaction('kv','readonly').objectStore('kv').get(k);
+      r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);}catch(e){res(null);}
+  });
+}
+let saveT;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>put('doc',JSON.stringify(doc)),450);}
+
+/* =========================================================================
+   5. GEOMETRY
+   ========================================================================= */
+function corners(o){
+  const cx=o.x+o.w/2, cy=o.y+o.h/2, r=(o.rot||0)*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+  return [[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]]
+    .map(([px,py])=>{const dx=px-cx,dy=py-cy;return [cx+dx*c-dy*s, cy+dx*s+dy*c];});
+}
+function mid(a,b){return [(a[0]+b[0])/2,(a[1]+b[1])/2];}
+function ptr(e){
+  const r=$('#stage').getBoundingClientRect();
+  return {x:(e.clientX-r.left)/scale, y:(e.clientY-r.top)/scale};
+}
+
+/* =========================================================================
+   6. RENDER
+   ========================================================================= */
+const stage=$('#stage'), ov=$('#overlay'), ovsvg=$('#ovsvg'), box=$('#stagebox');
+const nodes=new Map();
+let editingId=null;
+
+function fitStage(){
+  const area=$('#canvasarea'); if(!area) return;
+  const pad=parseFloat(getComputedStyle(area).paddingLeft)*2;
+  const aw=area.clientWidth-pad, ah=area.clientHeight-pad;
+  if(aw<=0||ah<=0)return;
+  scale=Math.min(aw/PW, ah/PH);
+  box.style.width=(PW*scale)+'px';box.style.height=(PH*scale)+'px';
+  stage.style.width=PW+'px';stage.style.height=PH+'px';
+  stage.style.transform='scale('+scale+')';
+  drawOverlay();
+}
+window.addEventListener('resize',fitStage);
+window.addEventListener('orientationchange',()=>setTimeout(fitStage,250));
+
+function bgCss(){
+  const b=doc.bg, c=b.patc;
+  const layers={
+    none:'',
+    dots:`radial-gradient(${c} 2.5px, transparent 2.6px)`,
+    grid:`linear-gradient(${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px)`,
+    rule:`linear-gradient(${c} 1.5px, transparent 1.5px)`,
+    stripe:`repeating-linear-gradient(90deg, ${c} 0 14px, transparent 14px 42px)`,
+    diag:`repeating-linear-gradient(45deg, ${c} 0 8px, transparent 8px 30px)`,
+    graph:`linear-gradient(${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px)`
+  };
+  const size={none:'',dots:'40px 40px',grid:'56px 56px',rule:'auto 46px',stripe:'auto',diag:'auto',graph:'22px 22px'};
+  stage.style.background=doc.bg.color;
+  stage.style.backgroundImage=layers[b.pattern]||'';
+  stage.style.backgroundSize=size[b.pattern]||'auto';
+}
+
+function shapeSvg(o){
+  const d=SHAPES[o.shape]||SHAPES.rect;
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+    <path d="${d}" fill="${o.fill==='none'?'none':o.fill}"
+      stroke="${o.stroke==='none'?'none':o.stroke}" stroke-width="${o.sw||0}"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+function pathSvg(o){
+  const pts=o.pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${o.bw} ${o.bh}" preserveAspectRatio="none">
+    <polyline points="${pts}" fill="none" stroke="${o.stroke}" stroke-width="${o.sw}"
+      stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function render(skipPanel){
+  bgCss();
+  const alive=new Set();
+  doc.objects.forEach((o,i)=>{
+    alive.add(o.id);
+    let n=nodes.get(o.id);
+    if(!n){
+      n=el('div','ob '+(o.type==='text'?'txt':o.type));
+      n.dataset.id=o.id;
+      stage.appendChild(n);nodes.set(o.id,n);
+    }
+    n.style.left=o.x+'px';n.style.top=o.y+'px';
+    n.style.width=o.w+'px';n.style.height=o.h+'px';
+    n.style.transform='rotate('+(o.rot||0)+'deg)';
+    n.style.zIndex=i+1;
+    n.style.opacity=(o.op==null?1:o.op);
+    if(o.type==='text'){
+      n.style.fontFamily=fontCss(o.font);
+      n.style.fontSize=o.size+'px';
+      n.style.fontWeight=(o.bold?900:fontW(o.font));
+      n.style.fontStyle=o.italic?'italic':'normal';
+      n.style.color=o.fill;
+      n.style.textAlign=o.align;
+      n.style.lineHeight=o.lh||1.2;
+      n.style.letterSpacing=(o.ls||0)+'px';
+      n.style.textTransform=o.caps?'uppercase':'none';
+      n.style.textShadow=o.shadow?'0 3px 0 rgba(0,0,0,.18)':'none';
+      n.style.background=o.box&&o.box!=='none'?o.box:'transparent';
+      n.style.borderRadius=o.box&&o.box!=='none'?'6px':'0';
+      n.style.padding=o.box&&o.box!=='none'?'10px 14px':'2px 4px';
+      if(editingId!==o.id) n.textContent=o.text;
+    }else if(o.type==='image'){
+      const src=n.querySelector('img');
+      if(!src||src.getAttribute('src')!==o.src){
+        n.innerHTML='';const im=new Image();
+        if(o.cors)im.crossOrigin='anonymous';
+        im.src=o.src;im.alt=o.alt||'';im.draggable=false;
+        im.style.objectFit=o.fit||'cover';n.appendChild(im);
+      }
+      n.style.borderRadius=(o.radius||0)+'px';
+      n.style.overflow='hidden';
+      n.style.border=o.frame?('8px solid '+o.frameC):'none';
+    }else if(o.type==='shape'){
+      n.innerHTML=shapeSvg(o);
+    }else if(o.type==='path'){
+      n.innerHTML=pathSvg(o);
+    }
+  });
+  [...nodes.keys()].forEach(id=>{if(!alive.has(id)){nodes.get(id).remove();nodes.delete(id);}});
+  autoHeight();
+  drawOverlay();
+  if(!skipPanel)buildPanel();
+}
+function autoHeight(){
+  doc.objects.filter(o=>o.type==='text').forEach(o=>{
+    const n=nodes.get(o.id); if(!n||editingId===o.id)return;
+    const h=n.scrollHeight;
+    if(h>0&&Math.abs(h-o.h)>1.5){o.h=h;n.style.height=h+'px';}
+  });
+}
+
+/* ---- selection overlay ---- */
+function drawOverlay(){
+  ov.querySelectorAll('.hnd').forEach(h=>h.remove());
+  ovsvg.innerHTML='';
+  const o=doc.objects.find(x=>x.id===sel);
+  if(!o||editingId===o.id||tool==='draw'||tool==='erase')return;
+  const c=corners(o).map(p=>[p[0]*scale,p[1]*scale]);
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  poly.setAttribute('points',c.map(p=>p.join(',')).join(' '));
+  poly.setAttribute('fill','none');
+  poly.setAttribute('stroke','#C99A3E');
+  poly.setAttribute('stroke-width','2');
+  ovsvg.appendChild(poly);
+  const add=(x,y,kind,cls)=>{
+    const h=el('div','hnd'+(cls?' '+cls:''));
+    h.style.left=x+'px';h.style.top=y+'px';h.dataset.kind=kind;
+    ov.appendChild(h);return h;
+  };
+  c.forEach((p,i)=>add(p[0],p[1],'c'+i));
+  if(o.type==='text'){
+    const l=mid(c[3],c[0]), r=mid(c[1],c[2]);
+    add(l[0],l[1],'ew');add(r[0],r[1],'ee');
+  }
+  const top=mid(c[0],c[1]);
+  const dx=top[0]-(c[0][0]+c[2][0])/2, dy=top[1]-(c[0][1]+c[2][1])/2;
+  const len=Math.hypot(dx,dy)||1;
+  const rp=[top[0]+dx/len*34, top[1]+dy/len*34];
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',top[0]);line.setAttribute('y1',top[1]);
+  line.setAttribute('x2',rp[0]);line.setAttribute('y2',rp[1]);
+  line.setAttribute('stroke','#C99A3E');line.setAttribute('stroke-width','2');
+  ovsvg.appendChild(line);
+  add(rp[0],rp[1],'rot','rot');
+}
+
+/* =========================================================================
+   7. ADDING OBJECTS
+   ========================================================================= */
+function add(o,quiet){
+  o.id=uid();o.rot=o.rot||0;o.op=o.op==null?1:o.op;
+  doc.objects.push(o);sel=o.id;render();if(!quiet)snapshot();
+  return o;
+}
+function centreAt(w,h){
+  return {x:(PW-w)/2, y:clamp(PH*0.34-h/2, 40, PH-h-40)};
+}
+function addText(preset,txt){
+  const P={
+    title:{size:86,font:'chunk',bold:true,align:'center',w:840,text:'FEDERATION'},
+    head: {size:48,font:'sans', bold:true,align:'left',  w:600,text:'Section heading'},
+    body: {size:26,font:'sans', bold:false,align:'left', w:520,text:'Write your explanation here. Use your own words.'},
+    label:{size:20,font:'type', bold:false,align:'center',w:300,text:'1901'}
+  }[preset]||{};
+  const w=P.w||500;
+  const c=centreAt(w,P.size*1.4);
+  return add({type:'text',text:txt||P.text,x:c.x,y:c.y,w:w,h:P.size*1.4,
+    font:P.font,size:P.size,bold:!!P.bold,italic:false,align:P.align,
+    fill:'#101010',lh:1.22,ls:0,caps:false,shadow:false,box:'none'});
+}
+function addShape(name){
+  const w=name==='line'?520:300, h=name==='line'?60:300;
+  const c=centreAt(w,h);
+  return add({type:'shape',shape:name,x:c.x,y:c.y,w,h,
+    fill:'#3F6FA5',stroke:'none',sw:6});
+}
+function addImage(src,natW,natH,cors){
+  const maxW=620, r=natH/natW;
+  let w=Math.min(maxW,natW), h=w*r;
+  if(h>860){h=860;w=h/r;}
+  const c=centreAt(w,h);
+  return add({type:'image',src,x:c.x,y:c.y,w,h,fit:'cover',radius:0,frame:false,frameC:'#FFFFFF',cors:!!cors,natW,natH});
+}
+
+/* =========================================================================
+   8. POINTER INTERACTION
+   ========================================================================= */
+let drag=null, lastTap={id:null,t:0};
+
+stage.addEventListener('pointerdown',e=>{
+  if(editingId){
+    const n=nodes.get(editingId);
+    if(n&&n.contains(e.target))return;
+    commitEdit();
+  }
+  if(tool==='draw'){startStroke(e);return;}
+  const hit=e.target.closest('.ob');
+  if(tool==='erase'){
+    if(hit){const id=hit.dataset.id;doc.objects=doc.objects.filter(o=>o.id!==id);sel=null;render();snapshot();}
+    return;
+  }
+  if(!hit){sel=null;drawOverlay();buildPanel();return;}
+  const id=hit.dataset.id;
+  const o=doc.objects.find(x=>x.id===id);
+  if(!o)return;
+  const now=Date.now();
+  const second=(sel===id)&&(now-lastTap.t<900)&&lastTap.id===id;
+  lastTap={id,t:now};
+  sel=id;
+  if(o.type==='text'&&second){startEdit(o);return;}
+  render();
+  const p=ptr(e);
+  drag={mode:'move',id,ox:o.x,oy:o.y,px:p.x,py:p.y,moved:false};
+  stage.setPointerCapture(e.pointerId);
+  e.preventDefault();
+},{passive:false});
+
+ov.addEventListener('pointerdown',e=>{
+  const h=e.target.closest('.hnd'); if(!h)return;
+  const o=doc.objects.find(x=>x.id===sel); if(!o)return;
+  const kind=h.dataset.kind;
+  const p=ptr(e);
+  if(kind==='rot'){
+    const cx=o.x+o.w/2, cy=o.y+o.h/2;
+    drag={mode:'rot',id:o.id,cx,cy,start:Math.atan2(p.y-cy,p.x-cx)*180/Math.PI,rot0:o.rot||0};
+  }else{
+    const cs=corners(o);
+    let anchor, sx, sy, axis='both';
+    if(kind[0]==='c'){
+      const i=+kind[1]; anchor=cs[(i+2)%4];
+      sx=(i===0||i===3)?1:-1; sy=(i===0||i===1)?1:-1;
+    }else{
+      axis='x';
+      if(kind==='ee'){anchor=mid(cs[3],cs[0]);sx=1;sy=0;}
+      else{anchor=mid(cs[1],cs[2]);sx=-1;sy=0;}
+    }
+    drag={mode:'size',id:o.id,anchor,sx,sy,axis,rot:(o.rot||0),h0:o.h,ratio:o.w/o.h,
+      w0:o.w,size0:o.size,keep:(o.type==='image'||o.type==='path')};
+  }
+  try{h.setPointerCapture(e.pointerId);}catch(err){}
+  e.preventDefault();e.stopPropagation();
+},{passive:false});
+
+function onMove(e){
+  if(drawing){moveStroke(e);return;}
+  if(!drag)return;
+  const o=doc.objects.find(x=>x.id===drag.id); if(!o)return;
+  const p=ptr(e);
+  if(drag.mode==='move'){
+    let nx=drag.ox+(p.x-drag.px), ny=drag.oy+(p.y-drag.py);
+    if(Math.abs(p.x-drag.px)>2||Math.abs(p.y-drag.py)>2)drag.moved=true;
+    const g=snapMove(o,nx,ny);
+    o.x=g.x;o.y=g.y;
+    showGuides(g.guides);
+  }else if(drag.mode==='rot'){
+    let a=Math.atan2(p.y-drag.cy,p.x-drag.cx)*180/Math.PI;
+    let r=drag.rot0+(a-drag.start);
+    const near=Math.round(r/15)*15;
+    if(Math.abs(r-near)<5)r=near;
+    o.rot=Math.round(r*10)/10;
+  }else if(drag.mode==='size'){
+    const rad=drag.rot*Math.PI/180, c=Math.cos(-rad), s=Math.sin(-rad);
+    const dx=p.x-drag.anchor[0], dy=p.y-drag.anchor[1];
+    const lx=dx*c-dy*s, ly=dx*s+dy*c;
+    let w=Math.max(24,Math.abs(lx));
+    let h=drag.axis==='x'?drag.h0:Math.max(24,Math.abs(ly));
+    if(drag.keep&&drag.axis!=='x')h=w/drag.ratio;
+    const C=Math.cos(rad), S=Math.sin(rad);
+    const ox=drag.sx*w/2, oy=(drag.axis==='x'?0:drag.sy)*h/2;
+    const cx=drag.anchor[0]+ox*C-oy*S, cy=drag.anchor[1]+ox*S+oy*C;
+    o.w=Math.round(w);o.h=Math.round(h);
+    o.x=Math.round(cx-w/2);o.y=Math.round(cy-h/2);
+    if(o.type==='text'&&drag.axis!=='x'){
+      o.size=clamp(Math.round(drag.size0*(w/drag.w0)),8,400);
+      const nn=nodes.get(o.id);
+      if(nn){nn.style.fontSize=o.size+'px';nn.style.height='auto';o.h=nn.scrollHeight;}
+    }
+  }
+  const n=nodes.get(o.id);
+  if(n){n.style.left=o.x+'px';n.style.top=o.y+'px';n.style.width=o.w+'px';
+        n.style.height=o.h+'px';n.style.transform='rotate('+(o.rot||0)+'deg)';}
+  drawOverlay();
+}
+function onUp(){
+  if(drawing){endStroke();return;}
+  if(!drag)return;
+  const wasMove=drag.mode;
+  drag=null;showGuides([]);
+  if(wasMove) {render();snapshot();}
+}
+stage.addEventListener('pointermove',onMove,{passive:false});
+ov.addEventListener('pointermove',onMove,{passive:false});
+window.addEventListener('pointerup',onUp);
+window.addEventListener('pointercancel',onUp);
+
+/* ---- snapping ---- */
+function snapMove(o,nx,ny){
+  const T=8/scale, guides=[];
+  const cands=[[PW/2-o.w/2,'vc'],[60,'vl'],[PW-60-o.w,'vr']];
+  cands.forEach(([v,g])=>{if(Math.abs(nx-v)<T){nx=v;guides.push(g);}});
+  const cy=[[PH/2-o.h/2,'hc'],[60,'ht'],[PH-60-o.h,'hb']];
+  cy.forEach(([v,g])=>{if(Math.abs(ny-v)<T){ny=v;guides.push(g);}});
+  return {x:Math.round(nx),y:Math.round(ny),guides};
+}
+function showGuides(gs){
+  ovsvg.querySelectorAll('.g').forEach(n=>n.remove());
+  const line=(x1,y1,x2,y2)=>{
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('class','g');
+    l.setAttribute('x1',x1*scale);l.setAttribute('y1',y1*scale);
+    l.setAttribute('x2',x2*scale);l.setAttribute('y2',y2*scale);
+    l.setAttribute('stroke','#BE2B2B');l.setAttribute('stroke-width','1.5');
+    l.setAttribute('stroke-dasharray','6 5');ovsvg.appendChild(l);
+  };
+  gs.forEach(g=>{
+    if(g==='vc')line(PW/2,0,PW/2,PH); if(g==='vl')line(60,0,60,PH); if(g==='vr')line(PW-60,0,PW-60,PH);
+    if(g==='hc')line(0,PH/2,PW,PH/2); if(g==='ht')line(0,60,PW,60); if(g==='hb')line(0,PH-60,PW,PH-60);
+  });
+}
+
+/* ---- text editing ---- */
+function startEdit(o){
+  editingId=o.id;const n=nodes.get(o.id);
+  n.contentEditable='plaintext-only';
+  if(n.contentEditable!=='plaintext-only')n.contentEditable='true';
+  n.style.height='auto';
+  drawOverlay();
+  n.focus();
+  const r=document.createRange();r.selectNodeContents(n);
+  const s=getSelection();s.removeAllRanges();s.addRange(r);
+  n.addEventListener('blur',commitEdit,{once:true});
+  n.addEventListener('input',()=>{o.h=n.scrollHeight;});
+}
+function commitEdit(){
+  if(!editingId)return;
+  const o=doc.objects.find(x=>x.id===editingId);
+  const n=nodes.get(editingId);
+  if(o&&n){o.text=n.innerText.replace(/\u00a0/g,' ');o.h=n.scrollHeight;n.contentEditable='false';}
+  editingId=null;render();snapshot();
+}
+
+/* ---- drawing ---- */
+let penColor='#BE2B2B', penSize=8;
+function startStroke(e){
+  const p=ptr(e);
+  drawing={pts:[[p.x,p.y]]};
+  const g=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  g.setAttribute('class','live');g.setAttribute('fill','none');
+  g.setAttribute('stroke',penColor);g.setAttribute('stroke-width',penSize*scale);
+  g.setAttribute('stroke-linecap','round');g.setAttribute('stroke-linejoin','round');
+  ovsvg.appendChild(g);drawing.node=g;
+  stage.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}
+function moveStroke(e){
+  const p=ptr(e);const last=drawing.pts[drawing.pts.length-1];
+  if(Math.hypot(p.x-last[0],p.y-last[1])<2.5)return;
+  drawing.pts.push([p.x,p.y]);
+  drawing.node.setAttribute('points',drawing.pts.map(q=>(q[0]*scale)+','+(q[1]*scale)).join(' '));
+}
+function endStroke(){
+  const d=drawing;drawing=null;
+  if(d&&d.node)d.node.remove();
+  if(!d||d.pts.length<2)return;
+  const xs=d.pts.map(p=>p[0]), ys=d.pts.map(p=>p[1]);
+  const pad=penSize;
+  const x0=Math.min(...xs)-pad, y0=Math.min(...ys)-pad;
+  const w=Math.max(...xs)-Math.min(...xs)+pad*2, h=Math.max(...ys)-Math.min(...ys)+pad*2;
+  add({type:'path',x:x0,y:y0,w,h,bw:w,bh:h,
+    pts:d.pts.map(p=>[p[0]-x0,p[1]-y0]),stroke:penColor,sw:penSize},true);
+  sel=null;render();snapshot();
+}
+
+/* =========================================================================
+   9. IMAGES
+   ========================================================================= */
+function downscale(img,maxDim){
+  const r=Math.min(1,maxDim/Math.max(img.naturalWidth,img.naturalHeight));
+  const w=Math.round(img.naturalWidth*r), h=Math.round(img.naturalHeight*r);
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  c.getContext('2d').drawImage(img,0,0,w,h);
+  let out;
+  try{out=c.toDataURL('image/jpeg',0.85);}catch(e){return null;}
+  return {src:out,w:img.naturalWidth,h:img.naturalHeight};
+}
+function fileToImage(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=fr.result;};
+    fr.onerror=rej;fr.readAsDataURL(file);
+  });
+}
+async function handleFile(file){
+  if(!file||!/^image\//.test(file.type)){toast('That file is not an image.');return;}
+  try{
+    const im=await fileToImage(file);
+    const d=downscale(im,1400);
+    if(!d){toast('That image could not be read.');return;}
+    addImage(d.src,d.w,d.h,false);
+    toast('Image added.');
+  }catch(e){toast('That image could not be read.');}
+}
+document.addEventListener('paste',async e=>{
+  if(!$('#editor').classList.contains('on'))return;
+  if(editingId)return;
+  const items=[...(e.clipboardData?.items||[])];
+  const f=items.find(i=>i.kind==='file'&&/^image\//.test(i.type));
+  if(f){e.preventDefault();handleFile(f.getAsFile());return;}
+  const txt=e.clipboardData?.getData('text')||'';
+  if(/^https?:\/\/\S+\.(png|jpe?g|gif|webp|svg)/i.test(txt.trim())){e.preventDefault();loadUrl(txt.trim());}
+});
+$('#canvasarea').addEventListener('dragover',e=>{e.preventDefault();});
+$('#canvasarea').addEventListener('drop',e=>{
+  e.preventDefault();
+  const f=e.dataTransfer.files[0];
+  if(f)handleFile(f);
+  else{const u=e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text');if(u)loadUrl(u.trim());}
+});
+function loadUrl(url){
+  toast('Loading image…');
+  const tryLoad=(cors)=>new Promise((res,rej)=>{
+    const im=new Image();
+    if(cors)im.crossOrigin='anonymous';
+    im.onload=()=>res(im);im.onerror=()=>rej();
+    im.src=url;
+  });
+  tryLoad(true).then(im=>{
+    const d=downscale(im,1400);
+    if(d){addImage(d.src,d.w,d.h,false);toast('Image added.');}
+    else{addImage(url,im.naturalWidth,im.naturalHeight,true);toast('Image added.');}
+  }).catch(()=>{
+    tryLoad(false).then(im=>{
+      addImage(url,im.naturalWidth,im.naturalHeight,false);
+      toast('Added. This one can only be saved with Print / PDF.',4200);
+    }).catch(()=>toast('That address did not load an image.',3600));
+  });
+}
+$('#filepick').addEventListener('change',e=>{const f=e.target.files[0];if(f)handleFile(f);e.target.value='';});
+
+/* =========================================================================
+   10. PANELS
+   ========================================================================= */
+let panelName='text';
+$$('.tool').forEach(b=>b.onclick=()=>{
+  panelName=b.dataset.panel;
+  $$('.tool').forEach(x=>x.classList.toggle('on',x===b));
+  if(panelName==='draw'){tool='draw';} else if(tool==='draw'||tool==='erase'){tool='select';}
+  if(['text','shapes','images'].includes(panelName))sel=null;
+  buildPanel();drawOverlay();
+});
+function swatchGrid(cur,cb,extra){
+  const d=el('div');
+  const g=el('div','swatches');
+  PALETTE.forEach(c=>{
+    const b=el('button','sw'+(c.toLowerCase()===String(cur).toLowerCase()?' on':''));
+    b.style.background=c;b.onclick=()=>cb(c);g.appendChild(b);
+  });
+  d.appendChild(g);
+  const r=el('div','row');r.style.marginTop='8px';
+  const inp=el('input');inp.type='color';inp.value=/^#/.test(cur)?cur:'#000000';
+  inp.className='fld';inp.style.width='58px';inp.style.padding='2px';inp.style.minHeight='40px';
+  inp.oninput=()=>cb(inp.value);
+  r.appendChild(inp);
+  const lab=el('span','',' Any colour');lab.style.cssText='font-size:12px;color:rgba(242,233,214,.55)';
+  r.appendChild(lab);
+  if(extra){const n=el('button','chip','None');n.onclick=()=>cb('none');r.appendChild(n);}
+  d.appendChild(r);
+  return d;
+}
+function sect(t){return `<h4>${t}</h4>`;}
+
+function buildPanel(){
+  const p=$('#panel');p.classList.add('on');
+  const o=doc.objects.find(x=>x.id===sel);
+  if(o&&panelName!=='draw'&&panelName!=='bg'&&panelName!=='facts'&&panelName!=='layers'){
+    return buildInspector(p,o);
+  }
+  p.innerHTML='';
+  if(panelName==='text')  return panelText(p);
+  if(panelName==='shapes')return panelShapes(p);
+  if(panelName==='images')return panelImages(p);
+  if(panelName==='draw')  return panelDraw(p);
+  if(panelName==='bg')    return panelBg(p);
+  if(panelName==='facts') return panelFacts(p);
+  if(panelName==='layers')return panelLayers(p);
+}
+
+function panelText(p){
+  p.innerHTML='<h3>Add text</h3>';
+  [['title','Poster title','chunk',30],['head','Section heading','sans',22],
+   ['body','Body text','sans',15],['label','Date or label','type',14]].forEach(([k,label,f,sz])=>{
+    const b=el('button','tmplbtn');
+    b.innerHTML=`<span style="font-family:${fontCss(f)};font-size:${sz}px;font-weight:${f==='chunk'?900:600}">Aa</span><span>${label}</span>`;
+    b.onclick=()=>{addText(k);toast('Tap once to select, twice to type.');};
+    p.appendChild(b);
+  });
+  p.insertAdjacentHTML('beforeend',sect('Start from a layout'));
+  [['Wanted poster','wanted'],['Fact or legend?','factleg'],['Escape timeline','time']].forEach(([label,k])=>{
+    const b=el('button','tmplbtn');
+    b.innerHTML=`${tmplThumb(k)}<span>${label}</span>`;
+    b.onclick=()=>applyTemplate(k);
+    p.appendChild(b);
+  });
+  p.insertAdjacentHTML('beforeend','<p class="hint">Tap a text box once to select it. Tap it again to type.</p>');
+}
+function tmplThumb(k){
+  const bars={
+    wanted:'<rect x="4" y="4" width="26" height="7" rx="1"/><circle cx="17" cy="21" r="7" opacity=".4"/><rect x="7" y="32" width="20" height="5" rx="1"/><rect x="10" y="40" width="14" height="4" rx="1" opacity=".45"/>',
+    factleg:'<rect x="4" y="4" width="26" height="6" rx="1"/><rect x="4" y="14" width="12" height="30" rx="1" opacity=".45"/><rect x="18" y="14" width="12" height="30" rx="1" opacity=".25"/>',
+    time:'<rect x="4" y="4" width="26" height="6" rx="1"/><rect x="6" y="14" width="3" height="30" opacity=".5"/><rect x="12" y="15" width="18" height="4" opacity=".45"/><rect x="12" y="24" width="18" height="4" opacity=".45"/><rect x="12" y="33" width="18" height="4" opacity=".45"/>'
+  };
+  return `<svg viewBox="0 0 34 48"><g fill="#1A1410">${bars[k]}</g></svg>`;
+}
+function applyTemplate(k){
+  if(doc.objects.length&&!confirm('This replaces what is on the page. Continue?'))return;
+  doc.objects=[];sel=null;
+  const T=(t,x,y,w,size,font,bold,align,fill)=>doc.objects.push({
+    id:uid(),type:'text',text:t,x,y,w,h:size*1.4,font,size,bold,italic:false,align,
+    fill:fill||'#1A1410',lh:1.22,ls:0,caps:false,shadow:false,box:'none',rot:0,op:1});
+  const S=(shape,x,y,w,h,fill,stroke,sw)=>doc.objects.push({
+    id:uid(),type:'shape',shape,x,y,w,h,fill,stroke:stroke||'none',sw:sw||0,rot:0,op:1});
+
+  if(k==='wanted'){
+    doc.bg={color:'#EFE1BE',pattern:'none',patc:'#D8C49A'};
+    S('rect',50,50,900,1314,'none','#1A1410',10);
+    T('REWARD',90,110,820,96,'chunk',true,'center','#1A1410');
+    T('DEAD or ALIVE',90,225,820,44,'serif',false,'center','#A8321F');
+    S('rect',330,300,340,340,'#DCCBA6','#1A1410',6);
+    T('Draw or paste\na picture here',350,430,300,26,'type',false,'center','#7A6A4A');
+    T('MOONDYNE JOE',90,680,820,76,'chunk',true,'center','#1A1410');
+    T('Wanted for:',110,800,780,32,'sans',true,'left','#A8321F');
+    T('Write what he was accused of, and what he really did.',110,846,780,26,'sans',false,'left');
+    T('Description:',110,940,780,32,'sans',true,'left','#A8321F');
+    T('What did he look like? What was he wearing?',110,986,780,26,'sans',false,'left');
+    T('Last seen:',110,1080,780,32,'sans',true,'left','#A8321F');
+    T('Where was he hiding, and whose Country was that?',110,1126,780,26,'sans',false,'left');
+    T('\u00a320',90,1230,820,60,'type',true,'center','#1A1410');
+  }
+  if(k==='factleg'){
+    doc.bg={color:'#F4EAD3',pattern:'rule',patc:'#E2D2AE'};
+    T('MOONDYNE JOE',70,70,860,66,'chunk',true,'center','#1A1410');
+    T('Which parts can we prove?',70,155,860,30,'serif',false,'center','#A8321F');
+    S('rect',60,220,430,1110,'#E8F0DE','#7A9464',5);
+    S('rect',510,220,430,1110,'#F6E9C8','#D9A441',5);
+    T('FACT',80,245,390,40,'sans',true,'center','#4E6B3E');
+    T('LEGEND',530,245,390,40,'sans',true,'center','#96701C');
+    T('We can check this in a record.',80,300,390,20,'type',false,'center','#6B7A5E');
+    T('This grew in the telling.',530,300,390,20,'type',false,'center','#9A8250');
+    T('Add facts from the Facts panel here.',80,360,390,24,'sans',false,'left');
+    T('Add legend statements here.',530,360,390,24,'sans',false,'left');
+  }
+  if(k==='time'){
+    doc.bg={color:'#F4EAD3',pattern:'none',patc:'#E2D2AE'};
+    T('COULD NOT BE HELD',70,70,860,62,'chunk',true,'center','#1A1410');
+    T('The escapes of Moondyne Joe',70,150,860,28,'serif',false,'center','#A8321F');
+    S('rect',130,230,6,1090,'#D9A441');
+    [['1849','Sentenced in Britain and transported'],
+     ['1853','Arrives at Fremantle on the Pyrenees'],
+     ['1855','Pardoned, and heads for the hills'],
+     ['1861','Escapes the Toodyay lock-up'],
+     ['1867','Breaks out through the prison wall'],
+     ['1873','Set free at last']].forEach(([d,t],i)=>{
+      const y=240+i*182;
+      S('ellipse',112,y+6,42,42,'#A8321F');
+      T(d,190,y,220,42,'type',true,'left','#A8321F');
+      T(t,190,y+58,700,26,'sans',false,'left','#1A1410');
+    });
+  }
+  render();snapshot();
+}
+
+function panelShapes(p){
+  p.innerHTML='<h3>Add a shape</h3>';
+  const g=el('div','shapegrid');
+  Object.keys(SHAPES).forEach(k=>{
+    const b=el('button','shapebtn',`<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${SHAPES[k]}"/></svg>`);
+    b.title=k;b.onclick=()=>addShape(k);g.appendChild(b);
+  });
+  p.appendChild(g);
+  p.insertAdjacentHTML('beforeend','<p class="hint">Shapes sit behind or in front of text — use Layers to change the order.</p>');
+}
+function panelImages(p){
+  p.innerHTML='<h3>Add an image</h3>';
+  const a=el('button','chip wide','Choose a file or photo');
+  a.style.marginBottom='10px';a.onclick=()=>$('#filepick').click();
+  p.appendChild(a);
+  p.insertAdjacentHTML('beforeend',sect('From a web address'));
+  const r=el('div','row');
+  const i=el('input');i.className='fld';i.placeholder='https://…';i.type='url';
+  const b=el('button','chip','Add');
+  b.onclick=()=>{if(i.value.trim())loadUrl(i.value.trim());};
+  i.onkeydown=e=>{if(e.key==='Enter')b.onclick();};
+  r.appendChild(i);r.appendChild(b);p.appendChild(r);
+  p.insertAdjacentHTML('beforeend',
+    '<p class="hint">You can also copy an image and paste it straight onto the page, or drag a file in.<br><br>'+
+    'Check that you are allowed to use an image before you put it on your poster, and write down where it came from.</p>');
+}
+function panelDraw(p){
+  p.innerHTML='<h3>Draw</h3>';
+  const r=el('div','row');
+  [['Pen','draw'],['Eraser','erase'],['Done','select']].forEach(([l,m])=>{
+    const b=el('button','chip wide'+(tool===m?' on':''),l);
+    b.onclick=()=>{tool=m;buildPanel();drawOverlay();};r.appendChild(b);
+  });
+  p.appendChild(r);
+  p.insertAdjacentHTML('beforeend',sect('Pen colour'));
+  p.appendChild(swatchGrid(penColor,c=>{penColor=c;buildPanel();}));
+  p.insertAdjacentHTML('beforeend',sect('Pen size'));
+  const s=el('input');s.type='range';s.className='slider';s.min=2;s.max=40;s.value=penSize;
+  s.oninput=()=>{penSize=+s.value;};p.appendChild(s);
+  p.insertAdjacentHTML('beforeend','<p class="hint">Each line you draw becomes its own object, so you can move, resize or delete it afterwards. The eraser removes a whole line at a time.</p>');
+}
+function panelBg(p){
+  p.innerHTML='<h3>Page background</h3>';
+  p.insertAdjacentHTML('beforeend',sect('Colour'));
+  p.appendChild(swatchGrid(doc.bg.color,c=>{doc.bg.color=c;render();snapshot();}));
+  p.insertAdjacentHTML('beforeend',sect('Pattern'));
+  const g=el('div','chips');
+  PATTERNS.forEach(k=>{
+    const b=el('button','chip'+(doc.bg.pattern===k?' on':''),k==='none'?'Plain':k);
+    b.onclick=()=>{doc.bg.pattern=k;render();snapshot();};g.appendChild(b);
+  });
+  p.appendChild(g);
+  p.insertAdjacentHTML('beforeend',sect('Pattern colour'));
+  p.appendChild(swatchGrid(doc.bg.patc,c=>{doc.bg.patc=c;render();snapshot();}));
+  p.insertAdjacentHTML('beforeend',sect('Page'));
+  const r=el('div','row');
+  const nb=el('button','chip','Start again');
+  nb.onclick=()=>{if(confirm('Clear the whole poster and start again?')){doc=newDoc();sel=null;render();snapshot();}};
+  const ob=el('button','chip','Open a saved file');
+  ob.onclick=()=>$('#jsonpick').click();
+  r.appendChild(nb);r.appendChild(ob);p.appendChild(r);
+}
+function panelFacts(p){
+  p.innerHTML='<h3>Moondyne Joe facts</h3><p class="hint" style="margin:0 0 14px">'+
+    'Tap to drop one on your poster, then reword it so it sounds like you. '+
+    'Notice which list it came from.</p>';
+  FACT_GROUPS.forEach(g=>{
+    const h=el('h4','',g.label);h.style.color=g.c;p.appendChild(h);
+    g.items.forEach(f=>{
+      const b=el('button','factbtn',esc(f));
+      b.style.borderLeft='3px solid '+g.c;
+      b.onclick=()=>{addText('body',f);toast('Added — now put it in your own words.');};
+      p.appendChild(b);
+    });
+  });
+}
+function panelLayers(p){
+  p.innerHTML='<h3>Layers</h3>';
+  if(!doc.objects.length){p.insertAdjacentHTML('beforeend','<p class="hint">Nothing on the page yet.</p>');return;}
+  [...doc.objects].reverse().forEach(o=>{
+    const label=o.type==='text'?(o.text.slice(0,26)||'Text')
+      :o.type==='image'?'Image':o.type==='path'?'Drawing':('Shape · '+o.shape);
+    const b=el('button','factbtn'+(sel===o.id?' on':''),esc(label));
+    if(sel===o.id)b.style.borderColor='#C99A3E';
+    b.onclick=()=>{sel=o.id;panelName='layers';render();};
+    p.appendChild(b);
+  });
+  p.insertAdjacentHTML('beforeend','<p class="hint">The top of this list is the front of the poster.</p>');
+}
+
+/* ---- inspector for the selected object ---- */
+function buildInspector(p,o){
+  p.innerHTML='';
+  const title={text:'Text',shape:'Shape',image:'Image',path:'Drawing'}[o.type];
+  p.insertAdjacentHTML('beforeend',`<h3>${title}</h3>`);
+
+  if(o.type==='text'){
+    p.insertAdjacentHTML('beforeend',sect('Font'));
+    const s=el('select','fld');
+    FONTS.forEach(f=>{const op=el('option');op.value=f.id;op.textContent=f.name;op.style.fontFamily=f.css;
+      if(o.font===f.id)op.selected=true;s.appendChild(op);});
+    s.onchange=()=>{o.font=s.value;render();snapshot();};
+    p.appendChild(s);
+
+    p.insertAdjacentHTML('beforeend',sect('Size'));
+    const sz=el('input');sz.type='range';sz.className='slider';sz.min=10;sz.max=170;sz.value=o.size;
+    sz.oninput=()=>{o.size=+sz.value;render(1);};sz.onchange=()=>{snapshot();buildPanel();};p.appendChild(sz);
+
+    const st=el('div','chips');
+    [['B','bold'],['I','italic'],['AA','caps'],['Shadow','shadow']].forEach(([l,k])=>{
+      const b=el('button','chip'+(o[k]?' on':''),l);
+      if(k==='bold')b.style.fontWeight='900';if(k==='italic')b.style.fontStyle='italic';
+      b.onclick=()=>{o[k]=!o[k];render();snapshot();};st.appendChild(b);
+    });
+    p.appendChild(st);
+
+    p.insertAdjacentHTML('beforeend',sect('Alignment'));
+    const al=el('div','chips');
+    ['left','center','right'].forEach(a=>{
+      const b=el('button','chip wide'+(o.align===a?' on':''),a==='center'?'Centre':a[0].toUpperCase()+a.slice(1));
+      b.onclick=()=>{o.align=a;render();snapshot();};al.appendChild(b);
+    });
+    p.appendChild(al);
+
+    p.insertAdjacentHTML('beforeend',sect('Line spacing'));
+    const lh=el('input');lh.type='range';lh.className='slider';lh.min=.85;lh.max=2;lh.step=.05;lh.value=o.lh||1.2;
+    lh.oninput=()=>{o.lh=+lh.value;render(1);};lh.onchange=()=>{snapshot();buildPanel();};p.appendChild(lh);
+
+    p.insertAdjacentHTML('beforeend',sect('Text colour'));
+    p.appendChild(swatchGrid(o.fill,c=>{o.fill=c;render();snapshot();}));
+    p.insertAdjacentHTML('beforeend',sect('Highlight behind text'));
+    p.appendChild(swatchGrid(o.box,c=>{o.box=c;render();snapshot();},true));
+  }
+
+  if(o.type==='shape'){
+    p.insertAdjacentHTML('beforeend',sect('Fill'));
+    p.appendChild(swatchGrid(o.fill,c=>{o.fill=c;render();snapshot();},true));
+    p.insertAdjacentHTML('beforeend',sect('Outline'));
+    p.appendChild(swatchGrid(o.stroke,c=>{o.stroke=c;render();snapshot();},true));
+    p.insertAdjacentHTML('beforeend',sect('Outline width'));
+    const w=el('input');w.type='range';w.className='slider';w.min=0;w.max=32;w.value=o.sw||0;
+    w.oninput=()=>{o.sw=+w.value;render(1);};w.onchange=()=>{snapshot();buildPanel();};p.appendChild(w);
+    p.insertAdjacentHTML('beforeend',sect('Change shape'));
+    const g=el('div','shapegrid');
+    Object.keys(SHAPES).forEach(k=>{
+      const b=el('button','shapebtn',`<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${SHAPES[k]}"/></svg>`);
+      b.onclick=()=>{o.shape=k;render();snapshot();};g.appendChild(b);
+    });
+    p.appendChild(g);
+  }
+
+  if(o.type==='image'){
+    p.insertAdjacentHTML('beforeend',sect('Fit'));
+    const g=el('div','chips');
+    [['cover','Fill the box'],['contain','Show all of it']].forEach(([k,l])=>{
+      const b=el('button','chip wide'+(o.fit===k?' on':''),l);
+      b.onclick=()=>{o.fit=k;render();snapshot();};g.appendChild(b);
+    });
+    p.appendChild(g);
+    p.insertAdjacentHTML('beforeend',sect('Corners'));
+    const r=el('input');r.type='range';r.className='slider';r.min=0;r.max=200;r.value=o.radius||0;
+    r.oninput=()=>{o.radius=+r.value;render(1);};r.onchange=()=>{snapshot();buildPanel();};p.appendChild(r);
+    const fb=el('button','chip'+(o.frame?' on':''),'White border');
+    fb.onclick=()=>{o.frame=!o.frame;render();snapshot();};p.appendChild(fb);
+  }
+
+  if(o.type==='path'){
+    p.insertAdjacentHTML('beforeend',sect('Line colour'));
+    p.appendChild(swatchGrid(o.stroke,c=>{o.stroke=c;render();snapshot();}));
+    p.insertAdjacentHTML('beforeend',sect('Line width'));
+    const w=el('input');w.type='range';w.className='slider';w.min=1;w.max=40;w.value=o.sw;
+    w.oninput=()=>{o.sw=+w.value;render(1);};w.onchange=()=>{snapshot();buildPanel();};p.appendChild(w);
+  }
+
+  p.insertAdjacentHTML('beforeend',sect('See-through'));
+  const op=el('input');op.type='range';op.className='slider';op.min=.05;op.max=1;op.step=.05;op.value=o.op==null?1:o.op;
+  op.oninput=()=>{o.op=+op.value;render(1);};op.onchange=()=>{snapshot();buildPanel();};p.appendChild(op);
+
+  p.insertAdjacentHTML('beforeend',sect('Arrange'));
+  const ar=el('div','chips');
+  [['Front','front'],['Forward','up'],['Back','down'],['Behind all','back']].forEach(([l,k])=>{
+    const b=el('button','chip',l);b.onclick=()=>arrange(o,k);ar.appendChild(b);
+  });
+  p.appendChild(ar);
+
+  const act=el('div','chips');act.style.marginTop='14px';
+  const dup=el('button','chip wide','Duplicate');
+  dup.onclick=()=>{const c=JSON.parse(JSON.stringify(o));c.id=uid();c.x+=28;c.y+=28;doc.objects.push(c);sel=c.id;render();snapshot();};
+  const del=el('button','chip wide','Delete');
+  del.style.borderColor='#BE2B2B';del.style.color='#E38080';
+  del.onclick=()=>{doc.objects=doc.objects.filter(x=>x.id!==o.id);sel=null;render();snapshot();};
+  act.appendChild(dup);act.appendChild(del);p.appendChild(act);
+}
+function arrange(o,k){
+  const i=doc.objects.indexOf(o);if(i<0)return;
+  doc.objects.splice(i,1);
+  if(k==='front')doc.objects.push(o);
+  else if(k==='back')doc.objects.unshift(o);
+  else if(k==='up')doc.objects.splice(Math.min(doc.objects.length,i+1),0,o);
+  else doc.objects.splice(Math.max(0,i-1),0,o);
+  render();snapshot();
+}
+
+/* keyboard */
+document.addEventListener('keydown',e=>{
+  if(!$('#editor').classList.contains('on'))return;
+  if(editingId)return;
+  const t=e.target.tagName;
+  if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;
+  const o=doc.objects.find(x=>x.id===sel);
+  if((e.key==='Delete'||e.key==='Backspace')&&o){e.preventDefault();doc.objects=doc.objects.filter(x=>x.id!==o.id);sel=null;render();snapshot();}
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}
+  if(o&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+    e.preventDefault();const d=e.shiftKey?20:2;
+    if(e.key==='ArrowUp')o.y-=d;if(e.key==='ArrowDown')o.y+=d;
+    if(e.key==='ArrowLeft')o.x-=d;if(e.key==='ArrowRight')o.x+=d;
+    render();
+  }
+  if(e.key==='Escape'){sel=null;tool='select';render();}
+});
+
+/* =========================================================================
+   11. EXPORT
+   ========================================================================= */
+function printPoster(){
+  sel=null;editingId=null;render();
+  const m=el('div');m.style.cssText='width:210mm;position:absolute;visibility:hidden';
+  document.body.appendChild(m);
+  const pageW=m.getBoundingClientRect().width;m.remove();
+  const s=pageW/PW;
+  const st=$('#stage'), bx=$('#stagebox');
+  const prevS=st.style.transform, prevW=bx.style.width, prevH=bx.style.height;
+  st.style.transform='scale('+s+')';
+  bx.style.width=(PW*s)+'px';bx.style.height=(PH*s)+'px';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{st.style.transform=prevS;bx.style.width=prevW;bx.style.height=prevH;fitStage();},400);
+  },120);
+}
+$('#e-print').onclick=printPoster;
+
+/* PNG export — redraws everything on a canvas, no libraries */
+function wrapText(ctx,text,maxW){
+  const out=[];
+  text.split('\n').forEach(para=>{
+    const words=para.split(' ');let line='';
+    words.forEach(w=>{
+      const t=line?line+' '+w:w;
+      if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w;}
+      else line=t;
+    });
+    out.push(line);
+  });
+  return out;
+}
+async function exportPng(){
+  sel=null;render();
+  const S=2;
+  const c=document.createElement('canvas');c.width=PW*S;c.height=PH*S;
+  const x=c.getContext('2d');x.scale(S,S);
+  x.fillStyle=doc.bg.color;x.fillRect(0,0,PW,PH);
+  drawPattern(x);
+  for(const o of doc.objects){
+    x.save();x.globalAlpha=o.op==null?1:o.op;
+    x.translate(o.x+o.w/2,o.y+o.h/2);x.rotate((o.rot||0)*Math.PI/180);x.translate(-o.w/2,-o.h/2);
+    if(o.type==='shape'){
+      const base=new Path2D(SHAPES[o.shape]||SHAPES.rect);
+      const p=new Path2D();p.addPath(base,{a:o.w/100,b:0,c:0,d:o.h/100,e:0,f:0});
+      if(o.fill!=='none'){x.fillStyle=o.fill;x.fill(p);}
+      if(o.stroke!=='none'&&o.sw>0){x.strokeStyle=o.stroke;x.lineWidth=o.sw;x.lineJoin='round';x.stroke(p);}
+    }
+    else if(o.type==='path'){
+      x.strokeStyle=o.stroke;x.lineWidth=o.sw;x.lineCap='round';x.lineJoin='round';
+      x.beginPath();
+      o.pts.forEach((pt,i)=>{const px=pt[0]*o.w/o.bw, py=pt[1]*o.h/o.bh;
+        i?x.lineTo(px,py):x.moveTo(px,py);});
+      x.stroke();
+    }
+    else if(o.type==='image'){
+      const im=await new Promise(r=>{const i=new Image();if(o.cors)i.crossOrigin='anonymous';i.onload=()=>r(i);i.onerror=()=>r(null);i.src=o.src;});
+      if(im){
+        x.save();
+        if(o.radius){roundRect(x,0,0,o.w,o.h,Math.min(o.radius,Math.min(o.w,o.h)/2));x.clip();}
+        else{x.beginPath();x.rect(0,0,o.w,o.h);x.clip();}
+        const ar=im.naturalWidth/im.naturalHeight, br=o.w/o.h;
+        let dw,dh;
+        if(o.fit==='contain'?ar>br:ar<br){dw=o.w;dh=o.w/ar;}else{dh=o.h;dw=o.h*ar;}
+        x.drawImage(im,(o.w-dw)/2,(o.h-dh)/2,dw,dh);
+        x.restore();
+        if(o.frame){x.strokeStyle=o.frameC;x.lineWidth=16;x.strokeRect(0,0,o.w,o.h);}
+      }
+    }
+    else if(o.type==='text'){
+      const weight=o.bold?900:fontW(o.font);
+      const style=o.italic?'italic ':'';
+      const padX=o.box&&o.box!=='none'?14:4, padY=o.box&&o.box!=='none'?10:2;
+      x.font=`${style}${weight} ${o.size}px ${fontCss(o.font)}`;
+      const txt=o.caps?o.text.toUpperCase():o.text;
+      const lines=wrapText(x,txt,o.w-padX*2);
+      const lh=o.size*(o.lh||1.2);
+      if(o.box&&o.box!=='none'){x.fillStyle=o.box;roundRect(x,0,0,o.w,o.h,6);x.fill();}
+      x.fillStyle=o.fill;x.textBaseline='top';
+      x.textAlign=o.align==='center'?'center':o.align==='right'?'right':'left';
+      const ax=o.align==='center'?o.w/2:o.align==='right'?o.w-padX:padX;
+      lines.forEach((ln,i)=>{
+        const y=padY+i*lh+(lh-o.size)*0.34;
+        if(o.shadow){x.save();x.fillStyle='rgba(0,0,0,.18)';x.fillText(ln,ax,y+3);x.restore();}
+        x.fillText(ln,ax,y);
+      });
+    }
+    x.restore();
+  }
+  try{
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='federation-poster.png';a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    toast('Saved as a picture.');
+  }catch(e){
+    toast('An image from the web is blocking this. Use Print / PDF instead.',5000);
+  }
+}
+function roundRect(x,l,t,w,h,r){
+  x.beginPath();x.moveTo(l+r,t);x.arcTo(l+w,t,l+w,t+h,r);x.arcTo(l+w,t+h,l,t+h,r);
+  x.arcTo(l,t+h,l,t,r);x.arcTo(l,t,l+w,t,r);x.closePath();
+}
+function drawPattern(x){
+  const b=doc.bg;if(b.pattern==='none')return;
+  x.save();x.fillStyle=b.patc;x.strokeStyle=b.patc;
+  if(b.pattern==='dots'){for(let i=20;i<PW;i+=40)for(let j=20;j<PH;j+=40){x.beginPath();x.arc(i,j,2.5,0,7);x.fill();}}
+  if(b.pattern==='grid'||b.pattern==='graph'){
+    const g=b.pattern==='grid'?56:22;x.lineWidth=1;
+    for(let i=0;i<PW;i+=g){x.beginPath();x.moveTo(i,0);x.lineTo(i,PH);x.stroke();}
+    for(let j=0;j<PH;j+=g){x.beginPath();x.moveTo(0,j);x.lineTo(PW,j);x.stroke();}
+  }
+  if(b.pattern==='rule'){x.lineWidth=1.5;for(let j=46;j<PH;j+=46){x.beginPath();x.moveTo(0,j);x.lineTo(PW,j);x.stroke();}}
+  if(b.pattern==='stripe'){for(let i=0;i<PW;i+=42)x.fillRect(i,0,14,PH);}
+  if(b.pattern==='diag'){
+    x.lineWidth=8;x.beginPath();
+    for(let i=-PH;i<PW;i+=30){x.moveTo(i,0);x.lineTo(i+PH,PH);}
+    x.stroke();
+  }
+  x.restore();
+}
+
+/* save / open project file */
+$('#e-save').onclick=()=>{
+  modal(`<h3>Save my work</h3>
+   <p>Choose how you want to keep this poster.</p>
+   <div class="chips">
+     <button class="chip wide" id="m-png">Save as a picture (PNG)</button>
+     <button class="chip wide" id="m-json">Save a file I can open again</button>
+   </div>
+   <p class="hint" style="margin-top:16px">Your poster is also kept in this browser on this device automatically.</p>
+   <div class="chips" style="margin-top:16px"><button class="chip wide" onclick="closeModal()">Close</button></div>`);
+  $('#m-png').onclick=()=>{closeModal();toast('Building the picture…');setTimeout(exportPng,60);};
+  $('#m-json').onclick=()=>{
+    closeModal();
+    const blob=new Blob([JSON.stringify(doc)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='federation-poster.json';a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    toast('File saved. Keep it to carry on later.');
+  };
+};
+$('#jsonpick').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{const d=JSON.parse(fr.result);
+      if(!d.objects)throw 0;
+      doc=d;sel=null;nodes.forEach(n=>n.remove());nodes.clear();render();snapshot();
+      toast('Poster opened.');
+    }catch(err){toast('That file is not a saved poster.');}
+  };
+  fr.readAsText(f);e.target.value='';
+});
+
+$('#e-help').onclick=()=>modal(`<h3>How to use the poster studio</h3>
+  <ul>
+    <li><b>Add</b> things from the tools on the side.</li>
+    <li><b>Move</b>: press and drag.</li>
+    <li><b>Resize</b>: drag a round handle. <b>Turn</b>: drag the gold one.</li>
+    <li><b>Type</b>: tap a text box once to pick it up, again to type in it.</li>
+    <li><b>Change</b> a colour, font or size: select the object, then use the panel.</li>
+    <li><b>Undo</b> anything with the arrow at the top.</li>
+  </ul>
+  <p>When you are finished, use <b>Print / PDF</b> to hand it in, or <b>Save</b> to keep a copy.</p>
+  <div class="chips"><button class="chip wide" onclick="closeModal()">Got it</button></div>`);
+
+/* =========================================================================
+   12. BOOT
+   ========================================================================= */
+(async function boot(){
+  await openDB();
+  const saved=await get('doc');
+  if(saved){try{const d=JSON.parse(saved);if(d&&d.objects)doc=d;}catch(e){}}
+  render();
+  hist=[JSON.stringify(doc)];hpos=0;updateUndo();
+  goto(0);
+  fitStage();
+  setTimeout(fitStage,300);
+})();
+window.show=show;window.closeModal=closeModal;
+</script>
+</body>
+</html>
