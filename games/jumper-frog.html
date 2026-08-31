@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Jumper Frog</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0f2a1c;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #6fbf3f,0 0 40px rgba(0,0,0,.75);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(30,70,50,.45);border-radius:16px;user-select:none;-webkit-user-select:none;
+    text-align:center;line-height:1.1;}
+  .btn:active,.btn.on{background:rgba(214,240,90,.72);border-color:#e8ff9a;color:#1a2a10;}
+  #bU{left:calc(3vw + 13vh);bottom:17vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bD{left:calc(3vw + 13vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bL{left:3vw;bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bR{left:calc(3vw + 26vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bJ{right:3vw;bottom:5vh;width:18vh;height:18vh;border-radius:50%;font-size:3.2vh;
+      background:rgba(214,240,90,.4);border-color:#d6f05a;}
+  #bT{right:calc(3vw + 20vh);bottom:5vh;width:16vh;height:16vh;border-radius:50%;font-size:2.6vh;
+      background:rgba(240,140,170,.4);border-color:#ff9ac0;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#0f2a1c;color:#d6f05a;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bU">&#9650;</div>
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bD">&#9660;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bT">TONGUE</div>
+  <div class="btn" id="bJ">JUMP</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   JUMPER FROG
+   Cross the water lilypad by lilypad without falling in and
+   getting eaten by the fish. Watch for crocodiles.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+/* ---------- grid ---------- */
+const CELL = 28, COLS = 17, ROWS = 9;
+const GX = 2, GY = 42, HUD_H = 38;
+function cx(c){ return GX + c*CELL + CELL/2; }
+function cy(r){ return GY + r*CELL + CELL/2; }
+const START_ROW = ROWS-1, END_ROW = 0;
+
+/* ---------- palette ---------- */
+const C = {
+  water:'#3aa8e0', water2:'#2f93cc', waterDark:'#1f6f9e', ripple:'#7fd0f0',
+  grass:'#6fbf3f', grassDark:'#4e9128', grassLite:'#95d962',
+  pad:'#3f9a3a', padLite:'#5fbd4f', padDark:'#2a6e28', padVein:'#2a6e28',
+  frog:'#7fd44a', frogDark:'#4e9128', frogPale:'#d6f0a0', eye:'#fff8e0',
+  croc:'#2f6b3a', crocDark:'#1d4526', crocTeeth:'#f2f8e8', crocEye:'#e8c23a',
+  fish:'#1f5a7a', fishDark:'#123c55',
+  fly:'#2a2620', flyWing:'#c9e8f0',
+  flower:'#f0c0c8', flower2:'#ffe9a0',
+  gold:'#ffd23f', paper:'#f4fff0', hot:'#ff5a5a', ink:'#14200f'
+};
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function noise(dur,vol){
+  if(!AC) return;
+  try{
+    const n=Math.floor(AC.sampleRate*dur), buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource(), g=AC.createGain();
+    src.buffer=buf; g.gain.value=vol||0.1;
+    src.connect(g); g.connect(AC.destination); src.start();
+  }catch(e){}
+}
+function hopSound(){ slide(420,700,0.1,'sine',0.05); }
+function splashSound(){ noise(0.3,0.13); slide(600,140,0.35,'sine',0.07); }
+function chompSound(){ slide(260,70,0.3,'sawtooth',0.09); noise(0.16,0.1); }
+function tongueSound(){ slide(900,1500,0.07,'square',0.045); }
+function flySound(){ [988,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.09,'square',0.055), i*55)); }
+function growlSound(){ slide(180,90,0.4,'sawtooth',0.055); }
+function winSound(){ [523,659,784,1046,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.16,'square',0.07), i*90)); }
+
+/* ---------- input ---------- */
+const keys={u:false,d:false,l:false,r:false};
+let jumpEdge=false, tongueEdge=false, anyPress=false, lastDir='u';
+const KEYMAP={ArrowUp:'u',KeyW:'u', ArrowDown:'d',KeyS:'d', ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r'};
+addEventListener('keydown',e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Space'||e.code==='KeyZ'){ e.preventDefault(); jumpEdge=true; return; }
+  if(e.code==='KeyX'||e.code==='Enter'){ e.preventDefault(); tongueEdge=true; return; }
+  const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=true; lastDir=k; }
+});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='j') jumpEdge=true; else if(key==='t') tongueEdge=true; else { keys[key]=true; lastDir=key; }
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='j'&&key!=='t') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bU','u'); bindBtn('bD','d'); bindBtn('bL','l'); bindBtn('bR','r');
+bindBtn('bJ','j'); bindBtn('bT','t');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- levels ---------- */
+const LEVELS = [
+  { name:'THE FIRST POND', hint:'AIM WITH THE STICK, THEN PRESS JUMP', extra:14, crocs:1, flies:2, seed:7  },
+  { name:'DEEPER WATER',   hint:'PRESS TONGUE TO SNAP UP A FLY. 100 POINTS', extra:11, crocs:2, flies:2, seed:23 },
+  { name:'CROC CREEK',     hint:'A CROC CAN LEAP ONTO A LILYPAD AT ANY TIME', extra:9,  crocs:3, flies:3, seed:41 },
+  { name:'THE WIDE PART',  hint:'FEWER PADS. LOOK BEFORE YOU LEAP',      extra:7,  crocs:3, flies:3, seed:59 },
+  { name:'THE LAST CROSSING', hint:'LAST ONE. GET TO THE GRASS',         extra:6,  crocs:4, flies:3, seed:73 }
+];
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0, level=0, score=0, best=0, lives=3;
+let pads=[], crocs=[], flies=[], fish=[], flowers=[], pops=[], sparks=[];
+let frog=null, hintT=0, shake=0, startCol=8;
+
+function rngFrom(seed){ let s=seed>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+function isPad(c,r){ return c>=0&&c<COLS&&r>=0&&r<ROWS && pads[r][c]===1; }
+function isGrass(r){ return r===START_ROW || r===END_ROW; }
+function isSafe(c,r){ return c>=0&&c<COLS&&r>=0&&r<ROWS && (isGrass(r) || isPad(c,r)); }
+
+/* the lilypad path is laid down first, so a route across always exists */
+function buildPond(n){
+  const L = LEVELS[n], rnd = rngFrom(L.seed);
+  pads = [];
+  for(let r=0;r<ROWS;r++) pads.push(new Array(COLS).fill(0));
+
+  let c = 2 + Math.floor(rnd()*(COLS-4));
+  startCol = c;
+  let r = ROWS-2;
+  pads[r][c] = 1;
+  let guard = 0;
+  while(r > 1 && guard < 400){
+    guard++;
+    if(rnd() < 0.35){
+      const dir = rnd()<0.5 ? -1 : 1;
+      const nc = Math.max(1, Math.min(COLS-2, c+dir));
+      if(nc !== c){ c = nc; pads[r][c] = 1; continue; }
+    }
+    r--; pads[r][c] = 1;
+  }
+
+  for(let i=0;i<L.extra;i++){
+    const ec = 1 + Math.floor(rnd()*(COLS-2));
+    const er = 1 + Math.floor(rnd()*(ROWS-2));
+    pads[er][ec] = 1;
+  }
+
+  /* crocodiles live in the water rows and leap onto pads */
+  crocs = [];
+  for(let i=0;i<L.crocs;i++){
+    const cr = 1 + Math.floor(rnd()*(ROWS-2));
+    crocs.push({ row:cr, x: rnd()*(COLS*CELL), dir: rnd()<0.5?-1:1,
+                 sp: 0.35+rnd()*0.3, st:'swim', t: 120+Math.floor(rnd()*180),
+                 target:null, anim:rnd()*6 });
+  }
+
+  flies = [];
+  for(let i=0;i<L.flies;i++) spawnFly(rnd);
+
+  fish = [];
+  for(let i=0;i<9;i++)
+    fish.push({ x: rnd()*W, y: GY+CELL*(1+rnd()*(ROWS-2)), dir: rnd()<0.5?-1:1,
+                sp: 0.25+rnd()*0.35, anim: rnd()*6 });
+
+  flowers = [];
+  for(let i=0;i<26;i++){
+    const fc = Math.floor(rnd()*COLS), fr = 1 + Math.floor(rnd()*(ROWS-2));
+    if(pads[fr][fc]) continue;
+    flowers.push({ x: cx(fc)+(rnd()*14-7), y: cy(fr)+(rnd()*14-7), v: rnd() });
+  }
+
+  frog = { c:startCol, r:START_ROW, x:cx(startCol), y:cy(START_ROW),
+           dir:'u', hop:0, hopT:0, hx:0, hy:0, tx:0, ty:0,
+           tongue:0, tdir:'u', grace:60, anim:0 };
+  pops=[]; sparks=[];
+  hintT=300;
+}
+function spawnFly(rnd){
+  const rr = rnd || Math.random;
+  flies.push({ x: 30+rr()*(W-60), y: GY+CELL*1.2 + rr()*(CELL*(ROWS-3)),
+               vx:(rr()*2-1)*0.5, vy:(rr()*2-1)*0.4, t:0, anim:rr()*6 });
+}
+function startGame(){ level=0; score=0; lives=3; buildPond(0); state='play'; timer=0; }
+
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:72}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*1.9,vy:-Math.random()*2.3,t:26,c:col});
+}
+
+function loseLife(how){
+  if(state!=='play' || frog.grace>0) return;
+  lives--; shake=18;
+  if(how==='water'){ splashSound(); puff(frog.x,frog.y,C.ripple,16); }
+  else { chompSound(); puff(frog.x,frog.y,C.croc,16); }
+  frog.deathMsg = how;
+  state='dead'; timer=0;
+  if(lives<=0) best=Math.max(best,score);
+}
+function respawn(){
+  frog.c=startCol; frog.r=START_ROW;
+  frog.x=cx(startCol); frog.y=cy(START_ROW);
+  frog.hop=0; frog.tongue=0; frog.grace=80; frog.dir='u';
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(shake>0) shake--;
+  if(hintT>0) hintT--;
+
+  if(state==='title'){ if(anyPress){ anyPress=false; state='howto'; timer=0; tone(700,0.09);} return; }
+  if(state==='howto'){ timer++; if(anyPress&&timer>20){ anyPress=false; startGame(); tone(950,0.1);} return; }
+  if(state==='over'||state==='won'){ timer++; if(anyPress&&timer>80){ anyPress=false; state='title'; timer=0; } return; }
+  if(state==='clear'){
+    timer++; updateFx();
+    if(timer>140){
+      level++;
+      if(level>=LEVELS.length){ best=Math.max(best,score); state='won'; timer=0; winSound(); }
+      else { buildPond(level); state='play'; timer=0; }
+    }
+    return;
+  }
+  if(state==='dead'){
+    timer++; updateFx();
+    if(timer>75){
+      if(lives<=0){ state='over'; timer=0; }
+      else { respawn(); state='play'; timer=0; }
+    }
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  const f = frog;
+  if(f.grace>0) f.grace--;
+  f.anim += 0.1;
+
+  /* the stick aims, button 1 jumps - exactly the two-step she wrote */
+  if(f.hop<=0){
+    if(keys.u) f.dir='u'; else if(keys.d) f.dir='d';
+    else if(keys.l) f.dir='l'; else if(keys.r) f.dir='r';
+  }
+
+  if(jumpEdge){
+    jumpEdge=false;
+    if(f.hop<=0 && f.tongue<=0){
+      const dc = f.dir==='l'?-1:(f.dir==='r'?1:0);
+      const dr = f.dir==='u'?-1:(f.dir==='d'?1:0);
+      const nc = f.c+dc, nr = f.r+dr;
+      if(nc>=0 && nc<COLS && nr>=0 && nr<ROWS){
+        f.hx=f.x; f.hy=f.y; f.tx=cx(nc); f.ty=cy(nr);
+        f.nc=nc; f.nr=nr; f.hop=16; f.hopT=0;
+        hopSound();
+      } else tone(160,0.06,'square',0.04);
+    }
+  }
+
+  if(f.hop>0){
+    f.hopT++;
+    const t = f.hopT/16;
+    f.x = f.hx + (f.tx-f.hx)*t;
+    f.y = f.hy + (f.ty-f.hy)*t;
+    f.lift = Math.sin(t*Math.PI)*9;
+    if(f.hopT>=16){
+      f.hop=0; f.lift=0; f.c=f.nc; f.r=f.nr; f.x=cx(f.c); f.y=cy(f.r);
+      /* landed - what did we land on? */
+      if(f.r===END_ROW){
+        score += 200 + lives*50;
+        pop(f.x,f.y-20,'ACROSS! +'+(200+lives*50),C.gold);
+        state='clear'; timer=0; winSound();
+        return;
+      }
+      if(isPad(f.c,f.r)){
+        score += 1;                        /* "each jump on the lilypad gives +1 point" */
+        pop(f.x,f.y-16,'+1','#d6f0a0');
+        for(const cr of crocs){
+          if(cr.st==='sit' && cr.target && cr.target.c===f.c && cr.target.r===f.r){ loseLife('croc'); return; }
+        }
+      } else if(!isGrass(f.r)){
+        loseLife('water'); return;         /* in the water, and the fish are waiting */
+      }
+    }
+  }
+
+  /* ----- tongue (button 2) ----- */
+  if(tongueEdge){
+    tongueEdge=false;
+    if(f.tongue<=0 && f.hop<=0){ f.tongue=22; f.tdir=f.dir; tongueSound(); }
+  }
+  if(f.tongue>0){
+    f.tongue--;
+    const ext = f.tongue>11 ? (22-f.tongue)/11 : f.tongue/11;
+    const dc = f.tdir==='l'?-1:(f.tdir==='r'?1:0);
+    const dr = f.tdir==='u'?-1:(f.tdir==='d'?1:0);
+    const reach = ext * CELL*2.6;
+    const tipX = f.x + dc*reach, tipY = f.y + dr*reach;
+    f.tipX=tipX; f.tipY=tipY; f.ext=ext;
+    for(const fl of flies){
+      if(fl.dead) continue;
+      if(Math.hypot(fl.x-tipX, fl.y-tipY) < 13){
+        fl.dead=true; score+=100; flySound();
+        pop(fl.x, fl.y-10, 'FLY! +100', C.gold);
+        puff(fl.x,fl.y,C.flyWing,8);
+      }
+    }
+  }
+  if(flies.filter(x=>!x.dead).length < LEVELS[level].flies && frame%150===0) spawnFly();
+  flies = flies.filter(x=>!x.dead);
+
+  /* ----- flies drift about ----- */
+  for(const fl of flies){
+    fl.anim += 0.4;
+    fl.vx += (Math.random()*2-1)*0.06;
+    fl.vy += (Math.random()*2-1)*0.05;
+    fl.vx = Math.max(-0.8, Math.min(0.8, fl.vx));
+    fl.vy = Math.max(-0.6, Math.min(0.6, fl.vy));
+    fl.x += fl.vx; fl.y += fl.vy;
+    if(fl.x<20||fl.x>W-20) fl.vx*=-1;
+    if(fl.y<GY+CELL||fl.y>GY+CELL*(ROWS-1)) fl.vy*=-1;
+  }
+
+  /* ----- fish patrol the water, so falling in is not survivable ----- */
+  for(const fs of fish){
+    fs.anim += 0.12;
+    fs.x += fs.dir*fs.sp;
+    if(fs.x<-20){ fs.x=W+20; } if(fs.x>W+20){ fs.x=-20; }
+  }
+
+  /* ----- crocodiles ----- */
+  for(const cr of crocs){
+    cr.anim += 0.08;
+    if(cr.st==='swim'){
+      cr.x += cr.dir*cr.sp;
+      if(cr.x < -30){ cr.x=-30; cr.dir=1; }
+      if(cr.x > W+30){ cr.x=W+30; cr.dir=-1; }
+      cr.t--;
+      if(cr.t<=0){
+        /* pick a lilypad in this row to leap onto */
+        const opts=[];
+        for(let c=0;c<COLS;c++) if(pads[cr.row][c]) opts.push(c);
+        if(opts.length){
+          const pick = opts[Math.floor(Math.random()*opts.length)];
+          cr.target = { c:pick, r:cr.row };
+          cr.st='rise'; cr.t=55; growlSound();
+        } else cr.t = 150;
+      }
+    } else if(cr.st==='rise'){
+      const tX = cx(cr.target.c);
+      cr.x += (tX-cr.x)*0.06;
+      cr.t--;
+      if(cr.t<=0){
+        cr.st='sit'; cr.t=95; cr.x=cx(cr.target.c);
+        chompSound();
+        if(frog.grace<=0 && frog.hop<=0 && frog.c===cr.target.c && frog.r===cr.target.r){ loseLife('croc'); return; }
+      }
+    } else if(cr.st==='sit'){
+      cr.t--;
+      if(frog.grace<=0 && frog.hop<=0 && frog.c===cr.target.c && frog.r===cr.target.r){ loseLife('croc'); return; }
+      if(cr.t<=0){ cr.st='swim'; cr.t=170+Math.floor(Math.random()*200); cr.target=null; }
+    }
+  }
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y-=0.35; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.vy+=0.13; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(10,25,15,.55)',align); txt(s,x,y,size,col,align);
+}
+
+function drawPond(){
+  /* water */
+  px(GX, GY+CELL, COLS*CELL, CELL*(ROWS-2), C.water);
+  for(let r=1;r<ROWS-1;r++){
+    for(let c=0;c<COLS;c++){
+      if((r+c)%2===0) px(GX+c*CELL, GY+r*CELL, CELL, CELL, C.water2);
+    }
+  }
+  ctx.globalAlpha=0.35;
+  for(let i=0;i<26;i++){
+    const y = GY+CELL+ (i*17)%(CELL*(ROWS-2));
+    const x = ((i*61 + frame*0.35) % (W+40)) - 20;
+    px(x, y, 11, 2, C.ripple); px(x+14, y+4, 7, 2, C.ripple);
+  }
+  ctx.globalAlpha=1;
+
+  for(const fl of flowers){
+    px(fl.x-2, fl.y-2, 5, 5, fl.v<0.5 ? C.flower : C.flower2);
+    px(fl.x-4, fl.y, 3, 2, fl.v<0.5 ? C.flower : C.flower2);
+    px(fl.x+2, fl.y, 3, 2, fl.v<0.5 ? C.flower : C.flower2);
+  }
+
+  /* grass at the near bank and the far bank */
+  for(const r of [START_ROW, END_ROW]){
+    px(GX, GY+r*CELL, COLS*CELL, CELL, C.grass);
+    px(GX, GY+r*CELL, COLS*CELL, 3, C.grassLite);
+    px(GX, GY+r*CELL+CELL-3, COLS*CELL, 3, C.grassDark);
+    for(let i=0;i<COLS*2;i++){
+      const x = GX + i*14 + ((i%2)*4);
+      px(x, GY+r*CELL+6, 2, 7, C.grassDark);
+      px(x+4, GY+r*CELL+9, 2, 5, C.grassDark);
+    }
+  }
+  txtS('END OF THE LEVEL', GX+COLS*CELL-8, GY+CELL/2, 9, '#1e4a12', 'right');
+}
+
+function drawPad(c,r){
+  const x=cx(c), y=cy(r);
+  const b=Math.sin(frame*0.05 + c*0.7 + r)*1.2;
+  ctx.fillStyle=C.padDark;
+  ctx.beginPath(); ctx.ellipse(x, y+b+2, 13, 11, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=C.pad;
+  ctx.beginPath(); ctx.ellipse(x, y+b, 13, 11, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=C.padLite;
+  ctx.beginPath(); ctx.ellipse(x-3, y+b-3, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+  /* the notch she drew in every pad */
+  ctx.fillStyle=C.water;
+  ctx.beginPath(); ctx.moveTo(x,y+b); ctx.lineTo(x+13,y+b-5); ctx.lineTo(x+13,y+b+5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=C.padVein; ctx.lineWidth=1; ctx.globalAlpha=0.5;
+  ctx.beginPath();
+  for(let i=0;i<4;i++){ const a=Math.PI*0.55+i*0.5; ctx.moveTo(x,y+b); ctx.lineTo(x+Math.cos(a)*12, y+b+Math.sin(a)*10); }
+  ctx.stroke(); ctx.globalAlpha=1;
+}
+
+function drawFish(fs){
+  const wig = Math.sin(fs.anim)*2;
+  ctx.save(); ctx.translate(fs.x|0, (fs.y+wig)|0);
+  if(fs.dir<0) ctx.scale(-1,1);
+  ctx.globalAlpha=0.55;
+  px(-7,-3,13,6,C.fish);
+  px(-11,-4,5,8,C.fish);
+  px(3,-2,3,2,C.fishDark);
+  px(-7,-3,13,1,C.fishDark);
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function drawFly(fl){
+  const b=Math.sin(fl.anim)*1.5;
+  px(fl.x-2, fl.y-2+b, 5, 4, C.fly);
+  px(fl.x-1, fl.y-3+b, 3, 2, C.fly);
+  ctx.globalAlpha = (Math.floor(fl.anim*2)%2) ? 0.85 : 0.4;
+  px(fl.x-6, fl.y-4+b, 4, 2, C.flyWing);
+  px(fl.x+3, fl.y-4+b, 4, 2, C.flyWing);
+  ctx.globalAlpha=1;
+}
+
+function drawCroc(cr){
+  const y = cy(cr.row);
+  const wig = Math.sin(cr.anim)*1.6;
+  if(cr.st==='rise' && cr.target){
+    /* telegraph: bubbles and a shadow on the pad it is about to take */
+    const tx=cx(cr.target.c), ty=cy(cr.target.r);
+    ctx.globalAlpha=0.3+0.25*Math.sin(frame*0.35);
+    ctx.fillStyle=C.hot;
+    ctx.beginPath(); ctx.ellipse(tx,ty,15,13,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1;
+    if(frame%8<5) txtS('!', tx, ty-20, 13, C.hot, 'center');
+    for(let i=0;i<4;i++){
+      const bx = tx-8+i*5, by = ty+6 - ((frame*1.4+i*9)%18);
+      ctx.globalAlpha=0.5; px(bx,by,3,3,C.ripple); ctx.globalAlpha=1;
+    }
+  }
+  const onPad = (cr.st==='sit');
+  const x = onPad ? cx(cr.target.c) : cr.x;
+  const yy = onPad ? cy(cr.target.r)-3 : y+wig;
+  ctx.save(); ctx.translate(x|0, yy|0);
+  if(cr.dir<0 && !onPad) ctx.scale(-1,1);
+  if(!onPad){ ctx.globalAlpha=0.9; }
+  px(-16,-5,30,10,C.croc);            /* body */
+  px(-16,-5,30,3,'#3f8a4a');
+  px(-16,2,30,3,C.crocDark);
+  px(-24,-6,10,12,C.croc);            /* head */
+  px(-24,-6,10,3,'#3f8a4a');
+  px(-22,-2,2,2,C.crocEye); px(-22,1,2,2,C.crocEye);
+  for(let i=0;i<5;i++) px(-24+i*2, 2, 1, 3, C.crocTeeth);
+  px(14,-3,10,6,C.croc);              /* tail */
+  px(22,-2,7,4,C.crocDark);
+  for(let i=0;i<5;i++) px(-10+i*6, -8, 4, 3, C.crocDark);   /* ridges */
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function drawFrog(f){
+  const x=f.x, y=f.y-(f.lift||0);
+  if(f.lift>1){ ctx.globalAlpha=0.2; px(f.x-8, f.y+6, 17, 5, '#000000'); ctx.globalAlpha=1; }
+  ctx.save(); ctx.translate(x|0,y|0);
+  const rot = f.dir==='l' ? -Math.PI/2 : (f.dir==='r' ? Math.PI/2 : (f.dir==='d' ? Math.PI : 0));
+  ctx.rotate(rot);
+  const squat = f.hop>0 ? -2 : 0;
+  px(-9,-2+squat,18,12,C.frog);             /* body */
+  px(-9,-2+squat,18,3,'#a0e86a');
+  px(-11,4+squat,5,6,C.frogDark);           /* back legs */
+  px(7,4+squat,5,6,C.frogDark);
+  px(-7,-9+squat,14,8,C.frog);              /* head */
+  px(-7,-12+squat,5,5,C.eye); px(3,-12+squat,5,5,C.eye);
+  px(-6,-11+squat,3,3,C.ink); px(4,-11+squat,3,3,C.ink);
+  px(-3,-4+squat,7,2,C.frogDark);           /* mouth */
+  px(-5,2+squat,4,3,C.frogPale);
+  ctx.restore();
+  if(f.grace>0 && frame%8<4){ ctx.globalAlpha=0.3; px(x-12,y-16,25,28,'#ffffff'); ctx.globalAlpha=1; }
+
+  /* the tongue */
+  if(f.tongue>0 && f.tipX!==undefined){
+    ctx.strokeStyle='#ff7a9a'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(f.x, f.y-2); ctx.lineTo(f.tipX, f.tipY); ctx.stroke();
+    px(f.tipX-3, f.tipY-3, 7, 7, '#ff9ac0');
+  }
+}
+
+function drawAim(f){
+  if(f.hop>0 || state!=='play') return;
+  const dc = f.dir==='l'?-1:(f.dir==='r'?1:0);
+  const dr = f.dir==='u'?-1:(f.dir==='d'?1:0);
+  const nc=f.c+dc, nr=f.r+dr;
+  if(nc<0||nc>=COLS||nr<0||nr>=ROWS) return;
+  const ok = isSafe(nc,nr);
+  ctx.globalAlpha=0.35+0.2*Math.sin(frame*0.18);
+  ctx.strokeStyle = ok ? '#d6f05a' : C.hot;
+  ctx.lineWidth=2;
+  ctx.strokeRect(GX+nc*CELL+3, GY+nr*CELL+3, CELL-6, CELL-6);
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#123020');
+  px(0,HUD_H-2,W,2,C.grass);
+  txtS('SCORE '+String(score).padStart(5,'0'), 8, 13, 13, C.gold);
+  /* frog-head lives, as she drew them */
+  for(let i=0;i<Math.max(0,lives);i++){
+    const x=10+i*20, y=24;
+    px(x,y,14,8,C.frog); px(x+1,y-3,4,4,C.eye); px(x+9,y-3,4,4,C.eye);
+    px(x+2,y-2,2,2,C.ink); px(x+10,y-2,2,2,C.ink);
+  }
+  txtS('LIVES', 78, 28, 9, '#8fbf7f');
+
+  txtS(LEVELS[level].name, W/2, 13, 11, C.paper, 'center');
+  txtS('POND '+(level+1)+' / '+LEVELS.length, W/2, 27, 10, '#8fbf7f', 'center');
+
+  /* how far across you are */
+  const prog = (START_ROW - frog.r)/(START_ROW-END_ROW);
+  txtS('ACROSS', W-96, 12, 9, '#8fbf7f');
+  px(W-96, 19, 88, 8, '#1e4a2e');
+  px(W-95, 20, 86*Math.max(0,Math.min(1,prog)), 6, C.grass);
+  txtS(Math.round(prog*100)+'%', W-52, 32, 9, C.paper, 'center');
+}
+
+function drawTitle(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#8fd8f0'); g.addColorStop(0.42,C.water); g.addColorStop(1,C.waterDark);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=0.3;
+  for(let i=0;i<30;i++){
+    const y=100+(i*13)%180, x=((i*67+frame*0.4)%(W+40))-20;
+    px(x,y,12,2,C.ripple);
+  }
+  ctx.globalAlpha=1;
+  px(0,0,W,34,C.grass); px(0,31,W,3,C.grassDark);
+  px(0,262,W,38,C.grass); px(0,262,W,3,C.grassLite);
+  for(let i=0;i<40;i++){ px(i*13, 20, 2, 8, C.grassDark); px(i*13+5, 268, 2, 8, C.grassDark); }
+
+  txtS('JUMPER', W/2-4, 76, 40, '#1e4a12', 'center');
+  txtS('FROG', W/2+2, 118, 40, '#d6f05a', 'center');
+
+  const savedPads = pads;
+  pads = [];
+  for(let r=0;r<ROWS;r++) pads.push(new Array(COLS).fill(0));
+  for(const [c,r] of [[4,5],[7,4],[10,5],[13,4],[6,6],[11,6]]) pads[r][c]=1;
+  for(const [c,r] of [[4,5],[7,4],[10,5],[13,4],[6,6],[11,6]]) drawPad(c,r);
+  const t = Math.floor(frame/40)%3;
+  const spots=[[4,5],[7,4],[10,5]];
+  drawFrog({x:cx(spots[t][0]), y:cy(spots[t][1]), dir:'u', hop:0, tongue:0, grace:0, lift:0});
+  pads = savedPads;
+
+  txtS('HOP THE LILYPADS. DO NOT FALL IN.', W/2, 246, 11, '#0f3a4a', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON TO START', W/2, 284, 13, '#1e4a12', 'center');
+  if(best>0) txtS('BEST '+String(best).padStart(5,'0'), 10, 284, 9, '#2a5a1a');
+}
+
+function drawHowTo(){
+  ctx.fillStyle='#123020'; ctx.fillRect(0,0,W,H);
+  px(12,8,W-24,H-16,'#1a4430');
+  ctx.strokeStyle=C.grass; ctx.lineWidth=2; ctx.strokeRect(12,8,W-24,H-16);
+  txtS('HOW TO PLAY', W/2, 28, 15, C.gold, 'center');
+
+  txtS('AIM then JUMP', 36, 54, 12, '#d6f05a');
+  txtS('The stick points you. JUMP hops you one', 36, 70, 10, C.paper);
+  txtS('square. The square you are aiming at lights', 36, 83, 10, C.paper);
+  txtS('up green if it is safe, red if it is water.', 36, 96, 10, C.paper);
+
+  txtS('TONGUE', 36, 120, 12, '#ff9ac0');
+  txtS('snaps out and catches a fly. 100 points.', 36, 136, 10, C.paper);
+
+  txtS('Each lilypad you land on is +1 point.', 36, 160, 10, '#d6f0a0');
+  txtS('Fall in the water and the fish get you.', 36, 176, 10, C.hot);
+  txtS('A crocodile can leap onto a lilypad at any', 36, 192, 10, C.hot);
+  txtS('time - it growls and the pad flashes first.', 36, 205, 10, C.hot);
+
+  txtS('3 LIVES. REACH THE GRASS AT THE FAR SIDE.', W/2, 228, 10, C.gold, 'center');
+  txtS('KEYS: ARROWS  SPACE=JUMP  X=TONGUE', W/2, 248, 9, '#8fbf7f', 'center');
+  if(frame%60<38) txtS('PRESS ANY BUTTON', W/2, 272, 12, C.gold, 'center');
+}
+
+function drawOverlay(){
+  if(state==='clear'){
+    px(0,116,W,70,'rgba(12,40,26,.88)');
+    txtS('MADE IT ACROSS!', W/2, 140, 20, C.gold, 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 166, 12, C.paper, 'center');
+  }
+  if(state==='dead'){
+    px(0,124,W,54,'rgba(12,40,26,.86)');
+    txtS(frog.deathMsg==='water' ? 'THE FISH GOT YOU!' : 'THE CROC GOT YOU!', W/2, 144, 17, C.hot, 'center');
+    txtS(lives>0 ? lives+' LIVES LEFT' : 'NO LIVES LEFT', W/2, 166, 11, C.paper, 'center');
+  }
+  if(state==='over'){
+    ctx.fillStyle='rgba(8,24,16,.94)'; ctx.fillRect(0,0,W,H);
+    txtS('GAME OVER', W/2, 112, 28, C.hot, 'center');
+    txtS('THE POND WON THIS TIME', W/2, 148, 12, '#8fbf7f', 'center');
+    txtS('SCORE '+String(score).padStart(5,'0'), W/2, 180, 12, C.gold, 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 236, 11, '#8fbf7f', 'center');
+  }
+  if(state==='won'){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#8fd8f0'); g.addColorStop(1,C.grass);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    txtS('EVERY POND CROSSED!', W/2, 64, 21, '#1e4a12', 'center');
+    const savedPads=pads;
+    pads=[]; for(let r=0;r<ROWS;r++) pads.push(new Array(COLS).fill(0));
+    pads[4][8]=1; drawPad(8,4);
+    drawFrog({x:cx(8), y:cy(4)-4, dir:'u', hop:0, tongue:0, grace:0, lift:Math.abs(Math.sin(frame*0.08))*8});
+    pads=savedPads;
+    txtS('NOT ONE FISH, NOT ONE CROC', W/2, 196, 11, '#1e4a12', 'center');
+    txtS('FINAL SCORE '+String(score).padStart(5,'0'), W/2, 222, 14, '#123020', 'center');
+    if(timer>80 && frame%60<38) txtS('PRESS ANY BUTTON', W/2, 254, 11, '#123020', 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,18,'rgba(12,40,26,.8)');
+    txtS(LEVELS[level].hint, W/2, HUD_H+11, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  if(shake>0) ctx.translate((Math.random()*2-1)*shake*0.3,(Math.random()*2-1)*shake*0.3);
+  ctx.fillStyle='#0f2a1c'; ctx.fillRect(-8,-8,W+16,H+16);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='howto'){ drawHowTo(); return; }
+  if(state==='over'||state==='won'){ drawOverlay(); return; }
+
+  drawPond();
+  for(const fs of fish) drawFish(fs);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(pads[r][c]) drawPad(c,r);
+  drawAim(frog);
+  for(const cr of crocs) drawCroc(cr);
+  for(const fl of flies) drawFly(fl);
+  if(state!=='dead' || timer%8<5) drawFrog(frog);
+
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/13); px(s.x,s.y,2,2,s.c); ctx.globalAlpha=1; }
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/26);
+    txtS(p.s, p.x, p.y, 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+  drawHUD();
+  drawOverlay();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
