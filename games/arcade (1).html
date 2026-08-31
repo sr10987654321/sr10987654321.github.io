@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Arcade — Hilton Primary School</title>
+<!--
+  ===========================================================================
+  THE ARCADE  —  catalogue page
+  ===========================================================================
+
+  WHERE THE GAMES LIVE
+  --------------------
+  Set BASE below. Right now it points at:
+        https://sr10987654321.github.io/games/
+  If you ever move the games, change that one line and everything follows.
+  Leave BASE as '' to load games sitting in the same folder as this file.
+
+  MISSING GAMES LOOK AFTER THEMSELVES
+  -----------------------------------
+  On load the page quietly checks each file. Anything that isn't uploaded yet
+  goes grey and says "not uploaded yet" instead of giving a dead link. So you
+  can put this page up now and the cards switch on by themselves as you add
+  the files. (If a check can't run at all — offline, opened off a USB — the
+  page assumes the game is fine rather than greying everything out.)
+
+  HOW TO ADD A GAME
+  -----------------
+  1. Put the .html in the games folder.
+  2. Copy any block in the GAMES list near the bottom, paste it, and edit:
+        file    : exact filename, e.g. 'my-game.html'
+        title   : the game's name
+        student : designer's name ('' shows "name to add")
+        genre   : one word — a new one gets its own filter button automatically
+        blurb   : a sentence or two for the card
+        quote   : something the designer actually wrote, in their words
+        controls: short reminder of the buttons
+        motif   : picture for the poster — one of the names in MOTIFS below
+        bg,bg2  : the poster's two background colours
+        tc      : the title colour on the poster
+  3. Save. The page counts the games and builds the filter buttons itself.
+  ===========================================================================
+-->
+<style>
+  :root{
+    --ink:#f2eee6; --dim:#a49c92; --line:#2b2733;
+    --panel:#181521; --panel2:#211d2c; --hot:#ffd23f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:#0e0c14; color:var(--ink);
+    font-family:"Trebuchet MS",Verdana,sans-serif;
+    padding:0 0 60px; -webkit-text-size-adjust:100%;
+  }
+  header{
+    padding:28px 20px 20px; text-align:center;
+    background:linear-gradient(180deg,#241f33,#0e0c14);
+    border-bottom:2px solid var(--line);
+  }
+  h1{
+    font-size:clamp(28px,6vw,46px); letter-spacing:.06em;
+    color:var(--hot); text-shadow:3px 3px 0 #7a3a10, 6px 6px 0 rgba(0,0,0,.35);
+  }
+  .sub{margin-top:8px; color:var(--dim); font-size:14px;}
+  .count{margin-top:6px; color:var(--dim); font-size:13px;}
+
+  .tools{
+    max-width:1180px; margin:20px auto 0; padding:0 16px;
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center;
+  }
+  #search{
+    flex:1 1 220px; max-width:340px; padding:10px 14px; font-size:15px;
+    background:var(--panel); color:var(--ink);
+    border:2px solid var(--line); border-radius:10px; outline:none;
+  }
+  #search:focus{border-color:var(--hot);}
+  .chip{
+    padding:8px 14px; font-size:13px; font-weight:bold; cursor:pointer;
+    background:var(--panel); color:var(--dim);
+    border:2px solid var(--line); border-radius:999px; user-select:none;
+  }
+  .chip:hover{color:var(--ink);}
+  .chip.on{background:var(--hot); color:#2a1c04; border-color:var(--hot);}
+
+  .grid{
+    max-width:1180px; margin:22px auto 0; padding:0 16px;
+    display:grid; gap:18px;
+    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
+  }
+  .card{
+    background:var(--panel); border:2px solid var(--line); border-radius:14px;
+    overflow:hidden; display:flex; flex-direction:column;
+    text-decoration:none; color:inherit;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  .card:hover{transform:translateY(-4px); border-color:var(--hot);}
+  .card.off{opacity:.42; pointer-events:none;}
+  .poster{display:block; width:100%; height:auto; background:#000;}
+  .body{padding:13px 14px 15px; display:flex; flex-direction:column; gap:7px; flex:1;}
+  .name{font-size:18px; font-weight:bold; line-height:1.15;}
+  .by{font-size:12.5px; color:var(--hot);}
+  .by.none{color:var(--dim); font-style:italic;}
+  .blurb{font-size:13px; color:#cdc6bc; line-height:1.45;}
+  .quote{
+    font-size:12.5px; color:#9f98d0; font-style:italic;
+    border-left:3px solid #3d3556; padding-left:9px; line-height:1.4;
+  }
+  .foot{
+    margin-top:auto; padding-top:9px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; gap:8px; align-items:center;
+    font-size:11px; color:var(--dim);
+  }
+  .tag{
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    padding:3px 8px; letter-spacing:.05em; text-transform:uppercase; font-weight:bold;
+  }
+  .missing{color:#e07a6a; font-weight:bold; font-size:11px;}
+  .draft{background:#4a2a10; border-color:#7a4a18; color:#ffc27a;}
+  .empty{max-width:1180px; margin:40px auto; text-align:center; color:var(--dim); padding:0 16px;}
+  footer{max-width:1180px; margin:36px auto 0; padding:0 16px; color:var(--dim);
+         font-size:12px; text-align:center; line-height:1.6;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>THE ARCADE</h1>
+  <div class="sub">Games designed by the students of Hilton Primary School</div>
+  <div class="count" id="count"></div>
+</header>
+
+<div class="tools">
+  <input id="search" type="search" placeholder="Search a game or a designer…" autocomplete="off">
+  <span id="chips" style="display:contents"></span>
+</div>
+
+<div class="grid" id="grid"></div>
+<div class="empty" id="empty" hidden>Nothing matches that. Try another word.</div>
+
+<footer>
+  Every game runs in the browser with no internet needed once it has loaded.<br>
+  Turn the iPad sideways to play.
+</footer>
+
+<script>
+/* ======================================================================
+   WHERE THE GAMES LIVE  — change this one line if they ever move.
+   ====================================================================== */
+const BASE = 'https://sr10987654321.github.io/games/';
+
+/* ======================================================================
+   POSTER PICTURES
+   Each is a 12x12 grid. Characters:  a = accent   b = dark   c = light
+   They recolour themselves to suit each game's palette, so a motif can be
+   reused. Add your own by copying a block and drawing with a / b / c / dot.
+   ====================================================================== */
+const MOTIFS = {
+  shark:  ("............/......bbb.../.....bbabb../..bbbbaaabb./.bcaaaaaaaab/bcbaaaaaaaab/.bcaaaaaaaab/..bbbbaaabb./....bb.bb.../............/............/............").split('/'),
+  bunny:  ("..bb....bb../.bab....bab./.bab....bab./.babbbbbbab./.baaaaaaaab./baaacaaacaab/baaaaaaaaaab/baaccccccaab/.baaaaaaaab./..baaaaaab../..bb....bb../............").split('/'),
+  koala:  ("bb........bb/bab......bab/babbbbbbbbab/.baaaaaaaab./baaaaaaaaaab/bacaaaaacaab/baaaabbaaaab/.baaaaaaaab./..bccccccb../..bcccccccb./..bb....bb../............").split('/'),
+  zombie: ("...bbbbbb.../..baaaaaab../..bacaacab../..baaaaaab../.baaaaaaaab./baaaaaaaaaab/bab.aaaa.bab/bab.aaaa.bab/.baaaaaaaab./..baa..aab../..bb....bb../............").split('/'),
+  dog:    (".bb......bb./.bab....bab./.baabbbbaab./baaaaaaaaaab/bacaaaaacaab/baaaabbaaaab/baaaaaaaaaab/.baaaaaaaab./..bbaaaabb../...baaaab.../...bb..bb.../............").split('/'),
+  cat:    ("bb........bb/bab......bab/baabbbbbbaab/baaaaaaaaaab/bacaaaaacaab/baaaabbaaaab/baacaaaacaab/.baaaaaaaab./..baaaaaab../..bb.aa.bb../.....bb...../............").split('/'),
+  donut:  ("...bbbbbb.../..baaaaaab../.baacccaaab./baacccccaaab/bacccbbcccab/bacccbbcccab/baacccccaaab/.baacccaaab./..baaaaaab../...bbbbbb.../............/............").split('/'),
+  frog:   (".bb......bb./bcab....bacb/bcab....bacb/.baabbbbaab./baaaaaaaaaab/baaaaaaaaaab/bacccccccaab/.baaaaaaaab./..bb.aa.bb../.b........b./.bb......bb./............").split('/'),
+  van:    ("............/..bbbbbbb.../.baaaaaaab../.baaaaaaabbb/.baaaaaaaccb/.baaaaaaaccb/bbbbbbbbbbbb/.bcb....bcb./.bcb....bcb./..b......b../............/............").split('/'),
+  car:    ("............/............/....bbbbb.../..bbacccabb./.baaaaaaaab./baaaaaaaaaab/bbbbbbbbbbbb/.bcb....bcb./.bcb....bcb./..b......b../............/............").split('/'),
+  ball:   ("............/....bbbb..../..bbaaaabb../.baaacaaaab./baaaaccaaaab/baaaccccaaab/baaaaccaaaab/.baaacaaaab./..bbaaaabb../....bbbb..../............/............").split('/'),
+  brush:  ("....bb....../....bab...../....bab...../....bab...../...bcccb..../..bcccccb.../..bcccccb.../..baaaaab.../..baaaaab.../...bbbbb..../............/............").split('/'),
+  goat:   (".b........b./.bb......bb./..baabbaab../.baaaaaaaab./baacaaaacaab/baaaaaaaaaab/baaabbbbaaab/.baaaaaaaab./..b.b..b.b../..b.b..b.b../............/............").split('/'),
+  cow:    ("............/.bbbbbbbbbb./bacccaaacccb/baaaaaaaaaab/bacaaaaaacab/baaaabbaaaab/.baaaaaaaab./..bbbbbbbb../..b.b..b.b../..b.b..b.b../............/............").split('/'),
+  pizza:  ("....bbbb..../..bbccccbb../.bcccccccccb/bccaccccaccb/bccccccccccb/bccccaccaccb/.bccccccccb./..bccccccb../...bccccb.../....bbbb..../............/............").split('/'),
+  ghost:  ("...bbbbbb.../..baaaaaab../.baaaaaaaab./baccaaaaccab/baccaaaaccab/baaaaaaaaaab/baaaaaaaaaab/baaaaaaaaaab/bab.bab.baab/bb...bb...bb/............/............").split('/'),
+  star:   (".....bb...../.....bab..../....baaab.../bbbbaaaabbbb/baaaaaaaaaab/.baaaaaaaab./..baaaaaab../.baaaaaaaab./.baab..baab./.bb......bb./............/............").split('/'),
+  splash: ("............/..b.....b.../.bab...bab../.bab...bab../..b..b..b.../....bab...../...baaab..../..baaaaab.../.baaaaaaab../bbbbbbbbbbbb/............/............").split('/'),
+  key:    ("...bbbb...../..baaaab..../.bacccab..../.bacccab..../..baaaab..../...baab...../....bb....../....bb..b.../....bbbbb.../....bb..b.../....bb....../............").split('/'),
+  slime:  ("............/....bbbb..../..bbaaaabb../.baaaaaaaab./bacaaaaacaab/baaaaaaaaaab/baaaaaaaaaab/baaccccccaab/baaaaaaaaaab/.bbbbbbbbbb./............/............").split('/'),
+};
+
+/* ======================================================================
+   THE GAMES
+   ====================================================================== */
+const GAMES = [
+
+  /* ---------- built from the second batch of design books ---------- */
+  { file:'escape-the-sharks.html', title:'Escape the Sharks', student:'Ellis', genre:'Dodger',
+    blurb:'Zephyr surfs a river while sharks chase her down. Between stretches there\u2019s a maths puzzle that patches your board back up.',
+    quote:'If Zephyr\u2019s surfboard snaps you lose.',
+    controls:'\u25C0 \u25B6 steer \u2022 B1 up \u2022 B2 down',
+    motif:'shark', bg:'#0d3a5c', bg2:'#16608f', tc:'#8fe3ff' },
+
+  { file:'escape-the-jungle.html', title:'Escape the Jungle', student:'Ziki', genre:'Runner',
+    blurb:'Run for the clearing before dark. Hunters and tigers throw bananas, and the sky slides from midday to night while you go.',
+    quote:'Run and try get out the jungle before night.',
+    controls:'\u25C0 \u25B6 move \u2022 B1 jump \u2022 B2 block',
+    motif:'goat', bg:'#123d1a', bg2:'#2c7a2e', tc:'#ffe066' },
+
+  { file:'maze-chase.html', title:'Maze Chase', student:'Eric', genre:'Maze',
+    blurb:'A dark maze with only a lantern. Slimes chase you if they can see you \u2014 not through walls. Find the chest and the sword lets you fight back.',
+    quote:'The maze is dark and you\u2019ve got a lantern to see where you are.',
+    controls:'Joystick only \u2014 both buttons unused',
+    motif:'slime', bg:'#0a0a10', bg2:'#221c2e', tc:'#7ae08a' },
+
+  { file:'zombified.html', title:'Zombified', student:'Toby', genre:'Shooter',
+    blurb:'An evil man makes a zombie every three seconds. Shoot them down before they reach the crowd standing behind you.',
+    quote:'Shoot them before they touch you or you\u2019ll be zombified.',
+    controls:'\u25C0 \u25B6 walk \u2022 \u25B2 \u25BC lanes \u2022 B1 shoot',
+    motif:'zombie', bg:'#132014', bg2:'#2f4a26', tc:'#8ee06a' },
+
+  { file:'do-nortys.html', title:'Do Nortys', student:'Sadie', genre:'Shooter',
+    blurb:'Hungry policemen march down the screen. Feed them donuts before the two minutes run out or you\u2019re off to prison.',
+    quote:'Angry police men hungry and you have to feed them before times out.',
+    controls:'\u25C0 \u25B6 move the biker \u2022 B1 shoot',
+    motif:'donut', bg:'#101830', bg2:'#2f4aa8', tc:'#f0d040' },
+
+  { file:'squishy-chase.html', title:'Squishy Chase', student:'Layla', genre:'Platformer',
+    blurb:'One minute to deliver a squishy to every kid in the playground, while the teacher patrols and a spinner turns in the gaps.',
+    quote:'You have 1 minute to drive squishies to the children.',
+    controls:'Joystick moves and goes up \u2022 X gives a squishy \u2022 B2 horn',
+    motif:'frog', bg:'#2f7a8a', bg2:'#7ad0e8', tc:'#ffffff' },
+
+  { file:'you-design-i-create.html', title:'You Design I Create', student:'Zoe', genre:'Arcade',
+    blurb:'Everyone else\u2019s shift is over. Race your brush along every car on the street before the clock reaches midday, and watch for the bully.',
+    quote:'Race your paint-brush along every car on the street before midday.',
+    controls:'\u25C0 \u25B6 walk \u2022 B1 jump on the car \u2022 B2 get in',
+    motif:'brush', bg:'#8a4a5a', bg2:'#f7c07a', tc:'#fff4d0' },
+
+  { file:'rugby-heros.html', title:'Rugby Heros', student:'', genre:'Sports',
+    blurb:'Three minutes of rugby league. Beat the defensive line \u2014 and the zombies in it \u2014 for a try, then kick the conversion.',
+    quote:'Dodge the defenders and zombies. A try is 4 points.',
+    controls:'\u25C0 \u25B6 steer \u2022 B1 pass \u2022 B2 burn',
+    motif:'ball', bg:'#14400f', bg2:'#3f9a45', tc:'#f0c83a' },
+
+  { file:'puppy-savers.html', title:'Puppy Savers', student:'', genre:'Chase',
+    blurb:'The puppies got out of their homes. Race around the city and pick them up before they wander into the sewers.',
+    quote:'Woop woop when you get all the puppys.',
+    controls:'Joystick moves \u2022 B1 jump the hedges \u2022 B2 pick up',
+    motif:'dog', bg:'#3a6ea0', bg2:'#a8d8f0', tc:'#3a2a20' },
+
+  { file:'evil-bunny.html', title:'Evil Bunny', student:'', genre:'Platformer',
+    blurb:'Climb the girders past rolling splats, take the bunny hammer, and get the great and powerful butterfly out of its cage.',
+    quote:'Climb your way up and save the butterfly.',
+    controls:'\u25C0 \u25B6 walk \u2022 \u25B2 \u25BC climb \u2022 B1 jump',
+    motif:'bunny', bg:'#1c2b52', bg2:'#3f8fe0', tc:'#c8a8ff' },
+
+  { file:'zombies-and-cats-DRAFT.html', title:'Zombies and Cats', student:'Archie', genre:'Draft',
+    blurb:'A first attempt only \u2014 Archie\u2019s handwriting couldn\u2019t be read, so this is a starting point for him to correct, not his design.',
+    quote:'Archie, is this your game?',
+    controls:'Joystick moves \u2022 B1 swing \u2022 B2 dash',
+    motif:'cat', bg:'#3a1008', bg2:'#a8341e', tc:'#ffd0b8' },
+
+  /* ---------- built from the first batch ----------
+     Filenames below are my best guess at what you saved them as. Any that
+     don't match will simply show as "not uploaded yet" — fix the file field
+     and they'll switch on.                                                */
+
+  { file:'super-dog-v-samurai-cats.html', title:'Super Dog v Samurai Cats', student:'', genre:'Platformer',
+    blurb:'A combat platformer where each of the three enemies needs a different counter.',
+    quote:'', controls:'\u25C0 \u25B6 move \u2022 JUMP \u2022 ATTACK',
+    motif:'cat', bg:'#2a1030', bg2:'#5a2a6a', tc:'#ffb0e0' },
+
+  { file:'security-escape.html', title:'Security Escape', student:'', genre:'Stealth',
+    blurb:'Penny hunts for the key while the guard\u2019s torch sweeps the corridor. Duck and the beam goes over you.',
+    quote:'Security Guard looks for Penny while Penny is looking for the key.',
+    controls:'\u25C0 \u25B6 move \u2022 JUMP \u2022 DUCK \u2022 GRAB',
+    motif:'key', bg:'#0b0f1c', bg2:'#1b2a3f', tc:'#4fd0f0' },
+
+  { file:'puppy-escape.html', title:'Puppy Escape', student:'Maggie', genre:'Chase',
+    blurb:'Bonie Puppy races home along a rainbow track while Karen Cat gives chase. Bones make you fast for exactly three seconds.',
+    quote:'', controls:'\u25C0 \u25B6 \u25B2 \u25BC move \u2022 BOOST',
+    motif:'dog', bg:'#3a1050', bg2:'#a03ac0', tc:'#ffe066' },
+
+  { file:'goat-vs-troll.html', title:'Goat vs Troll', student:'', genre:'Runner',
+    blurb:'A cliff-path delivery run with a five minute countdown and a troll at the bridge.',
+    quote:'', controls:'\u25C0 \u25B6 move \u2022 JUMP',
+    motif:'goat', bg:'#2a2418', bg2:'#6a5a34', tc:'#ffd8a0' },
+
+  { file:'crying-baby.html', title:'Crying Baby', student:'', genre:'Climber',
+    blurb:'A babysitter climbs the ladders to reach the baby while giant tears fall down the screen.',
+    quote:'', controls:'\u25C0 \u25B6 move \u2022 \u25B2 \u25BC climb',
+    motif:'splash', bg:'#123048', bg2:'#3a86c8', tc:'#cfeaff' },
+
+  { file:'tasmanian-4x4.html', title:'Tasmanian 4x4', student:'', genre:'Driving',
+    blurb:'A top-down drive the length of Tasmania, all the way to Hobart.',
+    quote:'', controls:'Joystick steers',
+    motif:'car', bg:'#12261a', bg2:'#2f6a3a', tc:'#f0e0a0' },
+
+  { file:'site-rider.html', title:'Site Rider', student:'', genre:'Driving',
+    blurb:'A drifting game around a building site, with crane hazards you can\u2019t control.',
+    quote:'', controls:'Joystick steers \u2022 DRIFT',
+    motif:'car', bg:'#33280e', bg2:'#8a6a20', tc:'#ffe066' },
+
+  { file:'catch-the-cat.html', title:'Catch the Cat', student:'', genre:'Platformer',
+    blurb:'Throw a net at the cat before the ranger does. A bare net is a 25% chance \u2014 every fish you carry adds another 25%.',
+    quote:'You must catch the cat before the ranger does!',
+    controls:'D-PAD move \u2022 JUMP \u2022 THROW NET',
+    motif:'cat', bg:'#241f30', bg2:'#3a3450', tc:'#4caf50' },
+
+  { file:'jumper-frog.html', title:'Jumper Frog', student:'', genre:'Arcade',
+    blurb:'Hop lilypad to lilypad across the pond. Fall in and the fish get you \u2014 and a crocodile can take a pad at any moment.',
+    quote:'', controls:'\u25C0 \u25B6 \u25B2 \u25BC hop',
+    motif:'frog', bg:'#0f3320', bg2:'#2f7a4a', tc:'#a8f070' },
+
+  { file:'escape-the-lava.html', title:'Escape the Lava', student:'', genre:'Climber',
+    blurb:'A climbing platformer with guarded checkpoints and lava coming up behind you.',
+    quote:'', controls:'\u25C0 \u25B6 move \u2022 JUMP',
+    motif:'star', bg:'#3a0e0e', bg2:'#a8341e', tc:'#ffc24a' },
+
+  { file:'death-jump.html', title:'Death Jump', student:'', genre:'Climber',
+    blurb:'An acid parkour climb with flying fish in the way.',
+    quote:'', controls:'\u25C0 \u25B6 move \u2022 JUMP',
+    motif:'splash', bg:'#1a0e30', bg2:'#4a2a8a', tc:'#9aff8a' },
+
+  { file:'farm-the-cows.html', title:'Farm The Cows', student:'', genre:'Sim',
+    blurb:'Herd the cows, run the money, and keep the wolf away from the herd.',
+    quote:'', controls:'Joystick moves \u2022 HERD \u2022 BUY',
+    motif:'cow', bg:'#1e3312', bg2:'#5a8a2a', tc:'#fff4c0' },
+
+  { file:'mr-pizzas-pizza-delivery.html', title:'Mr Pizza\u2019s Pizza Delivery', student:'', genre:'Maze',
+    blurb:'Deliveries through a maze, with a van to choose, a shop to spend in, and a podium at the end.',
+    quote:'', controls:'Joystick drives \u2022 DELIVER',
+    motif:'pizza', bg:'#3a1410', bg2:'#c8501e', tc:'#ffd88a' },
+
+  { file:'obstacle-fun.html', title:'Obstacle Fun', student:'', genre:'Platformer',
+    blurb:'An obstacle course with a start point you choose yourself, and a boss waiting at the end.',
+    quote:'', controls:'\u25C0 \u25B6 move \u2022 JUMP',
+    motif:'star', bg:'#102a3a', bg2:'#2f7a8a', tc:'#ffe066' },
+];
+
+/* ======================================================================
+   POSTER DRAWING
+   ====================================================================== */
+function poster(g){
+  const W = 300, H = 200;
+  const rows = MOTIFS[g.motif] || MOTIFS.star;
+  const px = 11, gw = 12 * px, gx = (W - gw) / 2, gy = 34;
+  let cells = '';
+  for (let y = 0; y < rows.length; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const ch = row[x];
+      if (ch === '.') continue;
+      const col = ch === 'a' ? g.tc : (ch === 'c' ? '#ffffff' : 'rgba(0,0,0,.55)');
+      cells += '<rect x="' + (gx + x * px) + '" y="' + (gy + y * px) + '" width="' + px +
+               '" height="' + px + '" fill="' + col + '"/>';
+    }
+  }
+  let stars = '';
+  for (let i = 0; i < 26; i++){
+    const sx = (i * 97) % W, sy = (i * 61) % H;
+    stars += '<rect x="' + sx + '" y="' + sy + '" width="2" height="2" fill="#ffffff" opacity=".14"/>';
+  }
+  const t = g.title.length > 20 ? g.title.slice(0, 19) + '\u2026' : g.title;
+  const fs = t.length > 15 ? 17 : t.length > 11 ? 21 : 25;
+  return '<svg class="poster" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + esc(g.title) + ' poster">' +
+    '<defs><linearGradient id="bg' + slug(g.file) + '" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="' + g.bg2 + '"/><stop offset="1" stop-color="' + g.bg + '"/>' +
+    '</linearGradient></defs>' +
+    '<rect width="' + W + '" height="' + H + '" fill="url(#bg' + slug(g.file) + ')"/>' + stars +
+    '<rect x="0" y="' + (H - 34) + '" width="' + W + '" height="34" fill="rgba(0,0,0,.42)"/>' +
+    cells +
+    '<text x="' + (W / 2) + '" y="' + (H - 11) + '" text-anchor="middle" font-family="Trebuchet MS,Verdana,sans-serif" ' +
+    'font-size="' + fs + '" font-weight="bold" fill="' + g.tc + '" letter-spacing="1">' + esc(t.toUpperCase()) + '</text>' +
+    '</svg>';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+function slug(s){ return s.replace(/[^a-z0-9]/gi, ''); }
+
+/* ======================================================================
+   BUILD THE PAGE
+   ====================================================================== */
+const grid = document.getElementById('grid');
+const empty = document.getElementById('empty');
+let filter = 'All', term = '';
+
+const genres = ['All'].concat([...new Set(GAMES.map(g => g.genre))].sort());
+document.getElementById('chips').innerHTML = genres
+  .map(n => '<span class="chip' + (n === 'All' ? ' on' : '') + '" data-g="' + esc(n) + '">' + esc(n) + '</span>').join('');
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+  document.querySelectorAll('.chip').forEach(o => o.classList.remove('on'));
+  c.classList.add('on'); filter = c.dataset.g; render();
+}));
+document.getElementById('search').addEventListener('input', e => {
+  term = e.target.value.trim().toLowerCase(); render();
+});
+
+function render(){
+  const list = GAMES.filter(g => {
+    if (filter !== 'All' && g.genre !== filter) return false;
+    if (!term) return true;
+    return (g.title + ' ' + g.student + ' ' + g.genre + ' ' + g.blurb).toLowerCase().includes(term);
+  });
+  empty.hidden = list.length > 0;
+  grid.innerHTML = list.map(g => {
+    const by = g.student
+      ? '<div class="by">designed by ' + esc(g.student) + '</div>'
+      : '<div class="by none">name to add</div>';
+    const q = g.quote ? '<div class="quote">\u201C' + esc(g.quote) + '\u201D</div>' : '';
+    const tagCls = g.genre === 'Draft' ? 'tag draft' : 'tag';
+    return '<a class="card" data-file="' + esc(g.file) + '" href="' + esc(BASE + g.file) + '">' +
+      poster(g) +
+      '<div class="body"><div class="name">' + esc(g.title) + '</div>' + by +
+      '<div class="blurb">' + esc(g.blurb) + '</div>' + q +
+      '<div class="foot"><span class="' + tagCls + '">' + esc(g.genre) + '</span>' +
+      '<span class="ctl">' + esc(g.controls) + '</span></div></div></a>';
+  }).join('');
+  document.getElementById('count').textContent =
+    list.length + ' of ' + GAMES.length + ' games' + (filter === 'All' ? '' : ' \u2014 ' + filter);
+  applyStatus();
+}
+
+/* --- quietly check which files are actually up there ------------------ */
+const status = {};                      // file -> true (there) / false (missing)
+function applyStatus(){
+  document.querySelectorAll('.card').forEach(card => {
+    const f = card.dataset.file;
+    if (status[f] === false){
+      card.classList.add('off');
+      const foot = card.querySelector('.ctl');
+      if (foot){ foot.textContent = 'not uploaded yet'; foot.className = 'missing'; }
+    }
+  });
+}
+async function checkAll(){
+  await Promise.all(GAMES.map(async g => {
+    try {
+      const r = await fetch(BASE + g.file, { method: 'HEAD' });
+      status[g.file] = r.status !== 404;   // anything but a clear 404 counts as there
+    } catch {
+      status[g.file] = true;               // can't check (offline / USB) — assume fine
+    }
+  }));
+  applyStatus();
+}
+
+render();
+checkAll();
+</script>
+</body>
+</html>
