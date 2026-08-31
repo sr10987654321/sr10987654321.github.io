@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Squishy Chase</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#f7b8cf;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#3a2a34;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f2a8c4;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#bfe6f5;touch-action:none;}
+  #pad{position:absolute;inset:auto 0 0 0;height:36%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 3% 3%;}
+  #dpad{position:relative;width:31vmin;height:21vmin;min-width:138px;min-height:94px;pointer-events:auto;}
+  .dbtn{position:absolute;width:9.5vmin;height:9.5vmin;min-width:44px;min-height:44px;
+        background:#f0669a;border:3px solid rgba(50,20,35,.6);border-radius:24%;
+        display:flex;align-items:center;justify-content:center;color:#40121f;
+        font-weight:bold;font-size:3.4vmin;opacity:.8;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+  .dbtn:active{opacity:.99;transform:translateY(2px);}
+  #dup{left:10.5vmin;top:0;} #ddown{left:10.5vmin;bottom:0;}
+  #dleft{left:0;top:5.3vmin;} #dright{left:21vmin;top:5.3vmin;}
+  .cluster{display:flex;gap:2.4vmin;pointer-events:auto;align-items:flex-end;}
+  .btn{width:12.5vmin;height:12.5vmin;min-width:54px;min-height:54px;border-radius:50%;
+       border:3px solid rgba(50,30,20,.6);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:2.7vmin;color:#3a2a10;opacity:.86;
+       box-shadow:0 3px 0 rgba(0,0,0,.25);text-align:center;line-height:1.05;}
+  .btn:active{transform:translateY(2px);opacity:1;}
+  .b1{background:#f2a03a;} .b2{background:#c8ccd4;}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.1vmin;color:#5a3a48;opacity:.9;}
+  .btn-wrap{position:relative;}
+  #rotate{position:fixed;inset:0;background:#f2a8c4;display:none;color:#3a2a34;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){ #rotate{display:flex;} }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div id="dpad">
+        <div class="dbtn" id="dup"    data-k="up">▲</div>
+        <div class="dbtn" id="dleft"  data-k="left">◀</div>
+        <div class="dbtn" id="dright" data-k="right">▶</div>
+        <div class="dbtn" id="ddown"  data-k="down">▼</div>
+      </div>
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn b2" data-k="horn">HORN</div><div class="lbl">BUTTON 2</div></div>
+        <div class="btn-wrap"><div class="btn b1" data-k="give">GIVE</div><div class="lbl">BUTTON 1 (X)</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🐸<br>Squishy Chase plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   SQUISHY CHASE
+   Pixel Quest — Hilton Primary School
+   "You are a squishy delivery driver. You have 1 minute to drive squishies
+    to the children. If the teacher catches you — you have 3 lives."
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 28;
+const GROUND_Y = 214;
+const ROUND_TIME = 60;                  // "you have 1 minute"
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col; c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const VAN = bake([
+  "..kkkkkkkkkkkkkk........",
+  ".kbbbbbbbbbbbbbbk.......",
+  ".kbppppppppppppbk.......",
+  ".kbppppppppppppbkkkkkk..",
+  ".kbppppppppppppbkwwwwk..",
+  ".kbppppppppppppbkwwwwk..",
+  ".kbbbbbbbbbbbbbbkbbbbbk.",
+  ".kbbbbbbbbbbbbbbbbbbbbk.",
+  ".kkkkkkkkkkkkkkkkkkkkkk.",
+  "...kkkk......kkkk.......",
+  "..kggggk....kggggk......",
+  "..kggggk....kggggk......",
+  "...kkkk......kkkk.......",
+  "........................",
+], { k:"#2a2418", b:"#f06a9a", p:"#7ad0e8", w:"#cfe8f5", g:"#3a3a44" });
+
+const KID_ROWS = [
+  "..kkkkkk..",
+  ".khhhhhhk.",
+  "khhhhhhhhk",
+  ".kkkkkkkk.",
+  "..kssssk..",
+  "..kessek..",
+  "..kssssk..",
+  ".kcccccck.",
+  "kcccccccck",
+  ".kcccccck.",
+  "..kppppk..",
+  "..kpkkpk..",
+  "..kok.kok.",
+  "..kk..kk..",
+];
+const KIDS = [
+  bake(KID_ROWS, { k:"#2a1c24", h:"#4a2c18", s:"#e8b088", e:"#2a1c24", c:"#f0669a", p:"#4a6ad0", o:"#3a3028" }),
+  bake(KID_ROWS, { k:"#2a1c24", h:"#8a5a20", s:"#d8a070", e:"#2a1c24", c:"#5ac86a", p:"#e8a03a", o:"#3a3028" }),
+  bake(KID_ROWS, { k:"#2a1c24", h:"#241810", s:"#c08050", e:"#2a1c24", c:"#8b6ad6", p:"#3aa8c8", o:"#3a3028" }),
+];
+const KID_HAPPY = bake(KID_ROWS, { k:"#2a1c24", h:"#4a2c18", s:"#e8b088", e:"#2a1c24", c:"#ffd24a", p:"#4a6ad0", o:"#3a3028" });
+
+const TEACHER = bake([
+  "...kkkkkk...",
+  "..khhhhhhk..",
+  ".khhhhhhhhk.",
+  ".kkkkkkkkkk.",
+  "..kssssssk..",
+  "..kessssek..",
+  "..kssmmssk..",
+  ".kcccccccck.",
+  "kcccccccccck",
+  "kcccccccccck",
+  ".kcccccccck.",
+  "..kcccccck..",
+  "..kppppppk..",
+  "..kppkkppk..",
+  "..kppk.kppk.",
+  "..kppk.kppk.",
+  "..kok...kok.",
+  "..kkk...kkk.",
+], { k:"#241820", h:"#5a3a5a", s:"#e8b088", e:"#241820", m:"#a04a5a", c:"#3a5a9a", p:"#2a3050", o:"#241820" });
+
+const SQUISHY = bake([
+  ".kk....kk.",
+  "kwek..kewk",
+  "kwwkkkkwwk",
+  "kggggggggk",
+  "kggggggggk",
+  "kggrrrrggk",
+  "kggggggggk",
+  ".kggggggk.",
+  "..kkkkkk..",
+], { k:"#1a3a18", g:"#6ad04a", w:"#ffffff", e:"#1a1a1a", r:"#e05a7a" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){ const A = window.AudioContext || window.webkitAudioContext; if (A) AC = new A(); }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type, vol, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f, AC.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
+  g.gain.setValueAtTime(vol == null ? .1 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + d);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + d + .02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => { setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? .1 : vol), t * 1000); t += n[1] * .85; });
+}
+const SFX = {
+  jump:    () => tone(400, .1, 'square', .08, 720),
+  deliver: () => melody([[700,.07],[980,.07],[1320,.13]], 'square', .12),
+  horn:    () => { tone(320, .16, 'sawtooth', .1); setTimeout(() => tone(260, .18, 'sawtooth', .1), 90); },
+  caught:  () => melody([[420,.14],[300,.16],[200,.28]], 'sawtooth', .14),
+  spin:    () => tone(240, .16, 'square', .12, 90),
+  level:   () => melody([[660,.1],[880,.1],[1180,.2]], 'square', .12),
+  over:    () => melody([[330,.2],[240,.22],[150,.5]], 'triangle', .13),
+  start:   () => melody([[520,.09],[700,.09],[930,.16]], 'square', .12),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { up:false, down:false, left:false, right:false, give:false, horn:false };
+const KEYMAP = {
+  ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+  w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right',
+  x:'give', X:'give', ' ':'give', Enter:'give', z:'horn', Z:'horn', Shift:'horn'
+};
+let giveEdge = false, hornEdge = false, jumpEdge = false, anyEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){
+    e.preventDefault();
+    if (!keys[k] && k === 'give') giveEdge = true;
+    if (!keys[k] && k === 'horn') hornEdge = true;
+    if (!keys[k] && k === 'up') jumpEdge = true;
+    keys[k] = true; anyEdge = true; initAudio();
+  }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.dbtn, .btn').forEach(b => {
+  const k = b.dataset.k;
+  const on = e => {
+    e.preventDefault(); initAudio();
+    if (!keys[k] && k === 'give') giveEdge = true;
+    if (!keys[k] && k === 'horn') hornEdge = true;
+    if (!keys[k] && k === 'up') jumpEdge = true;
+    keys[k] = true; anyEdge = true;
+  };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); anyEdge = true; });
+
+/* ------------------------------------------------------------------- game */
+const GRAV = 950, JUMP_V = -302, RUN = 98;
+
+let state = 'title';
+let score = 0, best = 0, lives = 3, level = 1, delivered = 0, deliveredTotal = 0;
+let clock = ROUND_TIME, invul = 0, flashT = 0, bannerT = 0, bannerText = '';
+let hornT = 0, hornCool = 0, celebrateT = 0;
+let platforms = [], kids = [], spinners = [], sparkles = [], floats = [];
+
+const van = { x: 20, y: 40, w: 22, h: 13, vx: 0, vy: 0, onGround: false, dir: 1, coyote: 0, dropT: 0 };
+const teacher = { x: 280, y: GROUND_Y - 18, w: 12, h: 18, vy: 0, onGround: false, dir: -1, jumpCool: 0, stun: 0, chasing: false, dropT: 0 };
+
+function banner(t){ bannerText = t; bannerT = 2.0; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#fff', t: 1.1 }); }
+function sparkle(x, y, n, col){
+  for (let i = 0; i < n; i++)
+    sparkles.push({ x, y, vx: (Math.random() - .5) * 90, vy: -Math.random() * 80 - 10, t: .7,
+                    col: col || ['#f0669a','#6ad04a','#f2a03a','#7ad0e8','#8b6ad6'][Math.floor(Math.random()*5)] });
+}
+
+function makeTier(y, n){
+  const gaps = [];
+  let total = 0;
+  for (let i = 0; i < n - 1; i++){ const g = 34 + Math.random() * 16; gaps.push(g); total += g; }
+  const w = (312 - total) / n;
+  const out = [];
+  let x = 4;
+  for (let i = 0; i < n; i++){ out.push({ x, y, w }); x += w + (gaps[i] || 0); }
+  return out;
+}
+
+function buildLevel(lvl){
+  platforms = [{ x: 0, y: GROUND_Y, w: BASE_W, ground: true }];
+  const tiers = [176, 138, 100, 64];
+  const tierPlats = [];
+  tiers.forEach((y, i) => {
+    const t = makeTier(y, i === 3 ? 2 : 3);
+    tierPlats.push(t);
+    platforms.push(...t);
+  });
+
+  // the spinning spinner sits in the gaps between platforms
+  spinners = [];
+  const wanted = Math.min(4, 1 + Math.floor(lvl / 2));
+  const gapSpots = [];
+  tierPlats.forEach(t => {
+    for (let i = 0; i < t.length - 1; i++)
+      gapSpots.push({ x: t[i].x + t[i].w + (t[i + 1].x - (t[i].x + t[i].w)) / 2, y: t[i].y - 14 });
+  });
+  for (let i = gapSpots.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [gapSpots[i], gapSpots[j]] = [gapSpots[j], gapSpots[i]];
+  }
+  for (let i = 0; i < wanted && i < gapSpots.length; i++)
+    spinners.push({ x: gapSpots[i].x, y: gapSpots[i].y, a: Math.random() * 6, speed: 2.2 + lvl * 0.25 });
+
+  // the kids waiting for a squishy, spread over the ground and the lower tiers
+  kids = [];
+  const n = Math.min(9, 4 + lvl);
+  const homes = [platforms[0]].concat(tierPlats[0], tierPlats[1], tierPlats[2]);
+  for (let i = 0; i < n; i++){
+    const p = homes[Math.floor(Math.random() * homes.length)];
+    const x = p.x + 8 + Math.random() * Math.max(4, p.w - 22);
+    kids.push({ x, y: p.y - 14, p, dir: Math.random() < .5 ? -1 : 1,
+                speed: 20 + Math.random() * 14, kind: i % KIDS.length,
+                got: false, cheer: 0 });
+  }
+
+  van.x = 12; van.y = 64 - 14; van.vx = 0; van.vy = 0; van.onGround = false; van.dir = 1;
+  teacher.x = 286; teacher.y = GROUND_Y - 18; teacher.vy = 0; teacher.jumpCool = 0; teacher.stun = 0;
+  delivered = 0; clock = ROUND_TIME; invul = 1.2; hornT = 0; hornCool = 0;
+  sparkles = []; floats = [];
+  banner('LEVEL ' + lvl + ' — ' + n + ' SQUISHIES TO DELIVER');
+}
+
+function resetGame(){
+  score = 0; lives = 3; level = 1; deliveredTotal = 0; celebrateT = 0;
+  buildLevel(1);
+}
+
+/* -------------------------------------------------------------- physics */
+function landOn(ent){
+  // one-way platforms: you land on them from above, and jump up through them
+  if (ent.vy < 0) return;
+  if (ent.dropT > 0) return;              // holding down drops you through
+  for (const p of platforms){
+    if (p.ground) continue;
+    const prevBottom = ent.py + ent.h;
+    const bottom = ent.y + ent.h;
+    if (ent.x + ent.w > p.x && ent.x < p.x + p.w &&
+        prevBottom <= p.y + 2 && bottom >= p.y){
+      ent.y = p.y - ent.h; ent.vy = 0; ent.onGround = true;
+      return;
+    }
+  }
+  const g = platforms[0];
+  if (ent.py + ent.h <= g.y + 2 && ent.y + ent.h >= g.y){
+    ent.y = g.y - ent.h; ent.vy = 0; ent.onGround = true;
+  }
+}
+
+function loseLife(reason){
+  if (invul > 0) return;
+  lives--; invul = 2.8; flashT = 0.4;
+  SFX.caught();
+  addFloat(van.x - 10, van.y - 12, reason, '#e0504a');
+  if (lives <= 0){
+    state = 'over'; best = Math.max(best, score);
+    setTimeout(SFX.over, 340);
+    return;
+  }
+  van.x = 12; van.y = 50; van.vx = 0; van.vy = 0;
+  teacher.x = 286; teacher.y = GROUND_Y - 18; teacher.stun = 2.4;
+}
+
+/* -------------------------------------------------------------- gameplay */
+function updatePlay(dt){
+  if (bannerT > 0) bannerT -= dt;
+  if (invul > 0) invul -= dt;
+  if (flashT > 0) flashT -= dt;
+  if (hornT > 0) hornT -= dt;
+  if (hornCool > 0) hornCool -= dt;
+
+  if (celebrateT > 0){
+    celebrateT -= dt;
+    if (celebrateT <= 0){ level++; buildLevel(level); }
+    return;
+  }
+
+  clock -= dt;
+  if (clock <= 0){
+    clock = 0;
+    state = 'over'; best = Math.max(best, score);
+    banner('TIME UP');
+    setTimeout(SFX.over, 260);
+    return;
+  }
+
+  // drive
+  van.py = van.y;
+  let dx = 0;
+  if (keys.left) dx -= 1;
+  if (keys.right) dx += 1;
+  if (dx) van.dir = dx;
+  van.x += dx * RUN * dt;
+  van.x = Math.max(0, Math.min(BASE_W - van.w, van.x));
+
+  // the big joystick is what you use to go up
+  if (van.onGround) van.coyote = 0.1; else van.coyote -= dt;
+  if (jumpEdge && van.coyote > 0){ van.vy = JUMP_V; van.onGround = false; van.coyote = 0; SFX.jump(); }
+  jumpEdge = false;
+
+  // joystick down drops you through a platform to the level below
+  if (van.dropT > 0) van.dropT -= dt;
+  if (keys.down && van.onGround && van.y + van.h < GROUND_Y - 4){
+    van.dropT = 0.26; van.onGround = false; van.vy = 40;
+  }
+  van.vy += GRAV * dt;
+  if (van.vy > 520) van.vy = 520;
+  van.y += van.vy * dt;
+  van.onGround = false;
+  landOn(van);
+  if (van.y > BASE_H){ van.y = 40; van.x = 12; van.vy = 0; }
+
+  // Button 2 — a beep on the horn stops the kids so you can catch them
+  if (hornEdge && hornCool <= 0){ hornT = 2.0; hornCool = 5.0; teacher.stun = 2.0; SFX.horn(); banner('BEEP BEEP!'); }
+  hornEdge = false;
+
+  // the kids wander along their platform
+  kids.forEach(k => {
+    if (k.cheer > 0) k.cheer -= dt;
+    if (k.got || hornT > 0) return;
+    k.x += k.dir * k.speed * dt;
+    if (k.x < k.p.x + 3){ k.x = k.p.x + 3; k.dir = 1; }
+    if (k.x > k.p.x + k.p.w - 13){ k.x = k.p.x + k.p.w - 13; k.dir = -1; }
+  });
+
+  // Button 1 (X) — give the squishy to the kids
+  if (giveEdge){
+    let target = null, bd = 1e9;
+    kids.forEach(k => {
+      if (k.got) return;
+      const d = Math.hypot(k.x + 5 - (van.x + 11), k.y + 7 - (van.y + 7));
+      if (d < 26 && d < bd){ bd = d; target = k; }
+    });
+    if (target){
+      target.got = true; target.cheer = 1.4;
+      delivered++; deliveredTotal++;
+      score += 100;
+      addFloat(target.x - 12, target.y - 12, 'SQUISHY! +100', '#6ad04a');
+      sparkle(target.x + 5, target.y + 4, 12);
+      SFX.deliver();
+      if (delivered >= kids.length){
+        const bonus = Math.round(clock) * 10;
+        score += bonus;
+        celebrateT = 2.4;
+        banner('ALL DELIVERED!  TIME BONUS +' + bonus);
+        SFX.level();
+      }
+    } else {
+      addFloat(van.x, van.y - 12, 'NO KID HERE', '#e0a04a');
+    }
+  }
+  giveEdge = false;
+
+  // The teacher patrols her level (Layla drew her with left/right arrows) and
+  // only gives chase when you're on it with her. Other levels are safe-ish.
+  teacher.py = teacher.y;
+  if (teacher.stun > 0) teacher.stun -= dt;
+  const sameLevel = Math.abs((teacher.y + 9) - (van.y + 7)) < 30;
+  const tSpeed = Math.min(80, 48 + level * 5);
+  if (teacher.stun > 0){
+    teacher.chasing = false;
+  } else if (sameLevel){
+    teacher.chasing = true;
+    const towards = Math.sign((van.x + 11) - (teacher.x + 6));
+    teacher.x += towards * tSpeed * dt;
+    teacher.dir = towards || teacher.dir;
+  } else {
+    teacher.chasing = false;
+    teacher.x += teacher.dir * tSpeed * 0.45 * dt;
+    if (teacher.x < 2){ teacher.x = 2; teacher.dir = 1; }
+    if (teacher.x > BASE_W - teacher.w - 2){ teacher.x = BASE_W - teacher.w - 2; teacher.dir = -1; }
+  }
+  teacher.x = Math.max(0, Math.min(BASE_W - teacher.w, teacher.x));
+  if (teacher.jumpCool > 0) teacher.jumpCool -= dt;
+  // she changes level now and then so she can't be dodged forever
+  if (teacher.onGround && teacher.stun <= 0 && teacher.jumpCool <= 0 &&
+      van.y + van.h < teacher.y - 6 && Math.random() < 0.6 * dt){
+    teacher.vy = JUMP_V; teacher.onGround = false; teacher.jumpCool = 2.4;
+  }
+  // she can come down after you too
+  if (teacher.dropT > 0) teacher.dropT -= dt;
+  if (teacher.onGround && teacher.stun <= 0 && van.y > teacher.y + 20 &&
+      teacher.y + teacher.h < GROUND_Y - 4 && Math.random() < 0.9 * dt){
+    teacher.dropT = 0.26; teacher.onGround = false; teacher.vy = 40;
+  }
+  teacher.vy += GRAV * dt;
+  if (teacher.vy > 520) teacher.vy = 520;
+  teacher.y += teacher.vy * dt;
+  teacher.onGround = false;
+  landOn(teacher);
+  if (teacher.y > BASE_H){ teacher.y = GROUND_Y - 18; teacher.vy = 0; }
+
+  if (Math.abs((teacher.x + 6) - (van.x + 11)) < 13 &&
+      Math.abs((teacher.y + 9) - (van.y + 7)) < 15){
+    loseLife('CAUGHT!');
+    if (state !== 'play') return;
+  }
+
+  // the spinning spinner
+  spinners.forEach(s => {
+    s.a += s.speed * dt;
+    if (Math.hypot(s.x - (van.x + 11), s.y - (van.y + 7)) < 12){
+      loseLife('SPINNER!');
+    }
+  });
+  if (state !== 'play') return;
+
+  for (let i = sparkles.length - 1; i >= 0; i--){
+    const p = sparkles[i];
+    p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 210 * dt;
+    if (p.t <= 0) sparkles.splice(i, 1);
+  }
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 16 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+}
+
+/* ------------------------------------------------------------------ paint */
+const BANDS = ['#bfe6f5', '#f5b8d0', '#f7d98a', '#c8ee9a', '#a8d8f0'];
+
+function drawWorld(){
+  // rainbow sky bands, like Layla's screen plan
+  const h = (BASE_H - HUD_H) / BANDS.length;
+  BANDS.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, HUD_H + i * h, BASE_W, h + 1); });
+  // sun
+  ctx.fillStyle = '#ffe14a';
+  ctx.beginPath(); ctx.arc(288, HUD_H + 16, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,225,74,0.45)';
+  ctx.beginPath(); ctx.arc(288, HUD_H + 16, 17, 0, Math.PI * 2); ctx.fill();
+
+  platforms.forEach(p => {
+    if (p.ground){
+      ctx.fillStyle = '#8a6a4a'; ctx.fillRect(0, GROUND_Y, BASE_W, BASE_H - GROUND_Y);
+      ctx.fillStyle = '#6aa83a'; ctx.fillRect(0, GROUND_Y, BASE_W, 5);
+      ctx.fillStyle = '#5a8a30';
+      for (let x = 4; x < BASE_W; x += 14) ctx.fillRect(x, GROUND_Y + 6, 2, 3);
+    } else {
+      ctx.fillStyle = '#a86ad0'; ctx.fillRect(Math.round(p.x), p.y, Math.round(p.w), 7);
+      ctx.fillStyle = '#c89ae8'; ctx.fillRect(Math.round(p.x), p.y, Math.round(p.w), 2);
+      ctx.fillStyle = '#7a4aa0'; ctx.fillRect(Math.round(p.x), p.y + 5, Math.round(p.w), 2);
+    }
+  });
+}
+
+function drawSpinner(s){
+  ctx.save();
+  ctx.translate(Math.round(s.x), Math.round(s.y));
+  ctx.rotate(s.a);
+  ctx.fillStyle = '#2f9aa8';
+  ctx.fillRect(-15, -3, 30, 6);
+  ctx.fillRect(-3, -15, 6, 30);
+  ctx.fillStyle = '#7ae0e8';
+  ctx.fillRect(-13, -1, 26, 2);
+  ctx.fillRect(-1, -13, 2, 26);
+  ctx.fillStyle = '#1a6a74';
+  ctx.fillRect(-4, -4, 8, 8);
+  ctx.restore();
+}
+
+function drawPlay(){
+  drawWorld();
+  spinners.forEach(drawSpinner);
+
+  kids.forEach(k => {
+    const spr = k.cheer > 0 ? KID_HAPPY : KIDS[k.kind];
+    const bob = k.cheer > 0 ? Math.abs(Math.sin(k.cheer * 14)) * 3 : 0;
+    ctx.drawImage(spr.img, Math.round(k.x), Math.round(k.y - bob));
+    if (!k.got){
+      // a little "want one!" bubble
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillRect(Math.round(k.x) + 8, Math.round(k.y) - 9, 8, 7);
+      ctx.fillStyle = '#6ad04a';
+      ctx.fillRect(Math.round(k.x) + 10, Math.round(k.y) - 7, 4, 3);
+    }
+  });
+
+  ctx.save();
+  if (teacher.dir < 0){
+    ctx.translate(Math.round(teacher.x) + TEACHER.w, Math.round(teacher.y));
+    ctx.scale(-1, 1); ctx.drawImage(TEACHER.img, 0, 0);
+  } else ctx.drawImage(TEACHER.img, Math.round(teacher.x), Math.round(teacher.y));
+  ctx.restore();
+
+  const hidden = invul > 0 && Math.floor(invul * 12) % 2 === 0;
+  if (!hidden){
+    ctx.save();
+    if (van.dir < 0){
+      ctx.translate(Math.round(van.x) + VAN.w, Math.round(van.y - 1));
+      ctx.scale(-1, 1); ctx.drawImage(VAN.img, 0, 0);
+    } else ctx.drawImage(VAN.img, Math.round(van.x), Math.round(van.y - 1));
+    ctx.restore();
+  }
+
+  if (hornT > 0){
+    ctx.strokeStyle = 'rgba(255,255,255,' + (hornT / 2).toFixed(2) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(van.x + 11, van.y + 7, 26 + (2 - hornT) * 14, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  sparkles.forEach(p => { ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2); });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  if (flashT > 0){
+    ctx.fillStyle = 'rgba(220,60,70,' + (flashT * 0.6).toFixed(2) + ')';
+    ctx.fillRect(0, HUD_H, BASE_W, BASE_H - HUD_H);
+  }
+
+  drawHUD();
+  if (bannerT > 0 || celebrateT > 0){
+    ctx.globalAlpha = Math.min(1, Math.max(bannerT, celebrateT));
+    centreText(bannerText, 118, 15, '#ffffff', '#4a2a3a');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHeart(x, y, on){
+  ctx.fillStyle = on ? '#f0446a' : '#b8a8b0';
+  ctx.fillRect(x, y + 1, 3, 4); ctx.fillRect(x + 5, y + 1, 3, 4);
+  ctx.fillRect(x + 1, y, 2, 1); ctx.fillRect(x + 6, y, 2, 1);
+  ctx.fillRect(x + 1, y + 5, 6, 1);
+  ctx.fillRect(x + 2, y + 6, 4, 1);
+  ctx.fillRect(x + 3, y + 7, 2, 1);
+}
+function drawHUD(){
+  ctx.fillStyle = '#fdf2f8'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#f0669a'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#c0407a'; ctx.fillText('SCORE ' + score, 5, 3);
+  ctx.fillStyle = '#3a8a3a'; ctx.fillText('DELIVERED ' + delivered + '/' + kids.length, 5, 15);
+
+  const mm = Math.floor(clock / 60), ss = Math.floor(clock % 60);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px "Courier New", monospace';
+  ctx.fillStyle = clock < 12 ? '#e0402a' : '#3a2a34';
+  ctx.fillText(mm + ':' + String(ss).padStart(2, '0'), 160, 8);
+  ctx.textAlign = 'left';
+
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.fillStyle = '#5a3a48'; ctx.fillText('LEVEL ' + level, 226, 3);
+  for (let i = 0; i < 3; i++) drawHeart(226 + i * 12, 15, i < lives);
+
+  ctx.fillStyle = hornCool <= 0 ? '#4a8ab0' : '#a8b0b8';
+  ctx.fillText('HORN', 288, 3);
+}
+
+function centreText(text, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+
+function rainbowBackdrop(){
+  const cols = ['#f7b8cf', '#f7d98a', '#c8ee9a', '#a8d8f0', '#c8b0e8', '#f5a8a8'];
+  const h = BASE_H / cols.length;
+  cols.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, i * h, BASE_W, h + 1); });
+}
+
+function drawTitle(){
+  rainbowBackdrop();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('SQUISHY', 52, 30, '#2f9aa8', '#ffffff');
+  centreText('CHASE', 84, 30, '#f0669a', '#ffffff');
+  ctx.drawImage(SQUISHY.img, 62, 44);
+  ctx.drawImage(SQUISHY.img, 246, 72);
+
+  ctx.drawImage(VAN.img, 68, 130);
+  ctx.drawImage(KIDS[0].img, 148, 130);
+  ctx.drawImage(TEACHER.img, 216, 126);
+
+  centreText('You\u2019re the squishy delivery driver.', 160, 11, '#3a2a34');
+  centreText('One minute to get a squishy to every kid —', 174, 10, '#3a2a34');
+  centreText('and don\u2019t let the teacher catch you.', 186, 10, '#c0407a');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO START', 208, 12, '#2f7a8a', '#ffffff');
+  ctx.globalAlpha = 1;
+  centreText('Joystick drives and goes up  •  X gives a squishy  •  B2 horn', 226, 8, '#5a3a48');
+}
+
+function drawOver(){
+  rainbowBackdrop();
+  ctx.fillStyle = 'rgba(40,20,34,0.55)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  const caught = lives <= 0;
+  centreText(caught ? 'THE TEACHER GOT YOU' : 'OUT OF TIME', 54, 22, '#ffd6e4', '#40202f');
+  ctx.drawImage(TEACHER.img, 152, 84);
+  centreText('SCORE ' + score, 122, 22, '#ffe14a', '#40202f');
+  centreText('SQUISHIES DELIVERED ' + deliveredTotal + '   •   LEVEL ' + level, 150, 10, '#d8f0c0', '#40202f');
+  centreText('BEST ' + best, 166, 10, '#ffd6e4', '#40202f');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO TRY AGAIN', 202, 11, '#8ee07a', '#40202f');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else {
+    const go = giveEdge || jumpEdge || hornEdge || anyEdge;
+    giveEdge = false; jumpEdge = false; hornEdge = false; anyEdge = false;
+    if (go){ initAudio(); SFX.start(); resetGame(); state = 'play'; }
+  }
+  anyEdge = false;
+}
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if (state === 'title') drawTitle();
+  else if (state === 'play') drawPlay();
+  else if (state === 'over') drawOver();
+  ctx.restore();
+}
+function frame(now){
+  let delta = (now - last) / 1000; last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

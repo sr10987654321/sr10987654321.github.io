@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Do Nortys</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#f2c800;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#2a2010;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#e8bf00;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#131828;touch-action:none;}
+  #pad{position:absolute;inset:auto 0 0 0;height:34%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 3% 3%;}
+  .cluster{display:flex;gap:2.4vmin;pointer-events:auto;align-items:flex-end;}
+  .btn{width:13vmin;height:13vmin;min-width:56px;min-height:56px;border-radius:50%;
+       border:3px solid rgba(40,16,10,.7);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:3.4vmin;color:#3a1008;opacity:.82;
+       box-shadow:0 3px 0 rgba(0,0,0,.3);text-align:center;line-height:1.05;}
+  .btn:active{transform:translateY(2px);opacity:1;}
+  .stick{background:#e03a2a;}
+  .b1{background:#e03a2a;}
+  .dead{width:12vmin;height:12vmin;min-width:50px;min-height:50px;border-radius:50%;
+        background:rgba(120,110,100,.2);border:3px solid rgba(120,110,100,.32);
+        display:flex;align-items:center;justify-content:center;pointer-events:none;
+        color:rgba(80,70,60,.55);font-size:2vmin;text-align:center;line-height:1.1;}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.1vmin;color:#4a3a10;opacity:.9;}
+  .btn-wrap{position:relative;}
+  #rotate{position:fixed;inset:0;background:#e8bf00;display:none;color:#2a2010;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){ #rotate{display:flex;} }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn stick" data-k="left">◀</div><div class="lbl">LEFT</div></div>
+        <div class="btn-wrap"><div class="btn stick" data-k="right">▶</div><div class="lbl">RIGHT</div></div>
+      </div>
+      <div class="cluster">
+        <div class="dead">BUTTON&nbsp;2<br>doesn't work</div>
+        <div class="btn-wrap"><div class="btn b1" data-k="shoot">SHOOT</div><div class="lbl">BUTTON 1</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🍩<br>Do Nortys plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   DO NORTYS
+   Pixel Quest — Hilton Primary School
+   "Angry policemen, hungry, and you have to feed them before time's out
+    or you get sent to prison. You are the little biker."
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 40;                       // Sadie's three-line panel: score, time, lives
+const MATCH_TIME = 120;                 // "starting on 2 mins"
+const DROP_EVERY = 5;                   // "the police tribe moves down every 5 seconds"
+const COLS = 10, ROWS = 3;
+const PLAYER_Y = 206, DANGER_Y = 190;
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col; c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const COP_ROWS_A = [
+  "...kkkkkk...",
+  "..kggggggk..",
+  ".kbbbbbbbbk.",
+  "kbbbbbbbbbbk",
+  "kbwbbbbbbwbk",
+  "kbbbbyybbbbk",
+  "kbbbbbbbbbbk",
+  "kbbbbbbbbbbk",
+  ".kbbbbbbbbk.",
+  ".kbbbbbbbbk.",
+  "..kbbbbbbk..",
+  "..kbk..kbk..",
+  "..kkk..kkk..",
+];
+const COP_ROWS_B = [
+  "...kkkkkk...",
+  "..kggggggk..",
+  ".kbbbbbbbbk.",
+  "kbbbbbbbbbbk",
+  "kbwbbbbbbwbk",
+  "kbbbbyybbbbk",
+  "kbbbbbbbbbbk",
+  "kbbbbbbbbbbk",
+  ".kbbbbbbbbk.",
+  ".kbbbbbbbbk.",
+  "..kbbbbbbk..",
+  ".kbk....kbk.",
+  ".kkk....kkk.",
+];
+const COP_PAL = { k:"#101830", g:"#e8b83a", b:"#2f4aa8", w:"#ffffff", y:"#f0d040" };
+const COP_A = bake(COP_ROWS_A, COP_PAL);
+const COP_B = bake(COP_ROWS_B, COP_PAL);
+
+const BIKER = bake([
+  ".....kkkkkk.....",
+  "....khhhhhhk....",
+  "...khhhhhhhhk...",
+  "...kkkkkkkkkk...",
+  "....kssssssk....",
+  "....kessssek....",
+  "....kssssssk....",
+  "..kkjjjjjjjjkk..",
+  ".kjjjjjjjjjjjjk.",
+  ".kjjjjjjjjjjjjk.",
+  "..kjjjjjjjjjjk..",
+  "...kppppppppk...",
+  ".koooooooooook..",
+  "..koooooooook...",
+  "..k..........k..",
+  "................",
+], { k:"#1a1408", h:"#3a7ad0", s:"#e8b088", e:"#1a1408", j:"#2a2a38", p:"#4a4a58", o:"#f08a2a" });
+
+const DONUT = bake([
+  "..kkkkk..",
+  ".kpsppsk.",
+  "kppkkkppk",
+  "kpk...kpk",
+  "kpk...kpk",
+  "kpk...kpk",
+  "kppkkkppk",
+  ".kpspspk.",
+  "..kkkkk..",
+], { k:"#a05a30", p:"#f0a0c0", s:"#40c0a0" });
+
+const CUFFS = bake([
+  ".kk...kk.",
+  "kggk.kggk",
+  "kg.gkg.gk",
+  "kggk.kggk",
+  ".kk...kk.",
+], { k:"#2a2e38", g:"#c0c6d4" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){ const A = window.AudioContext || window.webkitAudioContext; if (A) AC = new A(); }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type, vol, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f, AC.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
+  g.gain.setValueAtTime(vol == null ? .1 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + d);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + d + .02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => { setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? .1 : vol), t * 1000); t += n[1] * .85; });
+}
+const SFX = {
+  shoot:   () => tone(560, .07, 'square', .08, 980),
+  fed:     () => melody([[820,.06],[1180,.1]], 'square', .11),   // explodes into confetti
+  cuff:    () => tone(260, .1, 'triangle', .07, 150),
+  hurt:    () => melody([[380,.14],[240,.22]], 'sawtooth', .13),
+  drop:    () => tone(150, .09, 'square', .09, 110),
+  prison:  () => melody([[300,.2],[230,.22],[150,.5]], 'triangle', .14),
+  win:     () => melody([[660,.12],[880,.12],[1046,.12],[1320,.3]], 'square', .13),
+  start:   () => melody([[520,.09],[700,.09],[930,.16]], 'square', .12),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { left:false, right:false, shoot:false };
+const KEYMAP = {
+  ArrowLeft:'left', ArrowRight:'right', a:'left', d:'right', A:'left', D:'right',
+  ' ':'shoot', z:'shoot', Z:'shoot', Enter:'shoot'
+};
+let anyEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){ e.preventDefault(); keys[k] = true; anyEdge = true; initAudio(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.btn').forEach(b => {
+  const k = b.dataset.k;
+  const on  = e => { e.preventDefault(); initAudio(); keys[k] = true; anyEdge = true; };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); anyEdge = true; });
+
+/* ------------------------------------------------------------------- game */
+let state = 'title';
+let score = 0, best = 0, lives = 3, clock = MATCH_TIME;
+let cops = [], donuts = [], cuffs = [], confetti = [], floats = [];
+let shields = [];
+let dir = 1, marchT = 0, dropT = DROP_EVERY, cuffT = 1.6, shootCool = 0;
+let invul = 0, flashT = 0, animFrame = 0, fed = 0, bannerT = 0, bannerText = '';
+
+const player = { x: 152, w: 16, h: 16 };
+
+function banner(t){ bannerText = t; bannerT = 2.0; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#fff', t: 1.0 }); }
+
+/* confetti, because "each time you feed a policeman they explode into confetti" */
+const CONFETTI_COLS = ['#f0a0c0', '#40c0a0', '#f0d040', '#8b6ad6', '#e8544a', '#5aa8e8', '#8ee07a'];
+function burstConfetti(x, y, n){
+  for (let i = 0; i < n; i++)
+    confetti.push({ x, y,
+      vx: (Math.random() - .5) * 140, vy: -Math.random() * 110 - 20,
+      t: 1.0, col: CONFETTI_COLS[Math.floor(Math.random() * CONFETTI_COLS.length)],
+      spin: Math.random() * 6 });
+}
+
+function buildShields(){
+  shields = [];
+  const bw = 7, bh = 4;                       // blocks per shield
+  for (let s = 0; s < 4; s++){
+    const ox = 34 + s * 68, oy = 168;
+    const blocks = [];
+    for (let by = 0; by < bh; by++)
+      for (let bx = 0; bx < bw; bx++){
+        // notch out the underside middle, like a classic bunker
+        if (by >= bh - 2 && bx >= 2 && bx <= bw - 3) continue;
+        blocks.push({ x: ox + bx * 5, y: oy + by * 4, w: 5, h: 4, hp: 2 });
+      }
+    shields.push({ blocks });
+  }
+}
+
+function buildCops(){
+  cops = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      cops.push({ col: c, row: r,
+                  x: 32 + c * 25, y: 54 + r * 24,
+                  alive: true,
+                  value: [30, 20, 10][r] });   // back row is worth the most
+}
+
+function resetGame(){
+  score = 0; lives = 3; clock = MATCH_TIME; fed = 0;
+  donuts = []; cuffs = []; confetti = []; floats = [];
+  dir = 1; marchT = 0; dropT = DROP_EVERY; cuffT = 1.6; shootCool = 0;
+  invul = 1.0; flashT = 0; animFrame = 0;
+  player.x = 152;
+  buildCops(); buildShields();
+  banner('FEED THE POLICE TRIBE!');
+}
+
+function aliveCops(){ return cops.filter(c => c.alive); }
+
+function loseHeart(reason){
+  if (invul > 0) return;
+  lives--; invul = 2.0; flashT = 0.4;
+  SFX.hurt();
+  addFloat(player.x - 12, PLAYER_Y - 14, reason, '#ff8a7a');
+  if (lives <= 0){
+    state = 'prison'; best = Math.max(best, score);
+    setTimeout(SFX.prison, 320);
+  }
+}
+
+/* -------------------------------------------------------------- gameplay */
+function updatePlay(dt){
+  if (bannerT > 0) bannerT -= dt;
+  if (invul > 0) invul -= dt;
+  if (flashT > 0) flashT -= dt;
+  if (shootCool > 0) shootCool -= dt;
+
+  clock -= dt;
+  if (clock <= 0){
+    clock = 0;
+    state = 'prison'; best = Math.max(best, score);
+    banner('TIME UP');
+    setTimeout(SFX.prison, 260);
+    return;
+  }
+
+  // joystick left and right only — up and down don't work, as written
+  if (keys.left)  player.x -= 104 * dt;
+  if (keys.right) player.x += 104 * dt;
+  player.x = Math.max(8, Math.min(BASE_W - player.w - 8, player.x));
+
+  // Button 1 shoots a donut
+  if (keys.shoot && shootCool <= 0 && donuts.length < 2){
+    shootCool = 0.34;
+    donuts.push({ x: player.x + 4, y: PLAYER_Y - 8 });
+    SFX.shoot();
+  }
+
+  // the police tribe marches
+  const live = aliveCops();
+  const pace = 0.62 - (1 - live.length / (COLS * ROWS)) * 0.46;
+  marchT += dt;
+  if (marchT >= Math.max(0.1, pace)){
+    marchT = 0;
+    animFrame ^= 1;
+    let hitEdge = false;
+    live.forEach(c => { if (c.x + dir * 6 < 8 || c.x + dir * 6 > BASE_W - 20) hitEdge = true; });
+    if (hitEdge) dir *= -1;
+    else live.forEach(c => { c.x += dir * 6; });
+  }
+
+  // "the police tribe moves down every 5 seconds"
+  dropT -= dt;
+  if (dropT <= 0){
+    dropT = DROP_EVERY;
+    const lowest = Math.max(...live.map(c => c.y));
+    if (lowest + 13 < DANGER_Y){
+      live.forEach(c => { c.y += 4; });
+      SFX.drop();
+    }
+  }
+  // right on top of you is dangerous, but it isn't an instant loss
+  if (live.some(c => c.y + 13 >= PLAYER_Y - 2 &&
+                     c.x + 12 > player.x && c.x < player.x + player.w)){
+    loseHeart('THEY GOT YOU!');
+    if (state !== 'play') return;
+  }
+
+  // "they shoot handcuffs at you"
+  cuffT -= dt;
+  if (cuffT <= 0){
+    // fewer police left means fewer of them throwing handcuffs
+    const share = live.length / (COLS * ROWS);
+    cuffT = Math.max(0.75, (1.4 + Math.random() * 1.0) / (0.35 + share * 0.65));
+    // only the front cop in each column can fire
+    const front = {};
+    live.forEach(c => { if (!front[c.col] || c.y > front[c.col].y) front[c.col] = c; });
+    const shooters = Object.values(front);
+    if (shooters.length){
+      const s = shooters[Math.floor(Math.random() * shooters.length)];
+      cuffs.push({ x: s.x + 2, y: s.y + 13 });
+      SFX.cuff();
+    }
+  }
+
+  // donuts going up
+  for (let i = donuts.length - 1; i >= 0; i--){
+    const d = donuts[i];
+    d.y -= 250 * dt;
+    if (d.y < HUD_H - 10){ donuts.splice(i, 1); continue; }
+    let gone = false;
+    for (const s of shields){
+      for (let j = s.blocks.length - 1; j >= 0; j--){
+        const b = s.blocks[j];
+        if (d.x + 6 > b.x && d.x + 3 < b.x + b.w && d.y + 8 > b.y && d.y < b.y + b.h){
+          b.hp--; if (b.hp <= 0) s.blocks.splice(j, 1);
+          gone = true; break;
+        }
+      }
+      if (gone) break;
+    }
+    if (gone){ donuts.splice(i, 1); continue; }
+    for (const c of live){
+      if (d.x + 7 > c.x && d.x + 2 < c.x + 12 && d.y + 8 > c.y && d.y < c.y + 13){
+        c.alive = false; fed++;
+        score += c.value;
+        burstConfetti(c.x + 6, c.y + 6, 16);
+        addFloat(c.x - 2, c.y - 8, '+' + c.value, '#f0d040');
+        SFX.fed();
+        donuts.splice(i, 1);
+        gone = true;
+        break;
+      }
+    }
+    if (gone) continue;
+  }
+
+  // handcuffs coming down
+  for (let i = cuffs.length - 1; i >= 0; i--){
+    const h = cuffs[i];
+    h.y += (96 + (MATCH_TIME - clock) * 0.25) * dt;
+    if (h.y > BASE_H){ cuffs.splice(i, 1); continue; }
+    let gone = false;
+    for (const s of shields){
+      for (let j = s.blocks.length - 1; j >= 0; j--){
+        const b = s.blocks[j];
+        if (h.x + 7 > b.x && h.x + 2 < b.x + b.w && h.y + 5 > b.y && h.y < b.y + b.h){
+          b.hp--; if (b.hp <= 0) s.blocks.splice(j, 1);
+          gone = true; break;
+        }
+      }
+      if (gone) break;
+    }
+    if (gone){ cuffs.splice(i, 1); continue; }
+    if (h.x + 7 > player.x && h.x + 2 < player.x + player.w &&
+        h.y + 5 > PLAYER_Y && h.y < PLAYER_Y + player.h){
+      cuffs.splice(i, 1);
+      loseHeart('CUFFED!');
+      if (state !== 'play') return;
+    }
+  }
+
+  // particles
+  for (let i = confetti.length - 1; i >= 0; i--){
+    const p = confetti[i];
+    p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 190 * dt; p.spin += dt * 8;
+    if (p.t <= 0) confetti.splice(i, 1);
+  }
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 16 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+
+  // fed the whole tribe
+  if (live.length === 0){
+    score += Math.round(clock) * 10;
+    state = 'win'; best = Math.max(best, score);
+    setTimeout(SFX.win, 220);
+  }
+}
+
+/* ------------------------------------------------------------------ paint */
+function drawPlay(){
+  ctx.fillStyle = '#131828'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  // a few stars, like the night scene on the cabinet
+  ctx.fillStyle = '#1e2540';
+  for (let i = 0; i < 40; i++) ctx.fillRect((i * 97) % BASE_W, HUD_H + (i * 53) % (BASE_H - HUD_H), 2, 2);
+
+  shields.forEach(s => s.blocks.forEach(b => {
+    ctx.fillStyle = b.hp > 1 ? '#e07a90' : '#a04a60';
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+  }));
+
+  cops.forEach(c => {
+    if (!c.alive) return;
+    ctx.drawImage((animFrame ? COP_B : COP_A).img, Math.round(c.x), Math.round(c.y));
+  });
+
+  donuts.forEach(d => ctx.drawImage(DONUT.img, Math.round(d.x), Math.round(d.y)));
+  cuffs.forEach(h => ctx.drawImage(CUFFS.img, Math.round(h.x), Math.round(h.y)));
+
+  const hidden = invul > 0 && Math.floor(invul * 12) % 2 === 0;
+  if (!hidden){
+    ctx.drawImage(BIKER.img, Math.round(player.x), PLAYER_Y);
+    ctx.fillStyle = '#1a1408';
+    ctx.beginPath(); ctx.arc(player.x + 3, PLAYER_Y + 15, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(player.x + 13, PLAYER_Y + 15, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  confetti.forEach(p => {
+    ctx.fillStyle = p.col;
+    const s = Math.abs(Math.sin(p.spin)) * 2 + 1;
+    ctx.globalAlpha = Math.min(1, p.t * 1.4);
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, Math.round(s));
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#131828'; ctx.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  if (flashT > 0){
+    ctx.fillStyle = 'rgba(220,50,40,' + (flashT * 0.6).toFixed(2) + ')';
+    ctx.fillRect(0, HUD_H, BASE_W, BASE_H - HUD_H);
+  }
+
+  drawHUD();
+  if (bannerT > 0){
+    ctx.globalAlpha = Math.min(1, bannerT);
+    centreText(bannerText, 150, 15, '#f0d040', '#131828');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHeart(x, y, on){
+  ctx.fillStyle = on ? '#e8546a' : '#3a3040';
+  ctx.fillRect(x, y + 1, 3, 4); ctx.fillRect(x + 5, y + 1, 3, 4);
+  ctx.fillRect(x + 1, y, 2, 1); ctx.fillRect(x + 6, y, 2, 1);
+  ctx.fillRect(x + 1, y + 5, 6, 1);
+  ctx.fillRect(x + 2, y + 6, 4, 1);
+  ctx.fillRect(x + 3, y + 7, 2, 1);
+}
+
+/* Sadie's three-line panel, in her order: score, time, lives */
+function drawHUD(){
+  ctx.fillStyle = '#0d1120'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#2f4aa8'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 11px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+
+  ctx.fillStyle = '#f0d040'; ctx.fillText('SCORE: ' + score, 8, 3);
+  const mm = Math.floor(clock / 60), ss = Math.floor(clock % 60);
+  ctx.fillStyle = clock < 20 ? '#ff7a5a' : '#ffffff';
+  ctx.fillText('TIME:  ' + mm + ':' + String(ss).padStart(2, '0') + ' mins', 8, 15);
+  ctx.fillStyle = '#ffffff'; ctx.fillText('LIVES:', 8, 27);
+  for (let i = 0; i < 3; i++) drawHeart(66 + i * 12, 27, i < lives);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#f0a0c0';
+  ctx.fillText('FED ' + fed + '/' + (COLS * ROWS), BASE_W - 8, 3);
+  ctx.fillStyle = '#8ea0c8';
+  ctx.fillText('DROP IN ' + Math.ceil(dropT) + 's', BASE_W - 8, 15);
+  ctx.textAlign = 'left';
+}
+
+function centreText(text, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+
+function drawTitle(){
+  ctx.fillStyle = '#f2c800'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.fillStyle = '#e8bd00';
+  for (let i = 0; i < 26; i++) ctx.fillRect((i * 73) % BASE_W, (i * 59) % BASE_H, 8, 8);
+
+  // a big donut, like the banner
+  ctx.fillStyle = '#e8a060';
+  ctx.beginPath(); ctx.arc(160, 96, 46, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f5aacd';
+  ctx.beginPath(); ctx.arc(160, 94, 40, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f2c800';
+  ctx.beginPath(); ctx.arc(160, 94, 15, 0, Math.PI * 2); ctx.fill();
+  const sp = ['#e8544a', '#5aa8e8', '#40c0a0', '#8b6ad6', '#f0d040'];
+  for (let i = 0; i < 12; i++){
+    const a = i * 0.83, r = 22 + (i % 3) * 6;
+    ctx.fillStyle = sp[i % sp.length];
+    ctx.fillRect(Math.round(160 + Math.cos(a) * r), Math.round(94 + Math.sin(a) * r), 4, 2);
+  }
+  centreText('DO NORTYS', 94, 20, '#2a2010', '#f5e0a0');
+
+  ctx.drawImage(COP_A.img, 42, 150);
+  ctx.drawImage(COP_A.img, 62, 150);
+  ctx.drawImage(BIKER.img, 250, 148);
+  ctx.drawImage(DONUT.img, 150, 152);
+
+  centreText('Angry policemen, hungry. Feed them before', 158, 10, '#2a2010');
+  centreText('time\u2019s out or you get sent to prison.', 171, 10, '#2a2010');
+  centreText('Pixel Quest — Hilton Primary School', 186, 9, '#5a4a10');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO START', 208, 12, '#c03a1a', '#f5e0a0');
+  ctx.globalAlpha = 1;
+  centreText('◀ ▶ move the biker  •  BUTTON 1 shoots donuts', 226, 9, '#5a4a10');
+}
+
+function drawPrison(){
+  ctx.fillStyle = '#1a1c28'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  // bars
+  ctx.fillStyle = '#4a4e5c';
+  for (let x = 20; x < BASE_W; x += 34) ctx.fillRect(x, 0, 7, BASE_H);
+  ctx.fillRect(0, 40, BASE_W, 6);
+  ctx.fillStyle = 'rgba(10,12,20,0.45)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  centreText('YOUR IN PRISON', 76, 26, '#e8546a', '#1a1c28');
+  centreText('SCORE ' + score, 116, 22, '#f0d040', '#1a1c28');
+  centreText('POLICE FED ' + fed + '/' + (COLS * ROWS) + '   •   BEST ' + best, 142, 10, '#c8d0e0', '#1a1c28');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO TRY AGAIN', 196, 11, '#8ee07a', '#1a1c28');
+  ctx.globalAlpha = 1;
+}
+
+function drawWin(){
+  ctx.fillStyle = '#f2c800'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  for (let i = 0; i < 90; i++){
+    ctx.fillStyle = CONFETTI_COLS[i % CONFETTI_COLS.length];
+    ctx.fillRect((i * 71) % BASE_W, (i * 47) % BASE_H, 3, 5);
+  }
+  ctx.fillStyle = 'rgba(242,200,0,0.55)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('EVERYONE FED!', 60, 26, '#c03a1a', '#f5e0a0');
+  centreText('No prison for you today', 88, 12, '#2a2010');
+  ctx.drawImage(BIKER.img, 152, 108);
+  centreText('FINAL SCORE ' + score, 148, 20, '#2a2010', '#f5e0a0');
+  centreText('TIME BONUS INCLUDED   •   BEST ' + best, 170, 10, '#5a4a10');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO PLAY AGAIN', 202, 11, '#c03a1a', '#f5e0a0');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else {
+    const go = keys.shoot || anyEdge;
+    anyEdge = false;
+    if (go){ initAudio(); SFX.start(); resetGame(); state = 'play'; }
+  }
+  anyEdge = false;
+}
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if (state === 'title') drawTitle();
+  else if (state === 'play') drawPlay();
+  else if (state === 'prison') drawPrison();
+  else if (state === 'win') drawWin();
+  ctx.restore();
+}
+function frame(now){
+  let delta = (now - last) / 1000; last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

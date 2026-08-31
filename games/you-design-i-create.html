@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>You Design I Create</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#f6c98a;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#3a2a20;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#efb877;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#f7d9a0;touch-action:none;}
+  #pad{position:absolute;inset:auto 0 0 0;height:34%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 3% 3%;}
+  .cluster{display:flex;gap:2.4vmin;pointer-events:auto;align-items:flex-end;}
+  .btn{width:13vmin;height:13vmin;min-width:56px;min-height:56px;border-radius:50%;
+       border:3px solid rgba(50,32,20,.65);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:2.7vmin;color:#3a2410;opacity:.84;
+       box-shadow:0 3px 0 rgba(0,0,0,.28);text-align:center;line-height:1.05;}
+  .btn:active{transform:translateY(2px);opacity:1;}
+  .stick{background:#f0a8c0;}
+  .b1{background:#f2d24a;} .b2{background:#8ec8e8;}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.1vmin;color:#5a4030;opacity:.9;}
+  .btn-wrap{position:relative;}
+  #rotate{position:fixed;inset:0;background:#efb877;display:none;color:#3a2a20;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){ #rotate{display:flex;} }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn stick" data-k="left">◀</div><div class="lbl">LEFT</div></div>
+        <div class="btn-wrap"><div class="btn stick" data-k="right">▶</div><div class="lbl">RIGHT</div></div>
+      </div>
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn b2" data-k="door">GET<br>IN</div><div class="lbl">BUTTON 2</div></div>
+        <div class="btn-wrap"><div class="btn b1" data-k="jump">JUMP</div><div class="lbl">BUTTON 1</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🖌<br>This game plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   YOU DESIGN I CREATE
+   Pixel Quest — Hilton Primary School
+   "Race your paint-brush along every car on the street before midday.
+    People need their cars painted and everyone else's shift is finished —
+    you're the only one left."
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 30;
+const GROUND_Y = 202;
+const DAY_TIME = 75;                    // 8am to midday
+const DAYS = 3;
+const BULLY_EVERY = 60;                  // "every 1 minute the bully tries to take your brush"
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col; c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const PERSON_ROWS = [
+  "...kkkkkk...",
+  "..khhhhhhk..",
+  ".khhhhhhhhk.",
+  ".kkkkkkkkkk.",
+  "..kssssssk..",
+  "..kessssek..",
+  "..kssssssk..",
+  ".kjjjjjjjjk.",
+  "kjjjjjjjjjjk",
+  "kjjjjjjjjjjk",
+  ".kjjjjjjjjk.",
+  "..kjjjjjjk..",
+  "..kppppppk..",
+  "..kppkkppk..",
+  "..kppk.kppk.",
+  "..kppk.kppk.",
+  "..kok...kok.",
+  "..kkk...kkk.",
+];
+const PAINTER = bake(PERSON_ROWS, { k:"#2a1e14", h:"#c8503a", s:"#e8b088", e:"#2a1e14",
+                                    j:"#e8e0d0", p:"#4a6ad0", o:"#3a2a18" });
+const BULLY   = bake(PERSON_ROWS, { k:"#1e1a20", h:"#2a2a30", s:"#d09868", e:"#e03020",
+                                    j:"#5a5a66", p:"#32323c", o:"#22222a" });
+
+const BRUSH = bake([
+  "..kk..",
+  ".kbbk.",
+  ".kbbk.",
+  ".kbbk.",
+  "kwwwwk",
+  "kwwwwk",
+  "kwwwwk",
+  ".kkkk.",
+], { k:"#2a1e14", b:"#a06a30", w:"#f0a0c0" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){ const A = window.AudioContext || window.webkitAudioContext; if (A) AC = new A(); }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type, vol, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f, AC.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
+  g.gain.setValueAtTime(vol == null ? .09 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + d);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + d + .02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => { setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? .1 : vol), t * 1000); t += n[1] * .85; });
+}
+const SFX = {
+  stroke:  () => tone(520 + Math.random() * 180, .05, 'triangle', .06, 300),
+  carDone: () => melody([[660,.08],[880,.08],[1180,.16]], 'square', .12),
+  jump:    () => tone(380, .09, 'square', .07, 680),
+  door:    () => tone(220, .12, 'square', .08, 340),
+  bully:   () => melody([[240,.1],[190,.14]], 'sawtooth', .11),
+  stopped: () => melody([[520,.07],[780,.07],[1046,.14]], 'square', .12),
+  stolen:  () => melody([[400,.13],[260,.2]], 'sawtooth', .13),
+  fired:   () => melody([[330,.18],[250,.2],[170,.4]], 'triangle', .13),
+  win:     () => melody([[660,.12],[880,.12],[1046,.12],[1320,.32]], 'square', .13),
+  lose:    () => melody([[300,.2],[220,.24],[140,.5]], 'triangle', .14),
+  start:   () => melody([[520,.09],[700,.09],[930,.16]], 'square', .12),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { left:false, right:false, jump:false, door:false };
+const KEYMAP = {
+  ArrowLeft:'left', ArrowRight:'right', a:'left', d:'right', A:'left', D:'right',
+  ' ':'jump', ArrowUp:'jump', w:'jump', W:'jump', z:'jump', Z:'jump',
+  ArrowDown:'door', s:'door', S:'door', x:'door', X:'door', Shift:'door'
+};
+let jumpEdge = false, doorEdge = false, anyEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){ e.preventDefault(); if (!keys[k] && k === 'jump') jumpEdge = true; if (!keys[k] && k === 'door') doorEdge = true; keys[k] = true; anyEdge = true; initAudio(); }
+  if (e.key === 'Enter'){ e.preventDefault(); anyEdge = true; initAudio(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.btn').forEach(b => {
+  const k = b.dataset.k;
+  const on  = e => { e.preventDefault(); initAudio(); if (!keys[k] && k === 'jump') jumpEdge = true; if (!keys[k] && k === 'door') doorEdge = true; keys[k] = true; anyEdge = true; };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); anyEdge = true; });
+
+/* ------------------------------------------------------------------- game */
+const GRAV = 950, JUMP_V = -322, WALK = 92;
+const CAR_W = 58, CAR_COLS = ['#f2d24a', '#f0a0c0', '#8ec8e8', '#9ad86a', '#e0906a', '#c8a0e8'];
+
+let state = 'title';
+let score = 0, best = 0, firings = 0, day = 1, clock = DAY_TIME;
+let linesDone = 0, carsDone = 0, bulliesStopped = 0;
+let cars = [], streetW = 760, camX = 0;
+let bully = null, bullyT = BULLY_EVERY, hasBrush = true, brushBackT = 0;
+let doorT = 0, doorCar = null, strokeCool = 0, bannerT = 0, bannerText = '', flashT = 0, celebrateT = 0;
+let floats = [], drips = [];
+
+const you = { x: 30, y: GROUND_Y - 18, w: 12, h: 18, onCar: null, dir: 1, hop: 0 };
+
+function banner(t){ bannerText = t; bannerT = 2.0; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#fff', t: 1.1 }); }
+function drip(x, y, col, n){
+  for (let i = 0; i < n; i++)
+    drips.push({ x, y, vx: (Math.random() - .5) * 60, vy: -Math.random() * 50 - 10, t: .6, col });
+}
+
+function makeCar(x, colour){
+  const c = { x, colour, lower: [], upper: [], inside: [], done: false };
+  for (let i = 0; i < 4; i++) c.lower.push({ x: x + 4 + i * 12, w: 11, y: 178, h: 12, on: false });
+  for (let i = 0; i < 4; i++) c.upper.push({ x: x + 11 + i * 9, w: 8, y: 158, h: 12, on: false });
+  for (let i = 0; i < 2; i++) c.inside.push({ x: x + 20 + i * 9, w: 8, y: 170, h: 7, on: false });
+  return c;
+}
+function carSegments(c){ return c.lower.concat(c.upper, c.inside); }
+
+function startDay(d){
+  const n = 3 + d;                             // more cars each day
+  streetW = 90 + n * 150;
+  cars = [];
+  for (let i = 0; i < n; i++) cars.push(makeCar(60 + i * 150, CAR_COLS[i % CAR_COLS.length]));
+  you.x = 20; you.y = GROUND_Y - 18; you.onCar = null; you.hop = 0;
+  clock = DAY_TIME; bully = null; bullyT = BULLY_EVERY;
+  hasBrush = true; brushBackT = 0; doorT = 0; doorCar = null;
+  floats = []; drips = [];
+  banner('DAY ' + d + ' — ' + n + ' CARS BEFORE MIDDAY');
+}
+function resetGame(){
+  score = 0; firings = 0; day = 1; linesDone = 0; carsDone = 0; bulliesStopped = 0;
+  celebrateT = 0;
+  startDay(1);
+}
+
+/* -------------------------------------------------------------- gameplay */
+function carUnder(px){
+  for (const c of cars) if (px > c.x - 2 && px < c.x + CAR_W + 2) return c;
+  return null;
+}
+function checkCarDone(c){
+  if (c.done) return;
+  if (carSegments(c).every(s => s.on)){
+    c.done = true; carsDone++;
+    score += 50;
+    addFloat(c.x + 8, 140, 'CAR DONE!', '#ffffff');
+    drip(c.x + CAR_W / 2, 160, c.colour, 14);
+    SFX.carDone();
+  }
+}
+function paintSegment(s, c){
+  s.on = true; linesDone++; score += 10;      // "one line of paint: 10pts"
+  drip(s.x + s.w / 2, s.y, c.colour, 3);
+  SFX.stroke();
+  checkCarDone(c);
+}
+
+function getFired(){
+  firings++;
+  SFX.fired();
+  if (firings >= 3){
+    state = 'lose'; best = Math.max(best, score);
+    setTimeout(SFX.lose, 380);
+  } else {
+    banner("YOU'RE FIRED! (" + firings + " of 3)");
+    flashT = 0.5;
+    startDay(day);
+  }
+}
+
+function updatePlay(dt){
+  if (bannerT > 0) bannerT -= dt;
+  if (flashT > 0) flashT -= dt;
+  if (strokeCool > 0) strokeCool -= dt;
+
+  if (celebrateT > 0){
+    celebrateT -= dt;
+    if (celebrateT <= 0){
+      if (day >= DAYS){
+        state = 'win'; best = Math.max(best, score);
+        setTimeout(SFX.win, 240);
+      } else { day++; startDay(day); }
+    }
+    return;
+  }
+
+  clock -= dt;
+  if (clock <= 0){ clock = 0; getFired(); return; }
+
+  // joystick left / right walks that way
+  let dx = 0;
+  if (doorT <= 0){
+    if (keys.left) dx -= 1;
+    if (keys.right) dx += 1;
+  }
+  if (dx) you.dir = dx;
+  you.x += dx * WALK * dt;
+  you.x = Math.max(4, Math.min(streetW - you.w - 4, you.x));
+
+  // Button 1 jumps you straight onto the car — and back off again
+  if (jumpEdge && doorT <= 0){
+    const beside = carUnder(you.x + 6);
+    if (you.onCar){
+      you.onCar = null; you.y = GROUND_Y - you.h; SFX.jump();
+    } else if (beside){
+      you.onCar = beside; you.y = 152 - you.h; you.hop = 0.22; SFX.jump();
+    } else {
+      you.hop = 0.3;                                  // a little hop on the spot
+      if (bully && !bully.fleeing && Math.abs(bully.x - you.x) < 17){
+        bulliesStopped++; score += 100;               // "stop bully from stealing: 100pts"
+        addFloat(bully.x - 12, bully.y - 14, 'STOPPED! +100', '#8ee07a');
+        SFX.stopped();
+        bully.fleeing = true; bully.dirOut = Math.sign(bully.x - you.x) || 1;
+      } else SFX.jump();
+    }
+  }
+  jumpEdge = false;
+  if (you.hop > 0) you.hop -= dt;
+
+  // riding a car keeps you on it; walk off the end and you drop to the footpath
+  if (you.onCar){
+    const c = you.onCar;
+    you.x = Math.max(c.x - 3, Math.min(c.x + CAR_W - 9, you.x));
+    you.y = 152 - you.h;
+  } else {
+    you.y = GROUND_Y - you.h;
+  }
+
+  // Button 2 opens the door and gets you in
+  const here = carUnder(you.x + 6);
+  // one press opens the door and you paint the inside — it finishes on its own,
+  // but you're stuck in there while the bully is about
+  if (doorEdge && here && !you.onCar && doorT <= 0 &&
+      you.x + 6 > here.x + 12 && you.x + 6 < here.x + 46 && hasBrush &&
+      here.inside.some(s => !s.on)){
+    doorT = 1.2; doorCar = here; SFX.door();
+  }
+  doorEdge = false;
+  if (doorT > 0){
+    doorT -= dt;
+    if (doorT <= 0 && doorCar){
+      doorCar.inside.forEach(s => { if (!s.on) paintSegment(s, doorCar); });
+      addFloat(you.x - 8, you.y - 12, 'INSIDE PAINTED', '#ffe0a0');
+      doorCar = null;
+    }
+  }
+
+  // race the brush along the car — you paint what you walk past
+  if (hasBrush && dx !== 0 && strokeCool <= 0 && here && doorT <= 0){
+    // paint everything the brush is actually over, so nothing gets skipped
+    const band = you.onCar ? here.upper : here.lower;
+    let painted = false;
+    for (const s of band){
+      if (s.on) continue;
+      if (you.x + you.w > s.x - 1 && you.x < s.x + s.w + 1){ paintSegment(s, here); painted = true; }
+    }
+    if (painted) strokeCool = 0.07;
+  }
+
+  // the bully turns up to take your brush and bucket
+  bullyT -= dt;
+  if (!bully && bullyT <= 0 && hasBrush){
+    bullyT = BULLY_EVERY;
+    const fromLeft = you.x > streetW / 2;
+    bully = { x: fromLeft ? Math.max(0, you.x - 190) : Math.min(streetW - 12, you.x + 190),
+              y: GROUND_Y - 18, w: 12, h: 18, fleeing: false, gone: 0 };
+    banner('THE BULLY IS COMING!');
+    SFX.bully();
+  }
+  if (bully){
+    const spd = bully.fleeing ? 108 : 62 + day * 6;
+    if (bully.fleeing){
+      bully.x += Math.sign(bully.dirOut) * spd * dt;
+      if (bully.x < -20 || bully.x > streetW + 20) bully = null;
+    } else {
+      bully.x += Math.sign((you.x) - bully.x) * spd * dt;
+    }
+    if (bully){
+      const overlap = Math.abs(bully.x - you.x) < 12 && !you.onCar && you.hop <= 0;
+      if (overlap && !bully.fleeing && hasBrush){
+        hasBrush = false; brushBackT = 7;
+        bully.fleeing = true; bully.dirOut = Math.sign(bully.x - you.x) || 1;
+        addFloat(you.x - 18, you.y - 14, 'HE TOOK YOUR BRUSH!', '#ff8a7a');
+        flashT = 0.35;
+        SFX.stolen();
+      }
+    }
+  }
+  if (!hasBrush){
+    brushBackT -= dt;
+    if (brushBackT <= 0){ hasBrush = true; banner('NEW BRUSH FROM THE VAN'); }
+  }
+
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 15 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+  for (let i = drips.length - 1; i >= 0; i--){
+    const d = drips[i]; d.t -= dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 230 * dt;
+    if (d.t <= 0) drips.splice(i, 1);
+  }
+
+  camX = Math.max(0, Math.min(streetW - BASE_W, you.x - 150));
+
+  if (cars.every(c => c.done)){
+    const bonus = Math.round(clock) * 5;
+    score += bonus;
+    celebrateT = 2.6;
+    banner('HURRAY! ALL THE CARS PAINTED  +' + bonus);
+    SFX.carDone();
+  }
+}
+
+/* ------------------------------------------------------------------ paint */
+function mix(a, b, t){
+  const p = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const x = p(a), y = p(b);
+  return 'rgb(' + Math.round(x[0]+(y[0]-x[0])*t) + ',' + Math.round(x[1]+(y[1]-x[1])*t) + ',' + Math.round(x[2]+(y[2]-x[2])*t) + ')';
+}
+function drawSky(){
+  // Zoe's sunrise, brightening as the morning runs out
+  const t = 1 - clock / DAY_TIME;
+  const top = mix('#f4a6b4', '#8ec8e8', t);
+  const mid = mix('#f7c07a', '#bfe2f2', t);
+  const low = mix('#f9e6a0', '#eaf4e2', t);
+  const h = (GROUND_Y - HUD_H) / 3;
+  ctx.fillStyle = top; ctx.fillRect(0, HUD_H, BASE_W, h + 1);
+  ctx.fillStyle = mid; ctx.fillRect(0, HUD_H + h, BASE_W, h + 1);
+  ctx.fillStyle = low; ctx.fillRect(0, HUD_H + h * 2, BASE_W, h + 2);
+  // the sun climbing toward midday
+  const sx = 40 + t * 240, sy = HUD_H + 96 - Math.sin(t * Math.PI) * 62;
+  ctx.fillStyle = mix('#ffb04a', '#fff6c0', t);
+  ctx.beginPath(); ctx.arc(sx, sy, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = .3;
+  ctx.beginPath(); ctx.arc(sx, sy, 19, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+function drawStreet(){
+  ctx.fillStyle = '#8c8c96'; ctx.fillRect(0, GROUND_Y, BASE_W, BASE_H - GROUND_Y);
+  ctx.fillStyle = '#a8a8b2'; ctx.fillRect(0, GROUND_Y, BASE_W, 4);
+  ctx.fillStyle = '#f0f0d8';
+  for (let x = -(camX % 40); x < BASE_W; x += 40) ctx.fillRect(Math.round(x), GROUND_Y + 18, 18, 3);
+  // shopfronts behind
+  ctx.fillStyle = 'rgba(120,100,110,0.35)';
+  for (let i = 0; i < 14; i++){
+    const bx = i * 96 - camX * 0.45;
+    if (bx < -70 || bx > BASE_W + 10) continue;
+    ctx.fillRect(Math.round(bx), 120 + (i % 3) * 10, 64, 84);
+  }
+}
+function drawCar(c){
+  const x = Math.round(c.x - camX);
+  if (x < -CAR_W - 10 || x > BASE_W + 10) return;
+  const primer = '#9a9aa4';
+  // body and cabin in primer, then whatever has been painted
+  ctx.fillStyle = primer; ctx.fillRect(x, 172, CAR_W, 24);
+  ctx.fillStyle = primer; ctx.fillRect(x + 12, 152, CAR_W - 24, 22);
+  ctx.fillStyle = '#cfe8f5'; ctx.fillRect(x + 16, 156, 10, 11); ctx.fillRect(x + 30, 156, 11, 11);
+
+  c.lower.forEach(s => { if (s.on){ ctx.fillStyle = c.colour; ctx.fillRect(Math.round(s.x - camX), s.y, s.w, s.h); } });
+  c.upper.forEach(s => { if (s.on){ ctx.fillStyle = c.colour; ctx.fillRect(Math.round(s.x - camX), s.y, s.w, s.h); } });
+  c.inside.forEach(s => { if (s.on){ ctx.fillStyle = c.colour; ctx.fillRect(Math.round(s.x - camX), s.y, s.w, s.h); } });
+
+  ctx.fillStyle = '#2a2a32';
+  ctx.fillRect(x, 172, CAR_W, 2);
+  ctx.fillRect(x, 194, CAR_W, 2);
+  ctx.beginPath(); ctx.arc(x + 14, 197, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + CAR_W - 14, 197, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6a6a74';
+  ctx.beginPath(); ctx.arc(x + 14, 197, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + CAR_W - 14, 197, 2, 0, Math.PI * 2); ctx.fill();
+
+  if (c.done){
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('DONE', x + CAR_W / 2, 144);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawPlay(){
+  drawSky();
+  drawStreet();
+  cars.forEach(drawCar);
+
+  if (bully){
+    ctx.save();
+    const bx = Math.round(bully.x - camX);
+    if (bully.dirOut > 0 && bully.fleeing){
+      ctx.translate(bx + BULLY.w, Math.round(bully.y)); ctx.scale(-1, 1);
+      ctx.drawImage(BULLY.img, 0, 0);
+    } else ctx.drawImage(BULLY.img, bx, Math.round(bully.y));
+    ctx.restore();
+    if (bully.fleeing && !hasBrush)
+      ctx.drawImage(BRUSH.img, Math.round(bully.x - camX) + 10, Math.round(bully.y) + 4);
+  }
+
+  ctx.save();
+  const px = Math.round(you.x - camX);
+  if (you.dir < 0){
+    ctx.translate(px + PAINTER.w, Math.round(you.y)); ctx.scale(-1, 1);
+    ctx.drawImage(PAINTER.img, 0, 0);
+  } else ctx.drawImage(PAINTER.img, px, Math.round(you.y));
+  ctx.restore();
+  if (hasBrush)
+    ctx.drawImage(BRUSH.img, px + (you.dir > 0 ? 10 : -4), Math.round(you.y) + 6);
+
+  if (doorT > 0){
+    const w = 40, x = px - 14;
+    ctx.fillStyle = '#2a2a32'; ctx.fillRect(x, 132, w, 7);
+    ctx.fillStyle = '#f2d24a'; ctx.fillRect(x + 1, 133, Math.round((w - 2) * (1 - doorT / 1.4)), 5);
+    ctx.font = 'bold 8px "Courier New", monospace';
+    ctx.fillStyle = '#ffffff'; ctx.fillText('PAINTING INSIDE', x - 12, 122);
+  }
+
+  drips.forEach(d => { ctx.fillStyle = d.col; ctx.fillRect(Math.round(d.x - camX), Math.round(d.y), 2, 3); });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#2a2018'; ctx.fillText(f.text, Math.round(f.x - camX) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x - camX), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  if (flashT > 0){
+    ctx.fillStyle = 'rgba(220,60,50,' + (flashT * 0.6).toFixed(2) + ')';
+    ctx.fillRect(0, HUD_H, BASE_W, BASE_H - HUD_H);
+  }
+
+  drawHUD();
+  if (bannerT > 0 || celebrateT > 0){
+    ctx.globalAlpha = Math.min(1, Math.max(bannerT, celebrateT));
+    centreText(bannerText, 112, 14, '#ffffff', '#3a2a20');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHUD(){
+  ctx.fillStyle = '#3a2a24'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#c8a06a'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#f2d24a'; ctx.fillText('SCORE ' + score, 5, 3);
+  ctx.fillStyle = '#f0a0c0'; ctx.fillText('LINES ' + linesDone, 5, 16);
+
+  // the morning ticking toward midday
+  const mins = Math.round((1 - clock / DAY_TIME) * 240);
+  const hh = 8 + Math.floor(mins / 60), mm = mins % 60;
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px "Courier New", monospace';
+  ctx.fillStyle = clock < 25 ? '#ff8a6a' : '#ffffff';
+  ctx.fillText(hh + ':' + String(mm).padStart(2, '0'), 150, 6);
+  ctx.font = 'bold 8px "Courier New", monospace';
+  ctx.fillStyle = '#c8b8a8'; ctx.fillText('MIDDAY AT 12:00', 150, 20);
+  ctx.textAlign = 'left';
+
+  const left = cars.filter(c => !c.done).length;
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.fillStyle = '#8ec8e8'; ctx.fillText('CARS LEFT ' + left, 210, 3);
+  ctx.fillStyle = '#e08a7a'; ctx.fillText('FIRED ' + firings + '/3', 210, 16);
+  ctx.fillStyle = hasBrush ? '#9ad86a' : '#8a6a60';
+  ctx.fillText(hasBrush ? 'BRUSH OK' : 'NO BRUSH', 262, 16);
+  ctx.fillStyle = '#c8b8a8'; ctx.fillText('DAY ' + day + '/' + DAYS, 262, 3);
+}
+
+function centreText(text, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+
+function sunriseBackdrop(){
+  const bands = ['#f2909e', '#f4a6b4', '#f7c07a', '#f9d98a', '#f9e6a0', '#faf0c0'];
+  const h = BASE_H / bands.length;
+  bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(0, i * h, BASE_W, h + 1); });
+}
+
+function drawTitle(){
+  sunriseBackdrop();
+  ctx.fillStyle = '#8c8c96'; ctx.fillRect(0, 200, BASE_W, 40);
+  ctx.fillStyle = '#a8a8b2'; ctx.fillRect(0, 200, BASE_W, 4);
+  centreText('YOU DESIGN', 54, 26, '#ffffff', '#3a2a20');
+  centreText('I CREATE', 82, 26, '#ffffff', '#3a2a20');
+  centreText('Race your paint-brush along every car', 110, 11, '#3a2a20');
+  centreText('on the street before midday.', 124, 11, '#3a2a20');
+
+  const demo = makeCar(120, '#f2d24a');
+  demo.lower.forEach((s, i) => { if (i < 3) s.on = true; });
+  demo.upper.forEach((s, i) => { if (i < 2) s.on = true; });
+  camX = 0; drawCar(demo);
+  ctx.drawImage(PAINTER.img, 96, 184);
+  ctx.drawImage(BRUSH.img, 106, 190);
+
+  centreText('Pixel Quest — Hilton Primary School', 150, 9, '#5a4030');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO START', 168, 12, '#b0402a', '#ffe6c0');
+  ctx.globalAlpha = 1;
+  centreText('◀ ▶ walk  •  B1 jump on the car  •  B2 get in', 186, 9, '#5a4030');
+}
+
+function drawWin(){
+  sunriseBackdrop();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('HURRAY!', 56, 30, '#c85a3a', '#ffffff');
+  centreText('YOU PAINTED ALL THE CARS', 88, 15, '#3a2a20', '#ffffff');
+  ctx.drawImage(PAINTER.img, 152, 106);
+  centreText('FINAL SCORE ' + score, 146, 20, '#b0402a', '#ffffff');
+  centreText('LINES ' + linesDone + '   •   CARS ' + carsDone + '   •   BULLIES STOPPED ' + bulliesStopped, 168, 9, '#5a4030');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO PLAY AGAIN', 200, 11, '#3a6a2a', '#ffffff');
+  ctx.globalAlpha = 1;
+}
+
+function drawLose(){
+  sunriseBackdrop();
+  ctx.fillStyle = 'rgba(40,28,34,0.6)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText("THAT'S SAD, YOU LOST.", 62, 19, '#ffd6c0', '#3a1e20');
+  centreText('NEXT TIME YOU WILL STAY ALIVE', 88, 15, '#ffd6c0', '#3a1e20');
+  ctx.drawImage(BULLY.img, 152, 110);
+  centreText('SCORE ' + score, 152, 20, '#f2d24a', '#3a1e20');
+  centreText('LINES ' + linesDone + '   •   CARS ' + carsDone + '   •   BEST ' + best, 174, 9, '#e8d0c0', '#3a1e20');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO TRY AGAIN', 204, 11, '#9ad86a', '#3a1e20');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else {
+    const go = jumpEdge || anyEdge;
+    jumpEdge = false; anyEdge = false;
+    if (go){ initAudio(); SFX.start(); resetGame(); state = 'play'; }
+  }
+  anyEdge = false;
+}
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if (state === 'title') drawTitle();
+  else if (state === 'play') drawPlay();
+  else if (state === 'win') drawWin();
+  else if (state === 'lose') drawLose();
+  ctx.restore();
+}
+function frame(now){
+  let delta = (now - last) / 1000; last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
