@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Mr Pizza's Pizza Delivery</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#171a20;
+    font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+    box-shadow:0 0 0 3px #f04a6a,0 0 40px rgba(0,0,0,.7);}
+  #ctrls{position:fixed;inset:0;pointer-events:none;}
+  .btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:bold;font-family:inherit;border:3px solid rgba(255,255,255,.5);
+    background:rgba(40,44,56,.45);border-radius:16px;user-select:none;-webkit-user-select:none;
+    text-align:center;line-height:1.05;}
+  .btn:active,.btn.on{background:rgba(255,209,74,.72);border-color:#ffd14a;color:#2a2410;}
+  #bU{left:calc(3vw + 13vh);bottom:17vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bD{left:calc(3vw + 13vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bL{left:3vw;bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bR{left:calc(3vw + 26vh);bottom:5vh;width:12vh;height:11vh;font-size:4.6vh;}
+  #bDel{right:calc(3vw + 20vh);bottom:5vh;width:18vh;height:18vh;border-radius:50%;font-size:2.5vh;
+        background:rgba(240,74,106,.42);border-color:#ff9ab0;}
+  #bShop{right:3vw;bottom:5vh;width:17vh;height:17vh;border-radius:50%;font-size:2.5vh;
+         background:rgba(90,200,240,.42);border-color:#9adcff;}
+  #rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#171a20;color:#ffd14a;font-size:20px;text-align:center;padding:30px;z-index:9;}
+  @media (orientation:portrait){#rot{display:flex}#wrap,#ctrls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ctrls">
+  <div class="btn" id="bU">&#9650;</div>
+  <div class="btn" id="bL">&#9664;</div>
+  <div class="btn" id="bD">&#9660;</div>
+  <div class="btn" id="bR">&#9654;</div>
+  <div class="btn" id="bDel">DELIVER</div>
+  <div class="btn" id="bShop">SHOP</div>
+</div>
+<div id="rot">Turn your iPad sideways<br>to play</div>
+<script>
+"use strict";
+/* ============================================================
+   MR PIZZA'S PIZZA DELIVERY
+   Drive the black roads, deliver every pizza, get back to the
+   shop before the timer goes bing bong.
+   Built from a Year 4-6 student arcade game design document.
+   ============================================================ */
+
+const W = 480, H = 300, SC = 3;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = W*SC; cv.height = H*SC;
+ctx.setTransform(SC,0,0,SC,0,0);
+ctx.imageSmoothingEnabled = false;
+
+function resize(){
+  const s = Math.min(window.innerWidth/W, window.innerHeight/H);
+  cv.style.width = Math.floor(W*s)+'px';
+  cv.style.height = Math.floor(H*s)+'px';
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,250));
+resize();
+
+/* ---------- the town grid ---------- */
+const CELL = 24, COLS = 20, ROWS = 11, GX = 0, GY = 36, HUD_H = 36;
+const STREETS = [1,3,5,7,9];      /* roads running across */
+const AVENUES = [1,5,9,13,17];    /* roads running down */
+function cx(c){ return GX + c*CELL + CELL/2; }
+function cy(r){ return GY + r*CELL + CELL/2; }
+function isRoad(c,r){
+  if(c<0||c>=COLS||r<0||r>=ROWS) return false;
+  return STREETS.indexOf(r)>=0 || AVENUES.indexOf(c)>=0;
+}
+
+/* ---------- palette ---------- */
+const C = {
+  road:'#2e3138', roadDark:'#22252b', line:'#f0f0e0',
+  block:'#7a8a6a', block2:'#6d7d5e', kerb:'#b8b8a8',
+  house:'#c9683a', houseDark:'#8f4520', houseRoof:'#a03a2a', houseDoor:'#5a3a20', win:'#ffe9a0',
+  shop:'#f04a6a', shopDark:'#b0203a', shopRoof:'#ffd14a',
+  coin:'#ffd14a', coinDark:'#c9a010',
+  van:'#f0f0f0', vanDark:'#b8b8b8', glass:'#3a5a7a', tyre:'#1a1a1a',
+  gold:'#ffd14a', paper:'#fff6e0', hot:'#ff4a5a', good:'#6fe08a', sky:'#9adcff', ink:'#1a1c22'
+};
+const VANS = [
+  { name:'CLASSIC RED', body:'#e0453a', trim:'#ffd14a' },
+  { name:'COOL BLUE',   body:'#3a7fd0', trim:'#eaf4ff' },
+  { name:'MINT GREEN',  body:'#3ac98a', trim:'#fff6e0' },
+  { name:'HOT PINK',    body:'#f04a9a', trim:'#ffe9f4' }
+];
+const HATS = ['NO HAT','CHEF HAT','CAP','CROWN'];
+
+/* ---------- audio ---------- */
+let AC=null;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function tone(f,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square'; o.frequency.value=f;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function slide(f1,f2,dur,type,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'square';
+    const t=AC.currentTime;
+    o.frequency.setValueAtTime(f1,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),t+dur);
+    g.gain.setValueAtTime(vol===undefined?0.06:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function coinSound(){ tone(1046,0.05,'square',0.045); setTimeout(()=>tone(1397,0.07,'square',0.045),45); }
+function deliverSound(){ [659,880,1175].forEach((f,i)=>setTimeout(()=>tone(f,0.1,'square',0.055), i*60)); }
+function wrongSound(){ slide(320,110,0.3,'sawtooth',0.07); }
+function levelSound(){ [523,659,784,1046,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.15,'square',0.06), i*85)); }
+function buySound(){ tone(880,0.06,'square',0.05); setTimeout(()=>tone(1319,0.1,'square',0.05),60); }
+/* "when your time is out it will go bing bong" */
+function bingBong(){ tone(880,0.35,'sine',0.08); setTimeout(()=>tone(587,0.55,'sine',0.08),340); }
+
+/* ---------- input ---------- */
+const keys={u:false,d:false,l:false,r:false};
+let delEdge=false, shopEdge=false, anyPress=false, upEdge=false, downEdge=false, leftEdge=false, rightEdge=false;
+const KEYMAP={ArrowUp:'u',KeyW:'u', ArrowDown:'d',KeyS:'d', ArrowLeft:'l',KeyA:'l', ArrowRight:'r',KeyD:'r'};
+addEventListener('keydown',e=>{
+  initAudio(); anyPress=true;
+  if(e.code==='Digit1'||e.code==='Numpad1'){ e.preventDefault(); delEdge=true; return; }
+  if(e.code==='Digit9'||e.code==='Numpad9'){ e.preventDefault(); restartAll(); return; }
+  if(e.code==='Space'||e.code==='KeyZ'||e.code==='Enter'){ e.preventDefault(); delEdge=true; return; }
+  if(e.code==='KeyX'||e.code==='ShiftLeft'){ e.preventDefault(); shopEdge=true; return; }
+  const k=KEYMAP[e.code];
+  if(k){
+    e.preventDefault();
+    if(!keys[k]){ if(k==='u') upEdge=true; if(k==='d') downEdge=true; if(k==='l') leftEdge=true; if(k==='r') rightEdge=true; }
+    keys[k]=true;
+  }
+});
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k){ e.preventDefault(); keys[k]=false; }});
+function bindBtn(id,key){
+  const el=document.getElementById(id);
+  const on=e=>{
+    e.preventDefault(); initAudio(); anyPress=true;
+    if(key==='del') delEdge=true;
+    else if(key==='shop') shopEdge=true;
+    else {
+      if(!keys[key]){ if(key==='u') upEdge=true; if(key==='d') downEdge=true; if(key==='l') leftEdge=true; if(key==='r') rightEdge=true; }
+      keys[key]=true;
+    }
+    el.classList.add('on');
+  };
+  const off=e=>{ e.preventDefault(); if(key!=='del'&&key!=='shop') keys[key]=false; el.classList.remove('on'); };
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off,{passive:false});
+  el.addEventListener('touchcancel',off,{passive:false});
+  el.addEventListener('mousedown',on); addEventListener('mouseup',off);
+}
+bindBtn('bU','u'); bindBtn('bD','d'); bindBtn('bL','l'); bindBtn('bR','r');
+bindBtn('bDel','del'); bindBtn('bShop','shop');
+cv.addEventListener('touchstart',e=>{ e.preventDefault(); initAudio(); anyPress=true; },{passive:false});
+cv.addEventListener('mousedown',()=>{ initAudio(); anyPress=true; });
+
+/* ---------- state ---------- */
+let state='title', timer=0, frame=0;
+let level=1, points=0, timeLeft=60*60, baseTime=60*60;
+let houses=[], coins=[], shop=null, van=null;
+let vanChoice=0, hatChoice=0, fastVan=false, nameChars=[0,0,0], nameSlot=0;
+let pops=[], sparks=[], xMark=0, hintT=0, podium=[];
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+function rngFrom(seed){ let s=seed>>>0; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+function pop(x,y,s,col){ pops.push({x:x,y:y,s:s,c:col||C.gold,t:76}); }
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++)
+    sparks.push({x:x,y:y,vx:(Math.random()*2-1)*1.8,vy:(Math.random()*2-1)*1.8,t:26,c:col});
+}
+function playerName(){ return nameChars.map(i=>LETTERS[i]).join(''); }
+
+/* a house sits on a block and is delivered to from the road cell beside it */
+function buildLevel(n){
+  const rnd = rngFrom(n*7919 + 13);
+  const blocks = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(isRoad(c,r)) continue;
+    /* which road cell do you stand on to deliver here? */
+    const opts = [[c,r+1],[c,r-1],[c+1,r],[c-1,r]].filter(p=>isRoad(p[0],p[1]));
+    if(opts.length) blocks.push({c:c,r:r,door:opts[0]});
+  }
+  /* the pizza place sits top-left, the finish line for every level */
+  const shopBlock = blocks.reduce((a,b)=> (b.r*COLS+b.c) < (a.r*COLS+a.c) ? b : a, blocks[0]);
+  shop = { c:shopBlock.c, r:shopBlock.r, door:shopBlock.door };
+
+  const pool = blocks.filter(b=>!(b.c===shop.c&&b.r===shop.r) && b.c>4);
+  houses = [];
+  const want = Math.min(pool.length, 2 + n);
+  const used = {};
+  let guard=0;
+  while(houses.length<want && guard<600){
+    guard++;
+    const b = pool[Math.floor(rnd()*pool.length)];
+    const key = b.c+','+b.r;
+    if(used[key]) continue;
+    used[key]=true;
+    houses.push({ c:b.c, r:b.r, door:b.door, done:false, anim:rnd()*6 });
+  }
+
+  coins = [];
+  const roadCells = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(isRoad(c,r)) roadCells.push([c,r]);
+  const nCoins = 8 + n*2;
+  const cUsed = {};
+  guard=0;
+  while(coins.length<nCoins && guard<800){
+    guard++;
+    const rc = roadCells[Math.floor(rnd()*roadCells.length)];
+    const key = rc[0]+','+rc[1];
+    if(cUsed[key]) continue;
+    cUsed[key]=true;
+    coins.push({ c:rc[0], r:rc[1], taken:false });
+  }
+
+  /* start top right, as her map says */
+  let sc=COLS-3, sr=1;
+  while(!isRoad(sc,sr)) sc--;
+  van = { c:sc, r:sr, tc:sc, tr:sr, x:cx(sc), y:cy(sr), dir:'l', want:'l', moving:false, anim:0 };
+  timeLeft = baseTime;
+  pops=[]; sparks=[]; xMark=0;
+  hintT = 260;
+}
+
+function restartAll(){
+  level=1; points=0; baseTime=60*60; fastVan=false;
+  buildLevel(1); state='play'; timer=0;
+}
+function startGame(){ restartAll(); }
+
+function recordPodium(){
+  podium.push({ name:playerName(), score:points, level:level, van:vanChoice });
+  podium.sort((a,b)=>b.score-a.score);
+  podium = podium.slice(0,5);
+}
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(hintT>0) hintT--;
+  if(xMark>0) xMark--;
+
+  if(state==='title'){
+    if(anyPress||delEdge){ anyPress=false; delEdge=false; state='vansel'; timer=0; tone(700,0.09); }
+    return;
+  }
+  if(state==='vansel'){
+    timer++;
+    if(leftEdge){ leftEdge=false; vanChoice=(vanChoice+VANS.length-1)%VANS.length; tone(600,0.05,'square',0.04); }
+    if(rightEdge){ rightEdge=false; vanChoice=(vanChoice+1)%VANS.length; tone(700,0.05,'square',0.04); }
+    if(delEdge && timer>15){ delEdge=false; state='namesel'; timer=0; tone(900,0.08); }
+    delEdge=false; anyPress=false; upEdge=downEdge=false;
+    return;
+  }
+  if(state==='namesel'){
+    timer++;
+    if(upEdge){ upEdge=false; nameChars[nameSlot]=(nameChars[nameSlot]+1)%LETTERS.length; tone(700,0.04,'square',0.04); }
+    if(downEdge){ downEdge=false; nameChars[nameSlot]=(nameChars[nameSlot]+LETTERS.length-1)%LETTERS.length; tone(620,0.04,'square',0.04); }
+    if(leftEdge){ leftEdge=false; nameSlot=(nameSlot+2)%3; tone(500,0.04,'square',0.04); }
+    if(rightEdge){ rightEdge=false; nameSlot=(nameSlot+1)%3; tone(500,0.04,'square',0.04); }
+    if(delEdge && timer>15){ delEdge=false; startGame(); tone(1000,0.1); }
+    delEdge=false; anyPress=false;
+    return;
+  }
+  if(state==='shop'){
+    timer++;
+    if(upEdge){ upEdge=false; shopSel=(shopSel+SHOP_ITEMS.length-1)%SHOP_ITEMS.length; tone(660,0.04,'square',0.04); }
+    if(downEdge){ downEdge=false; shopSel=(shopSel+1)%SHOP_ITEMS.length; tone(660,0.04,'square',0.04); }
+    if(delEdge){ delEdge=false; buyItem(); }
+    if(shopEdge && timer>12){ shopEdge=false; state='play'; timer=0; tone(500,0.06); }
+    delEdge=false; shopEdge=false; anyPress=false; leftEdge=rightEdge=false;
+    return;
+  }
+  if(state==='clear'){
+    timer++; updateFx();
+    if(timer>140){ level++; buildLevel(level); state='play'; timer=0; }
+    return;
+  }
+  if(state==='over'){
+    timer++;
+    if((anyPress||delEdge) && timer>90){ anyPress=false; delEdge=false; state='podium'; timer=0; }
+    delEdge=false;
+    return;
+  }
+  if(state==='podium'){
+    timer++;
+    if((anyPress||delEdge) && timer>60){ anyPress=false; delEdge=false; state='title'; timer=0; }
+    delEdge=false;
+    return;
+  }
+
+  /* ---------- PLAY ---------- */
+  anyPress=false;
+  upEdge=downEdge=leftEdge=rightEdge=false;
+
+  if(shopEdge){ shopEdge=false; state='shop'; timer=0; shopSel=0; tone(880,0.08); return; }
+
+  /* the timer */
+  timeLeft--;
+  if(timeLeft===180) pop(240,150,'HURRY UP!',C.hot);
+  if(timeLeft<=0){
+    bingBong(); recordPodium(); state='over'; timer=0; return;
+  }
+
+  /* ----- drive on the black road ----- */
+  const v = van;
+  if(keys.u) v.want='u'; else if(keys.d) v.want='d';
+  else if(keys.l) v.want='l'; else if(keys.r) v.want='r';
+
+  const step = fastVan ? 2.05 : 1.6;
+  if(v.moving){
+    const tx=cx(v.tc), ty=cy(v.tr);
+    const dx=tx-v.x, dy=ty-v.y, d=Math.hypot(dx,dy);
+    if(d<=step){ v.x=tx; v.y=ty; v.c=v.tc; v.r=v.tr; v.moving=false; }
+    else { v.x+=dx/d*step; v.y+=dy/d*step; v.anim+=0.2; }
+    /* turning back the way you came is allowed straight away */
+    const opp = {u:'d',d:'u',l:'r',r:'l'}[v.dir];
+    if(v.want===opp){
+      const oc=v.c, or_=v.r; v.c=v.tc; v.r=v.tr; v.tc=oc; v.tr=or_; v.dir=v.want;
+    }
+  }
+  if(!v.moving){
+    const tryDir = dd=>{
+      const dc = dd==='l'?-1:(dd==='r'?1:0);
+      const dr = dd==='u'?-1:(dd==='d'?1:0);
+      if(isRoad(v.c+dc, v.r+dr)){ v.tc=v.c+dc; v.tr=v.r+dr; v.dir=dd; v.moving=true; return true; }
+      return false;
+    };
+    if(!tryDir(v.want)) tryDir(v.dir);
+  }
+
+  /* ----- coins are 1 point each ----- */
+  for(const co of coins){
+    if(co.taken) continue;
+    if(Math.abs(cx(co.c)-v.x)<12 && Math.abs(cy(co.r)-v.y)<12){
+      co.taken=true; points+=1; coinSound(); pop(cx(co.c), cy(co.r)-10, '+1', C.coin);
+    }
+  }
+
+  /* ----- DELIVER ----- */
+  if(delEdge){
+    delEdge=false;
+    let did=false;
+    for(const h of houses){
+      if(h.done) continue;
+      if(v.c===h.door[0] && v.r===h.door[1] && !v.moving){
+        h.done=true; did=true;
+        deliverSound(); puff(cx(h.c), cy(h.r), C.gold, 14);
+        pop(cx(h.c), cy(h.r)-14, 'DELIVERED!', C.good);
+      }
+    }
+    if(!did){
+      const left = houses.filter(h=>!h.done).length;
+      if(left===0 && v.c===shop.door[0] && v.r===shop.door[1] && !v.moving){
+        points += 5;                        /* "each level you complete you earn 5 points" */
+        levelSound(); puff(cx(shop.c), cy(shop.r), C.shopRoof, 20);
+        pop(cx(shop.c), cy(shop.r)-16, 'LEVEL DONE! +5', C.gold);
+        state='clear'; timer=0; return;
+      }
+      /* "if you deliver it on the wrong spot a X will come up on the screen" */
+      xMark=70; wrongSound();
+      timeLeft = Math.max(1, timeLeft - 180);
+      pop(v.x, v.y-16, 'WRONG SPOT! -3s', C.hot);
+    }
+  }
+
+  updateFx();
+}
+function updateFx(){
+  for(const p of pops){ p.y-=0.32; p.t--; }
+  pops = pops.filter(p=>p.t>0);
+  for(const s of sparks){ s.x+=s.vx; s.y+=s.vy; s.t--; }
+  sparks = sparks.filter(s=>s.t>0);
+}
+
+/* ---------- the shop ---------- */
+let shopSel = 0;
+const SHOP_ITEMS = [
+  { key:'time', name:'+15 SECONDS',  cost:20, note:'more time, so it gets easier' },
+  { key:'fast', name:'FASTER VAN',   cost:30, note:'a quicker van, once only' },
+  { key:'colour', name:'NEW VAN COLOUR', cost:10, note:'change how your van looks' },
+  { key:'hat',  name:'DRIVER HAT',   cost:10, note:'something for your character' }
+];
+function buyItem(){
+  const it = SHOP_ITEMS[shopSel];
+  if(points < it.cost){ tone(170,0.09,'square',0.05); return; }
+  if(it.key==='fast' && fastVan){ tone(170,0.09,'square',0.05); return; }
+  points -= it.cost;
+  if(it.key==='time'){ baseTime += 15*60; timeLeft += 15*60; }
+  if(it.key==='fast'){ fastVan = true; }
+  if(it.key==='colour'){ vanChoice = (vanChoice+1)%VANS.length; }
+  if(it.key==='hat'){ hatChoice = (hatChoice+1)%HATS.length; }
+  buySound();
+}
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+function px(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function txt(s,x,y,size,col,align){
+  ctx.fillStyle=col; ctx.font='bold '+size+'px "Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(s,x,y);
+}
+function txtS(s,x,y,size,col,align){
+  txt(s,x+1,y+1,size,'rgba(10,12,18,.6)',align); txt(s,x,y,size,col,align);
+}
+function fmt(f){ const s=Math.max(0,Math.ceil(f/60)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+function drawTown(){
+  px(0,GY,W,ROWS*CELL,C.block);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(isRoad(c,r)) continue;
+    px(GX+c*CELL, GY+r*CELL, CELL, CELL, ((r+c)%2)?C.block:C.block2);
+  }
+  /* the black roads */
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(!isRoad(c,r)) continue;
+    const x=GX+c*CELL, y=GY+r*CELL;
+    px(x,y,CELL,CELL,C.road);
+    if(!isRoad(c,r-1)) px(x,y,CELL,2,C.kerb);
+    if(!isRoad(c,r+1)) px(x,y+CELL-2,CELL,2,C.kerb);
+    if(!isRoad(c-1,r)) px(x,y,2,CELL,C.kerb);
+    if(!isRoad(c+1,r)) px(x+CELL-2,y,2,CELL,C.kerb);
+    /* centre dashes */
+    ctx.globalAlpha=0.55;
+    if(isRoad(c-1,r) && isRoad(c+1,r)) px(x+7,y+CELL/2-1,10,2,C.line);
+    else if(isRoad(c,r-1) && isRoad(c,r+1)) px(x+CELL/2-1,y+7,2,10,C.line);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawHouse(h){
+  const x=GX+h.c*CELL, y=GY+h.r*CELL;
+  px(x+2,y+9,CELL-4,CELL-11,h.done?'#8a9a7a':C.house);
+  px(x+2,y+9,CELL-4,2,h.done?'#9aaa8a':C.houseDark);
+  for(let i=0;i<5;i++) px(x+1+i*5, y+3, 6, 7, h.done?'#7a8a6a':C.houseRoof);
+  px(x+CELL/2-4,y+CELL-9,8,9,C.houseDoor);
+  px(x+4,y+13,5,5,h.done?'#6a7a5a':C.win);
+  px(x+CELL-9,y+13,5,5,h.done?'#6a7a5a':C.win);
+  if(!h.done){
+    /* the arrow she drew above every house waiting for a pizza */
+    const b = Math.sin(frame*0.12 + h.anim)*2;
+    const ax = cx(h.c), ay = y-6+b;
+    ctx.fillStyle=C.hot;
+    ctx.beginPath(); ctx.moveTo(ax-6,ay-5); ctx.lineTo(ax+6,ay-5); ctx.lineTo(ax,ay+3); ctx.closePath(); ctx.fill();
+    px(ax-2,ay-11,4,6,C.hot);
+    /* mark the spot you stand on */
+    const dx=cx(h.door[0]), dy=cy(h.door[1]);
+    ctx.globalAlpha=0.18+0.12*Math.sin(frame*0.14);
+    px(dx-10,dy-10,20,20,C.hot); ctx.globalAlpha=1;
+  } else {
+    txtS('OK', cx(h.c), y-6, 9, C.good, 'center');
+  }
+}
+
+function drawShopBuilding(){
+  const x=GX+shop.c*CELL, y=GY+shop.r*CELL;
+  const left = houses.filter(h=>!h.done).length;
+  px(x+1,y+8,CELL-2,CELL-9,C.shop);
+  px(x+1,y+8,CELL-2,2,C.shopDark);
+  for(let i=0;i<5;i++) px(x+i*5, y+2, 6, 7, C.shopRoof);
+  px(x+CELL/2-5,y+CELL-9,10,9,'#7a1a2a');
+  /* a pizza slice sign */
+  ctx.fillStyle=C.shopRoof;
+  ctx.beginPath(); ctx.moveTo(x+CELL/2,y+12); ctx.lineTo(x+CELL/2-6,y+22); ctx.lineTo(x+CELL/2+6,y+22); ctx.closePath(); ctx.fill();
+  px(x+CELL/2-2,y+16,2,2,'#e0453a'); px(x+CELL/2+1,y+19,2,2,'#e0453a');
+  if(left===0){
+    const b=Math.sin(frame*0.14)*2;
+    txtS('FINISH HERE', cx(shop.c)+18, y-8+b, 9, C.good, 'center');
+    const dx=cx(shop.door[0]), dy=cy(shop.door[1]);
+    ctx.globalAlpha=0.2+0.15*Math.sin(frame*0.14);
+    px(dx-10,dy-10,20,20,C.good); ctx.globalAlpha=1;
+  } else {
+    txtS('MR PIZZA', cx(shop.c)+16, y-7, 8, C.paper, 'center');
+  }
+}
+
+function drawCoin(co){
+  const b=Math.sin(frame*0.11+co.c)*1.5;
+  const x=cx(co.c)-4, y=cy(co.r)-5+b;
+  px(x,y,8,9,C.coin);
+  px(x+1,y+1,6,7,C.coinDark);
+  px(x+2,y+2,4,5,C.coin);
+}
+
+function drawVan(v, ox, oy, scale){
+  const s = scale||1;
+  const col = VANS[vanChoice];
+  ctx.save(); ctx.translate((ox!==undefined?ox:v.x)|0, (oy!==undefined?oy:v.y)|0); ctx.scale(s,s);
+  let rot = 0;
+  if(v.dir==='l') rot=Math.PI; else if(v.dir==='u') rot=-Math.PI/2; else if(v.dir==='d') rot=Math.PI/2;
+  ctx.rotate(rot);
+  px(-11,-7,22,14,col.body);
+  px(-11,-7,22,3,col.trim);
+  px(-11,4,22,3,'rgba(0,0,0,.25)');
+  px(-12,-9,7,3,C.tyre); px(-12,6,7,3,C.tyre);
+  px(5,-9,7,3,C.tyre);  px(5,6,7,3,C.tyre);
+  px(4,-5,7,10,C.glass);
+  px(10,-4,2,3,'#fff6c8'); px(10,1,2,3,'#fff6c8');
+  /* the pizza sign on the roof */
+  px(-6,-4,8,8,C.paper);
+  ctx.fillStyle=C.shopRoof;
+  ctx.beginPath(); ctx.moveTo(-2,-4); ctx.lineTo(-6,3); ctx.lineTo(2,3); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawDriver(x,y,s){
+  s=s||1;
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  px(-6,6,12,10,VANS[vanChoice].body);
+  px(-5,-4,10,10,'#f0c9a0');
+  px(-3,-1,2,2,C.ink); px(1,-1,2,2,C.ink);
+  px(-2,3,4,1,'#c96a6a');
+  if(hatChoice===1){ px(-6,-8,12,4,'#ffffff'); px(-4,-13,8,6,'#ffffff'); }
+  if(hatChoice===2){ px(-6,-7,12,3,'#3a7fd0'); px(-6,-10,9,4,'#3a7fd0'); }
+  if(hatChoice===3){ px(-6,-9,12,4,C.gold); px(-6,-13,3,5,C.gold); px(-1,-14,3,6,C.gold); px(4,-13,3,5,C.gold); }
+  ctx.restore();
+}
+
+function drawHUD(){
+  px(0,0,W,HUD_H,'#22252e');
+  px(0,HUD_H-2,W,2,C.shop);
+  txtS('POINTS '+points, 8, 12, 13, C.gold);
+  txtS(playerName(), 8, 27, 10, C.paper);
+
+  const left = houses.filter(h=>!h.done).length;
+  txtS('PIZZAS LEFT '+left, 124, 12, 11, left>0?C.paper:C.good);
+  txtS('LEVEL '+level, 124, 27, 10, '#a8b0c0');
+
+  const t = timeLeft/baseTime;
+  const low = timeLeft < 600;
+  txtS('TIME', 264, 11, 9, low?C.hot:'#a8b0c0');
+  px(264,18,120,9,'#3a3f4a');
+  px(265,19,118*Math.max(0,Math.min(1,t)),7, low?C.hot:C.good);
+  txtS(fmt(timeLeft), 396, 22, 13, low && frame%20<12 ? C.hot : C.paper);
+
+  ctx.save(); ctx.translate(452,17); drawVan({dir:'r'},0,0,0.55); ctx.restore();
+}
+
+function drawX(){
+  if(xMark<=0) return;
+  ctx.globalAlpha = Math.min(1, xMark/25);
+  ctx.strokeStyle=C.hot; ctx.lineWidth=12;
+  ctx.beginPath();
+  ctx.moveTo(W/2-52,H/2-52); ctx.lineTo(W/2+52,H/2+52);
+  ctx.moveTo(W/2+52,H/2-52); ctx.lineTo(W/2-52,H/2+52);
+  ctx.stroke();
+  ctx.globalAlpha=1;
+}
+
+function drawTitle(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#2a2f3a'); g.addColorStop(1,'#1a1d24');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  px(0,196,W,44,C.road);
+  for(let i=0;i<W;i+=28) px(i+((frame*1.5)%28),216,14,3,C.line);
+  px(0,192,W,3,C.kerb); px(0,240,W,3,C.kerb);
+
+  txtS('MR PIZZA\u2019S', W/2, 66, 30, C.shopRoof, 'center');
+  txtS('PIZZA DELIVERY', W/2, 104, 26, C.paper, 'center');
+  ctx.save(); ctx.translate(W/2, 148); ctx.scale(2.2,2.2);
+  ctx.fillStyle=C.shopRoof;
+  ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(-13,10); ctx.lineTo(13,10); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#f7e0a0';
+  ctx.beginPath(); ctx.moveTo(0,-9); ctx.lineTo(-9,8); ctx.lineTo(9,8); ctx.closePath(); ctx.fill();
+  px(-4,-2,4,4,'#e0453a'); px(3,3,4,4,'#e0453a'); px(-2,4,3,3,'#e0453a');
+  ctx.restore();
+
+  const t=((frame*1.2)%(W+80))-40;
+  drawVan({dir:'r'}, t, 216, 1);
+
+  txtS('BY IVY AND NOAH', W/2, 262, 10, '#8a94a8', 'center');
+  if(frame%60<38) txtS('PRESS 1 TO START', W/2, 282, 13, C.gold, 'center');
+}
+
+function drawVanSel(){
+  ctx.fillStyle='#22252e'; ctx.fillRect(0,0,W,H);
+  px(12,10,W-24,H-20,'#2c303a');
+  ctx.strokeStyle=C.shopRoof; ctx.lineWidth=2; ctx.strokeRect(12,10,W-24,H-20);
+  txtS('STEP 1 - CHOOSE YOUR VAN', W/2, 32, 15, C.gold, 'center');
+  for(let i=0;i<VANS.length;i++){
+    const x=68+i*116, sel=vanChoice===i;
+    ctx.globalAlpha = sel ? 0.35+0.15*Math.sin(frame*0.14) : 0.1;
+    px(x-46,72,92,86, sel?C.gold:'#8a94a8'); ctx.globalAlpha=1;
+    px(x-42,76,84,78,'#22252e');
+    const save=vanChoice; vanChoice=i;
+    ctx.save(); ctx.translate(x,116); drawVan({dir:'r'},0,0,1.7); ctx.restore();
+    vanChoice=save;
+    txtS(VANS[i].name, x, 170, 9, sel?C.gold:'#8a94a8', 'center');
+  }
+  txtS('LEFT / RIGHT TO CHOOSE', W/2, 208, 11, C.paper, 'center');
+  if(frame%60<38) txtS('DELIVER BUTTON TO PICK IT', W/2, 240, 12, C.gold, 'center');
+  txtS('PRESS 9 ANY TIME TO RESTART', W/2, 268, 9, '#8a94a8', 'center');
+}
+
+function drawNameSel(){
+  ctx.fillStyle='#22252e'; ctx.fillRect(0,0,W,H);
+  px(12,10,W-24,H-20,'#2c303a');
+  ctx.strokeStyle=C.shopRoof; ctx.lineWidth=2; ctx.strokeRect(12,10,W-24,H-20);
+  txtS('ENTER YOUR NICKNAME', W/2, 34, 15, C.gold, 'center');
+  txtS('so you can see if you get on the podium', W/2, 54, 10, '#a8b0c0', 'center');
+  for(let i=0;i<3;i++){
+    const x=W/2-70+i*70, sel=nameSlot===i;
+    ctx.globalAlpha= sel ? 0.3+0.15*Math.sin(frame*0.18) : 0.1;
+    px(x-28,84,56,66, sel?C.gold:'#8a94a8'); ctx.globalAlpha=1;
+    px(x-24,88,48,58,'#22252e');
+    txtS(LETTERS[nameChars[i]], x, 118, 34, sel?C.gold:C.paper, 'center');
+    if(sel){
+      txtS('\u25B2', x, 76, 11, C.gold, 'center');
+      txtS('\u25BC', x, 158, 11, C.gold, 'center');
+    }
+  }
+  txtS('UP / DOWN CHANGES THE LETTER', W/2, 186, 10, C.paper, 'center');
+  txtS('LEFT / RIGHT MOVES ALONG', W/2, 202, 10, C.paper, 'center');
+  ctx.save(); ctx.translate(76,120); drawDriver(0,0,1.5); ctx.restore();
+  if(frame%60<38) txtS('DELIVER BUTTON TO START DRIVING', W/2, 240, 12, C.gold, 'center');
+}
+
+function drawShopScreen(){
+  ctx.fillStyle='rgba(20,22,30,.94)'; ctx.fillRect(0,0,W,H);
+  px(20,16,W-40,H-32,'#2c303a');
+  ctx.strokeStyle=C.sky; ctx.lineWidth=2; ctx.strokeRect(20,16,W-40,H-32);
+  txtS('MR PIZZA\u2019S SHOP', W/2, 38, 16, C.sky, 'center');
+  txtS('YOU HAVE '+points+' POINTS', W/2, 58, 11, C.gold, 'center');
+  for(let i=0;i<SHOP_ITEMS.length;i++){
+    const it=SHOP_ITEMS[i], y=86+i*38, sel=shopSel===i;
+    const owned = (it.key==='fast' && fastVan);
+    const can = points>=it.cost && !owned;
+    if(sel){ ctx.globalAlpha=0.18+0.1*Math.sin(frame*0.16); px(34,y-15,W-68,32,C.sky); ctx.globalAlpha=1; }
+    txtS((sel?'> ':'  ')+it.name, 44, y-4, 12, owned?'#6a7280':(can?C.paper:'#8a94a8'));
+    txtS(owned?'OWNED':('$'+it.cost), W-52, y-4, 12, owned?'#6a7280':(can?C.gold:C.hot), 'right');
+    txtS(it.note, 60, y+10, 8, '#8a94a8');
+  }
+  txtS('UP / DOWN TO CHOOSE   DELIVER TO BUY', W/2, 250, 10, C.paper, 'center');
+  if(frame%50<32) txtS('SHOP BUTTON TO GO BACK TO DRIVING', W/2, 268, 10, C.sky, 'center');
+}
+
+function drawOverlay(){
+  if(state==='clear'){
+    px(0,112,W,76,'rgba(20,22,30,.9)');
+    txtS('LEVEL '+level+' DELIVERED!', W/2, 136, 20, C.good, 'center');
+    txtS('+5 POINTS   TOTAL '+points, W/2, 162, 12, C.gold, 'center');
+    txtS('NEXT LEVEL HAS MORE HOUSES', W/2, 180, 10, C.paper, 'center');
+  }
+  if(state==='over'){
+    ctx.fillStyle='rgba(16,18,24,.94)'; ctx.fillRect(0,0,W,H);
+    txtS('BING BONG!', W/2, 92, 30, C.hot, 'center');
+    txtS('TIME IS OUT', W/2, 128, 14, C.paper, 'center');
+    txtS(playerName()+'  -  '+points+' POINTS', W/2, 166, 14, C.gold, 'center');
+    txtS('YOU REACHED LEVEL '+level, W/2, 190, 11, '#a8b0c0', 'center');
+    if(timer>90 && frame%60<38) txtS('PRESS DELIVER FOR THE PODIUM', W/2, 240, 11, C.paper, 'center');
+  }
+  if(state==='podium'){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#2a2f3a'); g.addColorStop(1,'#1a1d24');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    txtS('THE PODIUM', W/2, 34, 20, C.gold, 'center');
+    const heights=[74,54,38], xs=[W/2, W/2-108, W/2+108];
+    for(let i=0;i<3;i++){
+      const p=podium[i];
+      const bx=xs[i], bh=heights[i];
+      px(bx-46, 250-bh, 92, bh, i===0?C.gold:(i===1?'#c8ccd4':'#c98a4a'));
+      px(bx-46, 250-bh, 92, 3, '#ffffff');
+      txtS(String(i+1), bx, 250-bh+16, 20, '#2a2a2a', 'center');
+      if(p){
+        const save=vanChoice; vanChoice=p.van;
+        ctx.save(); ctx.translate(bx, 250-bh-22); drawVan({dir:'r'},0,0,1.1); ctx.restore();
+        vanChoice=save;
+        txtS(p.name, bx, 250-bh-44, 14, C.paper, 'center');
+        txtS(p.score+' PTS', bx, 250-bh+38, 11, '#2a2a2a', 'center');
+      } else {
+        txtS('- - -', bx, 250-bh-30, 12, '#6a7280', 'center');
+      }
+    }
+    if(podium.length>3){
+      txtS('ALSO: '+podium.slice(3).map(p=>p.name+' '+p.score).join('   '), W/2, 272, 9, '#8a94a8', 'center');
+    }
+    if(timer>60 && frame%60<38) txtS('PRESS DELIVER FOR THE TITLE', W/2, 288, 10, '#a8b0c0', 'center');
+  }
+  if(state==='play' && hintT>0){
+    ctx.globalAlpha=Math.min(1,hintT/60);
+    px(0,HUD_H+2,W,30,'rgba(20,22,30,.82)');
+    txtS('DRIVE TO EVERY ARROW AND PRESS DELIVER', W/2, HUD_H+12, 10, C.gold, 'center');
+    txtS('THEN GO BACK TO MR PIZZA TO FINISH', W/2, HUD_H+25, 10, C.paper, 'center');
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  ctx.setTransform(SC,0,0,SC,0,0);
+  ctx.fillStyle='#171a20'; ctx.fillRect(0,0,W,H);
+
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='vansel'){ drawVanSel(); return; }
+  if(state==='namesel'){ drawNameSel(); return; }
+  if(state==='over'||state==='podium'){ drawOverlay(); return; }
+
+  drawTown();
+  drawShopBuilding();
+  for(const h of houses) drawHouse(h);
+  for(const co of coins) if(!co.taken) drawCoin(co);
+  drawVan(van);
+  for(const s of sparks){ ctx.globalAlpha=Math.min(1,s.t/13); px(s.x,s.y,2,2,s.c); ctx.globalAlpha=1; }
+  for(const p of pops){
+    ctx.globalAlpha=Math.min(1,p.t/28);
+    txtS(p.s, p.x, p.y, 10, p.c, 'center'); ctx.globalAlpha=1;
+  }
+  drawX();
+  drawHUD();
+  drawOverlay();
+  if(state==='shop') drawShopScreen();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now(), acc=0;
+const STEP=1000/60;
+function loop(now){
+  requestAnimationFrame(loop);
+  acc += Math.min(now-last,100); last=now;
+  while(acc>=STEP){ update(); acc-=STEP; }
+  render();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
