@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Puppy Savers</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#f2efe6;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#3a3630;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#e9e4d6;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#cfcac0;touch-action:none;}
+  #pad{position:absolute;inset:auto 0 0 0;height:36%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 3% 3%;}
+  #dpad{position:relative;width:31vmin;height:21vmin;min-width:138px;min-height:94px;pointer-events:auto;}
+  .dbtn{position:absolute;width:9.5vmin;height:9.5vmin;min-width:44px;min-height:44px;
+        background:#a88ee0;border:3px solid rgba(40,30,60,.6);border-radius:24%;
+        display:flex;align-items:center;justify-content:center;color:#2a2040;
+        font-weight:bold;font-size:3.4vmin;opacity:.78;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+  .dbtn:active{opacity:.98;transform:translateY(2px);}
+  #dup{left:10.5vmin;top:0;} #ddown{left:10.5vmin;bottom:0;}
+  #dleft{left:0;top:5.3vmin;} #dright{left:21vmin;top:5.3vmin;}
+  .cluster{display:flex;gap:2.4vmin;pointer-events:auto;align-items:flex-end;}
+  .btn{width:12vmin;height:12vmin;min-width:54px;min-height:54px;border-radius:50%;
+       border:3px solid rgba(40,30,20,.6);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:2.7vmin;color:#2a2018;opacity:.85;
+       box-shadow:0 3px 0 rgba(0,0,0,.25);text-align:center;line-height:1.05;}
+  .btn:active{transform:translateY(2px);opacity:1;}
+  .b1{background:#f0a860;} .b2{background:#4a4440;color:#f0ece0;}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.1vmin;color:#5a544a;opacity:.9;}
+  .btn-wrap{position:relative;}
+  #rotate{position:fixed;inset:0;background:#e9e4d6;display:none;color:#3a3630;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){ #rotate{display:flex;} }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div id="dpad">
+        <div class="dbtn" id="dup"    data-k="up">▲</div>
+        <div class="dbtn" id="dleft"  data-k="left">◀</div>
+        <div class="dbtn" id="dright" data-k="right">▶</div>
+        <div class="dbtn" id="ddown"  data-k="down">▼</div>
+      </div>
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn b2" data-k="grab">PICK<br>UP</div><div class="lbl">BUTTON 2</div></div>
+        <div class="btn-wrap"><div class="btn b1" data-k="jump">JUMP</div><div class="lbl">BUTTON 1</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🐶<br>Puppy Savers plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   PUPPY SAVERS
+   Pixel Quest — Hilton Primary School
+   "Race your feet around the city picking up puppys before they run into
+    the sewers, because the puppys got out of there homes."
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 26, TILE = 16, GW = 20, GH = 13, OY = 30;
+
+/* tile types */
+const ROAD = 0, BUILDING = 1, WATER = 2, HEDGE = 3, GRASS = 4, TREE = 5, SEWER = 6;
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col; c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const HERO = bake([
+  "..kkkkkk..",
+  ".kvvvvvvk.",
+  "kvvvvvvvvk",
+  ".kkkkkkkk.",
+  "..kssssk..",
+  "..kessek..",
+  "..kssssk..",
+  ".kcccccck.",
+  ".kcccccck.",
+  ".kcccccck.",
+  "..kppppk..",
+  "..kpkkpk..",
+  "..kok.kok.",
+  "..kk..kk..",
+], { k:"#2a2418", v:"#8b6ad6", s:"#e8b088", e:"#2a2418", c:"#e07a4a", p:"#4a5a7a", o:"#3a3028" });
+
+const PUP_ROWS = [
+  ".k......k...",
+  "kbk....kbk..",
+  "kbbbbbbbbbk.",
+  "kbebbbbebbk.",
+  "kbbbnnbbbbk.",
+  ".kbbbbbbbk..",
+  ".kbbbbbbbkkk",
+  ".kbbbbbbbk..",
+  ".kbk..kbk...",
+  ".kkk..kkk...",
+];
+const PUPS = [
+  bake(PUP_ROWS, { k:"#4a3418", b:"#e8b04a", e:"#2a1c10", n:"#2a1c10" }),   // golden
+  bake(PUP_ROWS, { k:"#3a2612", b:"#a8763c", e:"#2a1c10", n:"#2a1c10" }),   // brown
+  bake(PUP_ROWS, { k:"#4a4238", b:"#f0e2c4", e:"#2a1c10", n:"#2a1c10" }),   // cream
+];
+
+const BONE = bake([
+  "kk...kk",
+  "kbkkkbk",
+  "kbbbbbk",
+  "kbkkkbk",
+  "kk...kk",
+], { k:"#5a5248", b:"#f4efe0" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){ const A = window.AudioContext || window.webkitAudioContext; if (A) AC = new A(); }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type, vol, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f, AC.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
+  g.gain.setValueAtTime(vol == null ? .11 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + d);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + d + .02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => { setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? .11 : vol), t * 1000); t += n[1] * .85; });
+}
+const SFX = {
+  pickup: () => melody([[660,.07],[990,.11]], 'square', .12),
+  jump:   () => tone(420, .1, 'square', .08, 760),
+  /* "Bump down when puppy goes in sewer" */
+  sewer:  () => { tone(300, .26, 'triangle', .16, 80); setTimeout(() => tone(90, .2, 'square', .12), 60); },
+  /* "Woop woop when get all puppys" */
+  woop:   () => { tone(400, .22, 'sine', .18, 950); setTimeout(() => tone(400, .26, 'sine', .18, 1050), 260); },
+  over:   () => melody([[330,.2],[250,.22],[160,.5]], 'triangle', .14),
+  start:  () => melody([[520,.09],[700,.09],[930,.16]], 'square', .12),
+  level:  () => melody([[660,.1],[880,.1],[1180,.2]], 'square', .12),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { up:false, down:false, left:false, right:false, jump:false, grab:false };
+const KEYMAP = {
+  ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+  w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right',
+  ' ':'jump', z:'jump', Z:'jump', Shift:'grab', x:'grab', X:'grab', Enter:'grab'
+};
+let jumpEdge = false, grabEdge = false, anyEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){
+    e.preventDefault();
+    if (!keys[k] && k === 'jump') jumpEdge = true;
+    if (!keys[k] && k === 'grab') grabEdge = true;
+    keys[k] = true; anyEdge = true; initAudio();
+  }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.dbtn, .btn').forEach(b => {
+  const k = b.dataset.k;
+  const on = e => {
+    e.preventDefault(); initAudio();
+    if (!keys[k] && k === 'jump') jumpEdge = true;
+    if (!keys[k] && k === 'grab') grabEdge = true;
+    keys[k] = true; anyEdge = true;
+  };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); anyEdge = true; });
+
+/* --------------------------------------------------------------- the city */
+let grid = [], sewers = [], sewerDist = [];
+let state = 'title';
+let score = 0, best = 0, level = 1, lost = 0, savedTotal = 0;
+let puppies = [], sparkles = [], floats = [];
+let jumpT = 0, jumpCool = 0, bannerT = 0, bannerText = '', celebrateT = 0, lostAtLevelStart = 0;
+
+const player = { x: 0, y: 0, w: 10, h: 12, dir: 1 };
+
+function solidFor(t, jumping){
+  if (t === BUILDING || t === WATER || t === TREE) return true;
+  if (t === HEDGE) return !jumping;
+  return false;
+}
+function tileAt(px, py){
+  const gx = Math.floor(px / TILE), gy = Math.floor((py - OY) / TILE);
+  if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return BUILDING;
+  return grid[gy][gx];
+}
+function boxBlocked(x, y, w, h, jumping){
+  return solidFor(tileAt(x, y), jumping) || solidFor(tileAt(x + w - 1, y), jumping) ||
+         solidFor(tileAt(x, y + h - 1), jumping) || solidFor(tileAt(x + w - 1, y + h - 1), jumping);
+}
+function tileCentre(gx, gy){ return { x: gx * TILE + TILE / 2, y: OY + gy * TILE + TILE / 2 }; }
+function puppyWalkable(gx, gy){
+  if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return false;
+  const t = grid[gy][gx];
+  return t === ROAD || t === GRASS || t === SEWER;
+}
+
+function buildCity(lvl){
+  for (let attempt = 0; attempt < 30; attempt++){
+    grid = Array.from({ length: GH }, () => new Array(GW).fill(ROAD));
+    // road grid every third tile, blocks of 2x2 in between
+    for (let by = 1; by < GH - 1; by += 3){
+      for (let bx = 1; bx < GW - 1; bx += 3){
+        const r = Math.random();
+        let type = BUILDING;
+        if (r < 0.16) type = WATER;
+        else if (r < 0.55) type = GRASS;
+        for (let y = by; y < Math.min(by + 2, GH); y++)
+          for (let x = bx; x < Math.min(bx + 2, GW); x++)
+            grid[y][x] = type;
+        if (type === GRASS && Math.random() < 0.7){
+          grid[by][bx] = TREE;                     // a tree in the park
+        }
+      }
+    }
+    // hedges across some roads — Button 1 jumps these
+    let hedges = 0, guard = 0;
+    const wantHedges = 7 + lvl;
+    while (hedges < wantHedges && guard++ < 400){
+      const x = 1 + Math.floor(Math.random() * (GW - 2));
+      const y = 1 + Math.floor(Math.random() * (GH - 2));
+      if (grid[y][x] !== ROAD) continue;
+      grid[y][x] = HEDGE; hedges++;
+    }
+    // the sewers the puppies are running for
+    sewers = [];
+    const wantSewers = 4 + Math.floor(lvl / 2);
+    guard = 0;
+    while (sewers.length < wantSewers && guard++ < 400){
+      const x = 1 + Math.floor(Math.random() * (GW - 2));
+      const y = 1 + Math.floor(Math.random() * (GH - 2));
+      if (grid[y][x] !== ROAD) continue;
+      if (sewers.some(s => Math.abs(s.x - x) + Math.abs(s.y - y) < 5)) continue;
+      grid[y][x] = SEWER; sewers.push({ x, y });
+    }
+    if (sewers.length < 3) continue;
+
+    // how far every walkable tile is from the nearest sewer
+    sewerDist = Array.from({ length: GH }, () => new Array(GW).fill(-1));
+    const q = [];
+    sewers.forEach(s => { sewerDist[s.y][s.x] = 0; q.push([s.x, s.y]); });
+    while (q.length){
+      const [x, y] = q.shift();
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(d => {
+        const nx = x + d[0], ny = y + d[1];
+        if (!puppyWalkable(nx, ny) || sewerDist[ny][nx] >= 0) return;
+        sewerDist[ny][nx] = sewerDist[y][x] + 1;
+        q.push([nx, ny]);
+      });
+    }
+    let walk = 0, reach = 0;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++)
+      if (puppyWalkable(x, y)){ walk++; if (sewerDist[y][x] >= 0) reach++; }
+    if (walk > 100 && reach / walk > 0.85) return true;
+  }
+  return false;
+}
+
+function freeTile(minSewerDist){
+  for (let i = 0; i < 400; i++){
+    const x = Math.floor(Math.random() * GW), y = Math.floor(Math.random() * GH);
+    if (!puppyWalkable(x, y)) continue;
+    if (grid[y][x] === SEWER) continue;
+    if (minSewerDist && (sewerDist[y][x] < 0 || sewerDist[y][x] < minSewerDist)) continue;
+    return { x, y };
+  }
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++)
+    if (puppyWalkable(x, y) && grid[y][x] !== SEWER) return { x, y };
+  return { x: 0, y: 0 };
+}
+
+function startLevel(lvl){
+  buildCity(lvl);
+  puppies = []; sparkles = []; floats = [];
+  const n = Math.min(12, 5 + lvl);
+  const step = Math.max(0.42, 0.75 - (lvl - 1) * 0.03);
+  for (let i = 0; i < n; i++){
+    const t = freeTile(8);
+    // each puppy pootles about for a while, then makes a run for the sewers
+    const runT = Math.max(2.5, 5 + i * 2.2 + Math.random() * 4 - (lvl - 1) * 0.9);
+    puppies.push({ gx: t.x, gy: t.y, fx: t.x, fy: t.y, tx: t.x, ty: t.y,
+                   t: 1, moving: false, step, pause: Math.random() * 1.2, runT,
+                   steps: 0, kind: i % PUPS.length, wag: Math.random() * 6, gone: false });
+  }
+  const ps = freeTile(4);
+  const c = tileCentre(ps.x, ps.y);
+  player.x = c.x - 5; player.y = c.y - 6;
+  jumpT = 0; jumpCool = 0;
+  lostAtLevelStart = lost;
+  banner('CITY ' + lvl + ' — ' + n + ' PUPPIES LOOSE');
+}
+function resetGame(){
+  score = 0; level = 1; lost = 0; savedTotal = 0;
+  startLevel(1);
+}
+function banner(t){ bannerText = t; bannerT = 2.2; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#fff', t: 1.1 }); }
+function sparkle(x, y, n, col){
+  for (let i = 0; i < n; i++)
+    sparkles.push({ x, y, vx: (Math.random() - .5) * 90, vy: -Math.random() * 70 - 10, t: .6, col });
+}
+
+/* -------------------------------------------------------------- gameplay */
+function stepPuppy(p, dt){
+  if (p.gone) return;
+  p.wag += dt * 6;
+  if (p.moving){
+    p.t += dt / p.step;
+    if (p.t >= 1){
+      p.t = 1; p.moving = false;
+      p.gx = p.tx; p.gy = p.ty; p.fx = p.tx; p.fy = p.ty;
+      p.steps++;
+      if (p.steps % 3 === 0) p.pause = (p.runT > 0 ? 1.1 : 0.5) + Math.random() * 0.9;  // stops for a sniff
+      if (grid[p.gy][p.gx] === SEWER){
+        p.gone = true;
+        lost++; score = Math.max(0, score - 15);
+        const c = tileCentre(p.gx, p.gy);
+        addFloat(c.x - 22, c.y - 14, 'DOWN THE SEWER -15', '#c85a3a');
+        SFX.sewer();
+        if (lost >= 3){
+          state = 'over'; best = Math.max(best, score);
+          setTimeout(SFX.over, 420);
+        }
+      }
+    }
+    return;
+  }
+  if (p.runT > 0) p.runT -= dt;
+  if (p.pause > 0){ p.pause -= dt; return; }
+  // once it's made up its mind, head for the nearest sewer
+  const here = sewerDist[p.gy][p.gx];
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  let choice = null;
+  if (here > 0 && p.runT <= 0){
+    for (const d of dirs){
+      const nx = p.gx + d[0], ny = p.gy + d[1];
+      if (!puppyWalkable(nx, ny)) continue;
+      if (sewerDist[ny][nx] >= 0 && sewerDist[ny][nx] < here){ choice = [nx, ny]; break; }
+    }
+  }
+  if (!choice){
+    for (let i = dirs.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+    }
+    for (const d of dirs){
+      const nx = p.gx + d[0], ny = p.gy + d[1];
+      if (puppyWalkable(nx, ny)){ choice = [nx, ny]; break; }
+    }
+  }
+  if (choice){
+    p.fx = p.gx; p.fy = p.gy; p.tx = choice[0]; p.ty = choice[1];
+    p.t = 0; p.moving = true;
+  }
+}
+function puppyPix(p){
+  const gx = p.fx + (p.tx - p.fx) * p.t, gy = p.fy + (p.ty - p.fy) * p.t;
+  return { x: gx * TILE + 2, y: OY + gy * TILE + 3 };
+}
+
+function updatePlay(dt){
+  if (bannerT > 0) bannerT -= dt;
+  if (jumpT > 0) jumpT -= dt;
+  if (jumpCool > 0) jumpCool -= dt;
+  if (celebrateT > 0){
+    celebrateT -= dt;
+    if (celebrateT <= 0){ level++; startLevel(level); }
+    return;
+  }
+
+  // joystick moves my person
+  let dx = 0, dy = 0;
+  if (keys.left) dx -= 1;
+  if (keys.right) dx += 1;
+  if (keys.up) dy -= 1;
+  if (keys.down) dy += 1;
+  if (dx || dy){
+    if (dx && dy){ dx *= 0.7071; dy *= 0.7071; }
+    if (dx) player.dir = dx > 0 ? 1 : -1;
+  }
+  const spd = 80 * dt;
+  const airborne = jumpT > 0;
+  const nx = player.x + dx * spd;
+  if (!boxBlocked(nx, player.y, player.w, player.h, airborne)) player.x = nx;
+  const ny = player.y + dy * spd;
+  if (!boxBlocked(player.x, ny, player.w, player.h, airborne)) player.y = ny;
+  player.x = Math.max(1, Math.min(BASE_W - player.w - 1, player.x));
+  player.y = Math.max(OY + 1, Math.min(OY + GH * TILE - player.h - 1, player.y));
+
+  // Button 1 = jump (hops the hedges)
+  if (jumpEdge && jumpCool <= 0){ jumpT = 0.42; jumpCool = 0.5; SFX.jump(); }
+  jumpEdge = false;
+
+  // Button 2 = pick up puppys
+  if (grabEdge){
+    let got = null, bd = 1e9;
+    puppies.forEach(p => {
+      if (p.gone) return;
+      const pp = puppyPix(p);
+      const d = Math.hypot(pp.x + 6 - (player.x + 5), pp.y + 5 - (player.y + 6));
+      if (d < 17 && d < bd){ bd = d; got = p; }
+    });
+    if (got){
+      got.gone = true; score += 20; savedTotal++;
+      const pp = puppyPix(got);
+      addFloat(pp.x - 8, pp.y - 10, 'SAVED +20', '#3f8a3a');
+      sparkle(pp.x + 6, pp.y + 5, 8, '#ffd24a');
+      SFX.pickup();
+    }
+  }
+  grabEdge = false;
+
+  puppies.forEach(p => stepPuppy(p, dt));
+  if (state !== 'play') return;
+
+  for (let i = sparkles.length - 1; i >= 0; i--){
+    const s = sparkles[i];
+    s.t -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 190 * dt;
+    if (s.t <= 0) sparkles.splice(i, 1);
+  }
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 16 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+
+  // city cleared?
+  if (puppies.every(p => p.gone)){
+    celebrateT = 2.4;
+    if (lost === lostAtLevelStart){
+      score += 200;
+      banner('WOOF WOOF! ALL PUPPIES SAVED');
+      SFX.woop();
+    } else {
+      banner('CITY CLEARED — ' + (lost - lostAtLevelStart) + ' GOT AWAY');
+      SFX.level();
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ paint */
+function drawCity(){
+  for (let y = 0; y < GH; y++){
+    for (let x = 0; x < GW; x++){
+      const px = x * TILE, py = OY + y * TILE, t = grid[y][x];
+      if (t === BUILDING){
+        ctx.fillStyle = '#3aa89a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#2f8d81'; ctx.fillRect(px, py + TILE - 3, TILE, 3);
+        ctx.fillStyle = '#bdeee6';
+        ctx.fillRect(px + 3, py + 3, 4, 4); ctx.fillRect(px + 9, py + 3, 4, 4);
+        ctx.fillRect(px + 3, py + 9, 4, 3); ctx.fillRect(px + 9, py + 9, 4, 3);
+      } else if (t === WATER){
+        ctx.fillStyle = '#2f7fd0'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#63a8e8';
+        ctx.fillRect(px + 2, py + 4, 6, 1); ctx.fillRect(px + 8, py + 9, 5, 1);
+      } else if (t === GRASS){
+        ctx.fillStyle = '#63a83f'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#4e8c30';
+        ctx.fillRect(px + 3, py + 5, 2, 3); ctx.fillRect(px + 10, py + 9, 2, 3);
+      } else if (t === TREE){
+        ctx.fillStyle = '#63a83f'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#6a4a24'; ctx.fillRect(px + 7, py + 9, 3, 6);
+        ctx.fillStyle = '#2f6e28';
+        ctx.beginPath(); ctx.arc(px + 8, py + 7, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3f8a35';
+        ctx.beginPath(); ctx.arc(px + 6, py + 6, 4, 0, Math.PI * 2); ctx.fill();
+      } else if (t === HEDGE){
+        ctx.fillStyle = '#cfcac0'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#2f6e28'; ctx.fillRect(px + 1, py + 4, TILE - 2, 9);
+        ctx.fillStyle = '#4a9038'; ctx.fillRect(px + 2, py + 5, TILE - 4, 4);
+        ctx.fillStyle = '#255a20'; ctx.fillRect(px + 1, py + 12, TILE - 2, 1);
+      } else if (t === SEWER){
+        ctx.fillStyle = '#cfcac0'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#2e2a26'; ctx.fillRect(px + 1, py + 2, TILE - 2, TILE - 4);
+        ctx.fillStyle = '#e08a30';
+        for (let i = 0; i < 4; i++) ctx.fillRect(px + 2, py + 4 + i * 3, TILE - 4, 2);
+      } else {
+        ctx.fillStyle = '#cfcac0'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#c2bcb0'; ctx.fillRect(px, py, TILE, 1);
+      }
+    }
+  }
+}
+
+function drawPlay(){
+  ctx.fillStyle = '#cfcac0'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  drawCity();
+
+  puppies.forEach(p => {
+    if (p.gone) return;
+    const pp = puppyPix(p);
+    const wag = Math.sin(p.wag) * 0.8;
+    ctx.drawImage(PUPS[p.kind].img, Math.round(pp.x), Math.round(pp.y + wag));
+  });
+
+  // the runner, lifted while jumping
+  const lift = jumpT > 0 ? Math.sin((1 - jumpT / 0.42) * Math.PI) * 7 : 0;
+  if (lift > 0.5){
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(player.x + 5, player.y + 13, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.save();
+  if (player.dir < 0){
+    ctx.translate(Math.round(player.x) + HERO.w, Math.round(player.y - lift));
+    ctx.scale(-1, 1); ctx.drawImage(HERO.img, 0, 0);
+  } else {
+    ctx.drawImage(HERO.img, Math.round(player.x), Math.round(player.y - lift));
+  }
+  ctx.restore();
+
+  sparkles.forEach(s => { ctx.fillStyle = s.col; ctx.fillRect(Math.round(s.x), Math.round(s.y), 2, 2); });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  drawHUD();
+  if (bannerT > 0 || celebrateT > 0){
+    ctx.globalAlpha = Math.min(1, Math.max(bannerT, celebrateT));
+    centreText(bannerText, 120, 17, '#ffffff', '#3a3630');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHUD(){
+  ctx.fillStyle = '#f4efe0'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#d8d0bc'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#c07a20'; ctx.fillText('SCORE ' + String(score).padStart(5, '0'), 5, 4);
+  ctx.fillStyle = '#3f8a3a'; ctx.fillText('SAVED ' + savedTotal, 5, 15);
+
+  const loose = puppies.filter(p => !p.gone).length;
+  ctx.fillStyle = '#5a544a'; ctx.fillText('LOOSE', 108, 4);
+  ctx.fillStyle = '#a8763c'; ctx.fillText(loose + ' PUPPIES', 108, 15);
+
+  ctx.fillStyle = '#5a544a'; ctx.fillText('CITY ' + level, 186, 4);
+  ctx.fillStyle = '#c85a3a'; ctx.fillText('SEWER ' + lost + '/3', 186, 15);
+
+  for (let i = 0; i < 3; i++){
+    ctx.globalAlpha = i < (3 - lost) ? 1 : 0.22;
+    ctx.drawImage(BONE.img, 262 + i * 12, 9);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function centreText(text, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+
+function confettiBackdrop(){
+  ctx.fillStyle = '#f4efe0'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  const cols = ['#f0a860', '#8b6ad6', '#3aa89a', '#e8b04a', '#e07a9a', '#63a83f'];
+  for (let i = 0; i < 130; i++){
+    ctx.fillStyle = cols[i % cols.length];
+    ctx.fillRect((i * 67) % BASE_W, (i * 43) % BASE_H, 2, 3);
+  }
+}
+
+function drawTitle(){
+  confettiBackdrop();
+  ctx.fillStyle = '#63a8e8'; ctx.fillRect(0, 36, BASE_W, 74);
+  ctx.fillStyle = '#63a83f'; ctx.fillRect(0, 100, BASE_W, 12);
+  centreText('PUPPY SAVERS', 62, 28, '#f4efe0', '#3a5a80');
+  ctx.drawImage(PUPS[0].img, 40, 84);
+  ctx.drawImage(BONE.img, 24, 90);
+  ctx.drawImage(PUPS[1].img, 262, 84);
+
+  centreText('The puppies got out of their homes.', 128, 11, '#3a3630');
+  centreText('Race around the city and pick them up', 143, 11, '#3a3630');
+  centreText('before they run into the sewers.', 158, 11, '#c85a3a');
+
+  centreText('Pixel Quest — Hilton Primary School', 178, 9, '#7a746a');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 2 (or tap) TO START', 202, 12, '#3f8a3a', '#f4efe0');
+  ctx.globalAlpha = 1;
+  centreText('Joystick moves  •  B1 jump the hedges  •  B2 pick up', 222, 9, '#5a544a');
+}
+
+function drawOver(){
+  confettiBackdrop();
+  ctx.fillStyle = 'rgba(244,239,224,0.82)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('GAME OVER', 52, 30, '#c85a3a', '#f4efe0');
+  centreText('Three puppies went down the sewers', 82, 11, '#5a544a');
+  ctx.drawImage(PUPS[1].img, 146, 100);
+  centreText('SCORE ' + score, 132, 18, '#c07a20', '#f4efe0');
+  centreText('PUPPIES SAVED ' + savedTotal + '   •   CITIES ' + level, 154, 11, '#3f8a3a');
+  centreText('BEST ' + best, 170, 10, '#5a544a');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 2 (or tap) TO TRY AGAIN', 202, 11, '#3f8a3a', '#f4efe0');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else {
+    const go = grabEdge || jumpEdge || anyEdge;
+    grabEdge = false; jumpEdge = false; anyEdge = false;
+    if (go){ initAudio(); SFX.start(); resetGame(); state = 'play'; }
+  }
+  anyEdge = false;
+}
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if (state === 'title') drawTitle();
+  else if (state === 'play') drawPlay();
+  else if (state === 'over') drawOver();
+  ctx.restore();
+}
+function frame(now){
+  let delta = (now - last) / 1000; last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

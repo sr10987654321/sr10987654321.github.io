@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Escape the Jungle — by Ziki</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#0a1408;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#fff;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#0a1408;touch-action:none;}
+  #pad{position:absolute;inset:auto 0 0 0;height:34%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 2.5% 3%;}
+  .cluster{display:flex;gap:2.2vmin;pointer-events:auto;}
+  .btn{width:13vmin;height:13vmin;min-width:56px;min-height:56px;border-radius:50%;
+       border:3px solid rgba(24,16,8,.75);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:4.2vmin;color:#1a2410;opacity:.72;user-select:none;
+       box-shadow:0 3px 0 rgba(0,0,0,.35);}
+  .btn:active{transform:translateY(2px);opacity:.95;}
+  .stick{background:#f6d43a;}          /* Ziki's yellow joystick ball */
+  .go{background:#7fc8ea;}             /* Ziki's two blue buttons */
+  .btn-wrap{position:relative;}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.2vmin;color:#dff3d0;opacity:.85;}
+  #rotate{position:fixed;inset:0;background:#0a1408;display:none;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){ #rotate{display:flex;} }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn stick" data-k="left">◀</div><div class="lbl">LEFT</div></div>
+        <div class="btn-wrap"><div class="btn stick" data-k="right">▶</div><div class="lbl">RIGHT</div></div>
+      </div>
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn go" data-k="block">🛡</div><div class="lbl">BUTTON 2 — BLOCK</div></div>
+        <div class="btn-wrap"><div class="btn go" data-k="jump">▲</div><div class="lbl">BUTTON 1 — JUMP</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🌴<br>Escape the Jungle plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   ESCAPE THE JUNGLE
+   Game design by Ziki — Pixel Quest, Hilton Primary School
+   "Run and try get out the jungle before night."
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 26;
+const GROUND_Y = 182;          // top of the jungle floor
+const DROWN_Y = 232;
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col; c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const P_PAL = { k:"#241a10", r:"#e05a4a", s:"#e8b088", e:"#241a10", g:"#4fae5a", b:"#3a6ea8", o:"#4a3a2a" };
+
+const RUN1 = bake([
+  "....kkkkkk....",
+  "...krrrrrrk...",
+  "..krrrrrrrrk..",
+  "..kkkkkkkkkk..",
+  "...kssssssk...",
+  "...ksessesk...",
+  "...kssssssk...",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kkbbbbbbkk..",
+  "...kbbbbbbk...",
+  "...kbbkkbbk...",
+  "...kbbk.kbbk..",
+  "...kbbk.kbbk..",
+  "..koook..kook.",
+  "..kkkkk..kkkk.",
+], P_PAL);
+
+const RUN2 = bake([
+  "....kkkkkk....",
+  "...krrrrrrk...",
+  "..krrrrrrrrk..",
+  "..kkkkkkkkkk..",
+  "...kssssssk...",
+  "...ksessesk...",
+  "...kssssssk...",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kkbbbbbbkk..",
+  "...kbbbbbbk...",
+  "...kbbbbbbk...",
+  "..kbbk..kbbk..",
+  ".kbbk....kbbk.",
+  ".koook...koook",
+  ".kkkkk...kkkkk",
+], P_PAL);
+
+const JUMPF = bake([
+  "....kkkkkk....",
+  "...krrrrrrk...",
+  "..krrrrrrrrk..",
+  "..kkkkkkkkkk..",
+  "...kssssssk...",
+  "...ksessesk...",
+  "...kssssssk...",
+  ".kkggggggggkk.",
+  "kggggggggggggk",
+  "kkkggggggggkkk",
+  "..kggggggggk..",
+  "..kkbbbbbbkk..",
+  "..kbbbbbbbbk..",
+  ".kbbk....kbbk.",
+  "koook....koook",
+  "kkkk......kkkk",
+  "..............",
+  "..............",
+], P_PAL);
+
+const BLOCKF = bake([
+  "..............",
+  "....kkkkkk....",
+  "...krrrrrrk...",
+  "..krrrrrrrrk..",
+  "..kkkkkkkkkk..",
+  "...kssssssk...",
+  "...ksessesk...",
+  "...kssssssk...",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kggggggggk..",
+  "..kkbbbbbbkk..",
+  "...kbbbbbbk...",
+  "...kbbkkbbk...",
+  "...kbbk.kbbk..",
+  "..koook.kkook.",
+  "..kkkkk..kkkk.",
+  "..............",
+], P_PAL);
+
+const HUNTER = bake([
+  "..............",
+  "....kkkkkk....",
+  ".kkkhhhhhhkkk.",
+  ".khhhhhhhhhhk.",
+  "..kkkkkkkkkk..",
+  "...kssssssk...",
+  "...ksessesk...",
+  "...kssmsssk...",
+  "..kttttttttk..",
+  "..ktttnnttttk.",
+  "..kttttttttk..",
+  "..kkbbbbbbkk..",
+  "...kbbbbbbk...",
+  "...kbbkkbbk...",
+  "...kbbk.kbbk..",
+  "...kbbk.kbbk..",
+  "..koook..kook.",
+  "..kkkkk..kkkk.",
+], { k:"#241a10", h:"#8a5a30", s:"#e8b088", e:"#241a10", m:"#a05050",
+     t:"#b9a06a", n:"#6b4a20", b:"#5a4a30", o:"#3a2a1a" });
+
+const TIGER = bake([
+  "..kk..................",
+  ".koOk.................",
+  ".kOOOkkkkkkkkkkkk.kkk.",
+  "kOwOwOOOOOOOOOOOOkOOOk",
+  "kOOnOOnOOnOOnOOnOOkOOk",
+  "kOnOOnOOnOOnOOnOOOkOOk",
+  "kmOOOOOOOOOOOOOOOOkkkk",
+  ".kOOnOOnOOnOOnOOnOk...",
+  ".kkOOOOOOOOOOOOOOkk...",
+  "..kOk..kOk..kOk..kOk..",
+  "..kOk..kOk..kOk..kOk..",
+  "..kkk..kkk..kkk..kkk..",
+], { k:"#3a2412", O:"#e8a03c", o:"#f0c070", n:"#3a2412", w:"#ffffff", m:"#d05a5a" });
+
+const BANANA = bake([
+  ".....kk..",
+  "....kyyk.",
+  "...kyyyk.",
+  "..kyyyk..",
+  "..kyyk...",
+  ".kyyk....",
+  "kyyk.....",
+  "kkk......",
+], { k:"#6b4a10", y:"#ffd24a" });
+
+const LOG = bake([
+  "..kkkkkkkkkkkkkkkk..",
+  ".kbbbbbbbbbbbbbbbbk.",
+  "kbnbbbbnbbbbbnbbbbbk",
+  "kbbbbbbbbbbbbbbbbbbk",
+  "kbbnbbbbbbnbbbbbbbbk",
+  "kbbbbbbbbbbbbbbnbbbk",
+  ".kbbbbbbbbbbbbbbbbk.",
+  "..kkkkkkkkkkkkkkkk..",
+], { k:"#3b2412", b:"#8a5a30", n:"#5e3a1c" });
+
+const SPIKES = bake([
+  "................",
+  "..k....k....k...",
+  "..kwk..kwk..kwk.",
+  ".kwwwkkwwwkkwwwk",
+  ".kwwwkkwwwkkwwwk",
+  "kwwwwwwwwwwwwwwk",
+  "kkkkkkkkkkkkkkkk",
+], { k:"#6b5a2a", w:"#d8cba0" });
+
+const FISH = bake([
+  "..kkkk....",
+  ".kbbbbk.k.",
+  "kbwbbbbkkk",
+  "kbbbbbbkkk",
+  ".kbbbbk.k.",
+  "..kkkk....",
+], { k:"#1a3a4a", b:"#e08a3a", w:"#ffffff" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){ const A = window.AudioContext || window.webkitAudioContext; if (A) AC = new A(); }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(freq, dur, type, vol, slideTo){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol == null ? 0.12 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + dur + 0.02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => { setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? .12 : vol), t * 1000); t += n[1] * .85; });
+}
+const SFX = {
+  jump:    () => tone(340, .12, 'square', .1, 660),
+  land:    () => tone(180, .06, 'triangle', .07),
+  banana:  () => melody([[700,.07],[980,.1]], 'square', .11),
+  block:   () => { tone(880, .09, 'square', .12); tone(1240, .07, 'square', .08); },
+  dodge:   () => tone(760, .09, 'triangle', .09, 1020),
+  hit:     () => tone(240, .16, 'sawtooth', .13, 120),
+  lifeLost:() => melody([[380,.14],[280,.16],[180,.3]], 'sawtooth', .13),
+  hop:     () => tone(560, .07, 'square', .08, 820),
+  level:   () => melody([[660,.11],[880,.11],[1180,.2]], 'square', .13),
+  win:     () => melody([[660,.13],[790,.13],[990,.13],[1320,.16],[990,.11],[1320,.34]], 'square', .13),
+  lose:    () => melody([[440,.18],[360,.18],[280,.24],[180,.44]], 'triangle', .14),
+  start:   () => melody([[520,.09],[700,.09],[930,.16]], 'square', .12),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { left:false, right:false, jump:false, block:false };
+const KEYMAP = {
+  ArrowLeft:'left', ArrowRight:'right', a:'left', d:'right', A:'left', D:'right',
+  ArrowUp:'jump', w:'jump', W:'jump', ' ':'jump',
+  ArrowDown:'block', s:'block', S:'block', Shift:'block'
+};
+let jumpEdge = false, anyEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){ e.preventDefault(); if (!keys[k] && k === 'jump') jumpEdge = true; keys[k] = true; anyEdge = true; initAudio(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.btn').forEach(b => {
+  const k = b.dataset.k;
+  const on  = e => { e.preventDefault(); initAudio(); if (!keys[k] && k === 'jump') jumpEdge = true; keys[k] = true; anyEdge = true; };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); anyEdge = true; });
+
+/* ------------------------------------------------------------------- game */
+const LEVELS = 3;
+let state = 'title';
+let score = 0, best = 0, level = 1, lives = 3;
+let elapsed = 0, timeLimit = 48, camX = 0;
+let bannerT = 0, bannerText = '', endT = 0;
+let bananasEaten = 0, jumpedOver = 0, dodged = 0;
+
+const player = { x: 40, y: 100, px: 40, py: 100, vx: 0, vy: 0, w: 14, h: 18,
+                 onGround: false, coyote: 0, invul: 0, animT: 0, blocking: false, face: 1 };
+
+let world = null;                 // {len, gaps, logs, spikes, plats, bananas, enemies, trees}
+let shots = [], floats = [], bits = [];
+
+/* --------------------------------------------------------- level building */
+function rnd(a, b){ return a + Math.random() * (b - a); }
+function ri(a, b){ return Math.floor(rnd(a, b + 1)); }
+
+function buildLevel(lvl){
+  const len = 2000 + lvl * 700;
+  const gaps = [], logs = [], spikes = [], plats = [], bananas = [], enemies = [];
+  let x = 300;                                            // safe run-up
+  while (x < len - 240){
+    const roll = Math.random();
+    if (roll < 0.20){                                     // river gap with fish
+      const w = 34 + lvl * 3 + rnd(0, 12);
+      gaps.push({ x0: x, x1: x + w, fish: [
+        { x: x + w * .3, y: GROUND_Y + 14, t: Math.random() * 6 },
+        { x: x + w * .7, y: GROUND_Y + 24, t: Math.random() * 6 } ] });
+      bananas.push({ x: x + w / 2 - 4, y: GROUND_Y - 46, got: false });
+      x += w + rnd(90, 130);
+    } else if (roll < 0.40){                              // fallen log to jump
+      logs.push({ x, y: GROUND_Y - LOG.h, w: LOG.w, h: LOG.h, scored: false });
+      bananas.push({ x: x + 6, y: GROUND_Y - 40, got: false });
+      x += rnd(110, 160);
+    } else if (roll < 0.56){                              // bamboo spikes
+      spikes.push({ x, y: GROUND_Y - SPIKES.h, w: SPIKES.w, h: SPIKES.h, scored: false });
+      x += rnd(105, 150);
+    } else if (roll < 0.74){                              // floating log platform
+      const py = GROUND_Y - ri(34, 48);
+      plats.push({ x, y: py, w: LOG.w, h: LOG.h });
+      for (let i = 0; i < 3; i++) bananas.push({ x: x + 2 + i * 7, y: py - 12, got: false });
+      x += rnd(110, 150);
+    } else if (roll < 0.90){                              // hunter or tiger
+      if (Math.random() < 0.5){
+        enemies.push({ type:'tiger', x, y: GROUND_Y - TIGER.h, w: TIGER.w, h: TIGER.h,
+                       home: x, dir: -1, cool: rnd(1.0, 2.2) });
+      } else {
+        enemies.push({ type:'hunter', x, y: GROUND_Y - HUNTER.h, w: HUNTER.w, h: HUNTER.h,
+                       home: x, dir: -1, cool: rnd(1.0, 2.2) });
+      }
+      x += rnd(130, 180);
+    } else {                                              // banana arc over open ground
+      for (let i = 0; i < 5; i++)
+        bananas.push({ x: x + i * 13, y: GROUND_Y - 26 - Math.sin(i / 4 * Math.PI) * 22, got: false });
+      x += rnd(100, 140);
+    }
+  }
+  // background trees, fixed so they don't shimmer
+  const trees = [];
+  for (let i = 0; i < 120; i++)
+    trees.push({ x: i * 46 + (i * 137 % 31), layer: i % 3, h: 40 + (i * 73 % 46), w: 16 + (i * 29 % 14) });
+  return { len, gaps, logs, spikes, plats, bananas, enemies, trees };
+}
+
+function startLevel(lvl){
+  world = buildLevel(lvl);
+  shots = []; floats = []; bits = [];
+  player.x = 40; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0;
+  player.onGround = true; player.invul = 1.0;
+  elapsed = 0; camX = 0;
+  timeLimit = 46 + lvl * 10;
+  banner('LEVEL ' + lvl + ' — RUN BEFORE NIGHT!');
+}
+function resetGame(){
+  score = 0; level = 1; lives = 3;
+  bananasEaten = 0; jumpedOver = 0; dodged = 0;
+  startLevel(1);
+}
+function banner(t){ bannerText = t; bannerT = 2.2; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#fff', t: 1.1 }); }
+function burst(x, y, n, col){
+  for (let i = 0; i < n; i++)
+    bits.push({ x, y, vx: (Math.random() - .5) * 100, vy: -Math.random() * 90 - 10, t: .6, col });
+}
+
+/* ------------------------------------------------------------- helpers */
+function overGap(cx){
+  for (const g of world.gaps) if (cx > g.x0 && cx < g.x1) return true;
+  return false;
+}
+function hit(a, b){
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+function bump(reason){
+  if (player.invul > 0) return;
+  score = Math.max(0, score - 1);
+  player.invul = 1.0;
+  player.x -= player.face * 12;
+  player.vy = -140;
+  addFloat(player.x - 6, player.y - 10, reason + ' -1', '#ff8a7a');
+  burst(player.x + 7, player.y + 9, 6, '#ff8a7a');
+  SFX.hit();
+}
+function loseLife(reason){
+  // only charge a life if they aren't already in the post-respawn grace window,
+  // but ALWAYS put them back on solid ground or they keep falling
+  const charged = player.invul <= 0;
+  if (charged){
+    lives--;
+    SFX.lifeLost();
+    addFloat(player.x - 8, player.y - 10, reason, '#ff8a7a');
+    burst(player.x + 7, player.y + 9, 12, '#ffd24a');
+  }
+  if (lives <= 0){
+    state = 'over'; best = Math.max(best, score);
+    setTimeout(SFX.lose, 250);
+    return;
+  }
+  let safe = player.x;
+  const g = world.gaps.find(gp => safe + 7 > gp.x0 - 6 && safe + 7 < gp.x1 + 6);
+  if (g) safe = g.x0 - 26;
+  let guard = 0;
+  while (overGap(safe + 7) && guard++ < 80) safe -= 10;
+  player.x = Math.max(10, safe);
+  player.y = GROUND_Y - player.h - 2;
+  player.vx = 0; player.vy = 0; player.onGround = true;
+  player.invul = 2.0;
+}
+
+/* -------------------------------------------------------------- gameplay */
+const GRAV = 980, RUN_SPD = 118, JUMP_V = -335;
+
+function updatePlay(dt){
+  elapsed += dt;
+  if (bannerT > 0) bannerT -= dt;
+  if (player.invul > 0) player.invul -= dt;
+
+  // night falls
+  if (elapsed >= timeLimit){
+    state = 'over'; best = Math.max(best, score);
+    banner('NIGHT FELL');
+    setTimeout(SFX.lose, 250);
+    return;
+  }
+
+  player.px = player.x; player.py = player.y;
+  player.blocking = keys.block && player.onGround;
+
+  // move — joystick moves the person, Button 2 blocks (and roots you)
+  let move = 0;
+  if (!player.blocking){
+    if (keys.left) move -= 1;
+    if (keys.right) move += 1;
+  }
+  player.vx = move * RUN_SPD;
+  if (move !== 0) player.face = move;
+  player.x += player.vx * dt;
+  if (move !== 0 && player.onGround) player.animT += dt * 9;
+
+  // Button 1 jumps
+  if (player.onGround) player.coyote = 0.1; else player.coyote -= dt;
+  if (jumpEdge && player.coyote > 0 && !player.blocking){
+    player.vy = JUMP_V; player.onGround = false; player.coyote = 0; SFX.jump();
+  }
+  jumpEdge = false;
+
+  player.vy += GRAV * dt;
+  if (player.vy > 520) player.vy = 520;
+  player.y += player.vy * dt;
+
+  const cx = player.x + player.w / 2;
+  const wasAir = !player.onGround;
+  player.onGround = false;
+
+  // solid logs — land on top, blocked at the sides
+  for (const L of world.logs){
+    if (!hit(player, L)) continue;
+    const prevBottom = player.py + player.h;
+    if (player.vy > 0 && prevBottom <= L.y + 3){
+      player.y = L.y - player.h; player.vy = 0; player.onGround = true;
+    } else {
+      player.x = player.px;
+    }
+  }
+  // one-way floating log platforms
+  for (const P of world.plats){
+    if (!hit(player, P)) continue;
+    const prevBottom = player.py + player.h;
+    if (player.vy > 0 && prevBottom <= P.y + 3){
+      player.y = P.y - player.h; player.vy = 0; player.onGround = true;
+    }
+  }
+  // jungle floor (missing over rivers)
+  if (!player.onGround && player.vy >= 0 && !overGap(cx)){
+    if (player.y + player.h >= GROUND_Y && player.py + player.h <= GROUND_Y + 12){
+      player.y = GROUND_Y - player.h; player.vy = 0; player.onGround = true;
+    }
+  }
+  if (player.onGround && wasAir) SFX.land();
+
+  player.x = Math.max(4, Math.min(world.len + 40, player.x));
+  if (player.y > DROWN_Y) loseLife('SPLASH!');
+
+  // spikes cost a life
+  for (const S of world.spikes) if (hit(player, S)) bump('OUCH!');
+
+  // "if you jump over things you get 5 points"
+  for (const ob of world.logs.concat(world.spikes)){
+    if (!ob.scored && player.x > ob.x + ob.w + 2){
+      ob.scored = true; score += 5; jumpedOver++;
+      addFloat(ob.x, GROUND_Y - 34, 'JUMPED +5', '#a8e06a');
+      SFX.hop();
+    }
+  }
+
+  // "colecting bananas gives you points"
+  for (const b of world.bananas){
+    if (b.got) continue;
+    if (hit(player, { x: b.x, y: b.y, w: 9, h: 8 })){
+      b.got = true; score += 50; bananasEaten++;
+      addFloat(b.x - 6, b.y - 8, '+50', '#ffd24a');
+      burst(b.x + 4, b.y + 4, 5, '#ffd24a');
+      SFX.banana();
+    }
+  }
+
+  // hunters and tigers throw bananas at you
+  for (const e of world.enemies){
+    if (e.type === 'tiger'){
+      e.x += e.dir * 14 * dt;
+      if (e.x < e.home - 26 || e.x > e.home + 26) e.dir *= -1;
+    }
+    const d = player.x - e.x;
+    if (Math.abs(d) < 190){
+      e.cool -= dt;
+      if (e.cool <= 0){
+        e.cool = rnd(1.5, 2.6) - level * 0.15;
+        const dir = d > 0 ? 1 : -1;
+        shots.push({ x: e.x + (dir > 0 ? e.w : -6), y: e.y + 4, vx: dir * 96, vy: -70, scored: false });
+      }
+    }
+    if (hit(player, e)) bump(e.type === 'tiger' ? 'TIGER!' : 'HUNTER!');
+  }
+
+  // thrown bananas
+  for (let i = shots.length - 1; i >= 0; i--){
+    const s = shots[i];
+    s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 210 * dt;
+    const box = { x: s.x, y: s.y, w: 9, h: 8 };
+    if (hit(player, box)){
+      if (player.blocking){
+        score += 2; dodged++;
+        addFloat(player.x - 4, player.y - 10, 'BLOCKED +2', '#7fc8ea');
+        burst(s.x, s.y, 6, '#7fc8ea'); SFX.block();
+      } else if (player.invul <= 0){
+        score = Math.max(0, score - 1);
+        addFloat(player.x - 2, player.y - 10, '-1', '#ff8a7a');
+        player.invul = 0.9; player.vx = 0;
+        player.x -= player.face * 8;
+        burst(s.x, s.y, 6, '#ffd24a'); SFX.hit();
+      }
+      shots.splice(i, 1); continue;
+    }
+    // "if you doge a banana you get 2 points"
+    if (!s.scored && ((s.vx > 0 && s.x > player.x + player.w + 14) || (s.vx < 0 && s.x < player.x - 14))){
+      s.scored = true; score += 2; dodged++;
+      addFloat(player.x, player.y - 12, 'DODGED +2', '#a8e06a'); SFX.dodge();
+    }
+    if (s.y > BASE_H + 20 || s.x < camX - 60 || s.x > camX + BASE_W + 120) shots.splice(i, 1);
+  }
+
+  // fish in the rivers
+  for (const g of world.gaps) for (const f of g.fish) f.t += dt * 2;
+
+  // particles + floating text
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 18 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+  for (let i = bits.length - 1; i >= 0; i--){
+    const b = bits[i]; b.t -= dt; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 240 * dt;
+    if (b.t <= 0) bits.splice(i, 1);
+  }
+
+  // camera
+  camX = Math.max(0, Math.min(world.len + 120 - BASE_W, player.x - 104));
+
+  // reached the clearing
+  if (player.x >= world.len + 20){
+    const bonus = Math.round(Math.max(0, timeLimit - elapsed) * 10);
+    score += bonus;
+    endT = 2.6;
+    banner('OUT OF THE TREES!  TIME BONUS +' + bonus);
+    state = 'levelend';
+    SFX.level();
+  }
+}
+
+function updateLevelEnd(dt){
+  endT -= dt;
+  if (bannerT > 0) bannerT -= dt;
+  if (endT <= 0){
+    if (level >= LEVELS){
+      state = 'win'; best = Math.max(best, score); setTimeout(SFX.win, 200);
+    } else {
+      lives = Math.min(3, lives + 1);   // a life back for getting out of a stretch
+      level++; startLevel(level); state = 'play';
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ paint */
+function lerp(a, b, t){ return a + (b - a) * t; }
+function mixHex(h1, h2, t){
+  const p = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const a = p(h1), b = p(h2);
+  return 'rgb(' + Math.round(lerp(a[0],b[0],t)) + ',' + Math.round(lerp(a[1],b[1],t)) + ',' + Math.round(lerp(a[2],b[2],t)) + ')';
+}
+function skyColour(t){
+  const stops = ['#7ec8f0', '#bfe0ea', '#f2a06a', '#7a4a86', '#16183a'];
+  const seg = Math.min(stops.length - 2, Math.floor(t * (stops.length - 1)));
+  const local = t * (stops.length - 1) - seg;
+  return mixHex(stops[seg], stops[seg + 1], Math.max(0, Math.min(1, local)));
+}
+function dayT(){ return Math.max(0, Math.min(1, elapsed / timeLimit)); }
+
+function drawSky(){
+  const t = dayT();
+  ctx.fillStyle = skyColour(t);
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  // sun sinking toward the canopy
+  const sx = 40 + t * 250, sy = 46 + Math.sin(t * Math.PI) * -18 + t * 44;
+  ctx.fillStyle = t < 0.7 ? '#fff2a0' : '#ffd7a0';
+  ctx.beginPath(); ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = .25; ctx.beginPath(); ctx.arc(sx, sy, 15, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+}
+function drawTrees(){
+  const t = dayT();
+  const shades = ['#1d4a28', '#27633a', '#31804a'];
+  for (let layer = 0; layer < 3; layer++){
+    const par = 0.25 + layer * 0.22;
+    ctx.fillStyle = mixHex(shades[layer], '#0d1030', t * 0.72);
+    for (const tr of world.trees){
+      if (tr.layer !== layer) continue;
+      const x = tr.x - camX * par;
+      if (x < -40 || x > BASE_W + 40) continue;
+      const baseY = 150 + layer * 12;
+      ctx.fillRect(Math.round(x + tr.w / 2 - 3), Math.round(baseY - tr.h), 6, tr.h + 40);
+      ctx.beginPath();
+      ctx.ellipse(Math.round(x + tr.w / 2), Math.round(baseY - tr.h), tr.w + 8, tr.w - 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // hanging vines, like Ziki's banner
+  ctx.strokeStyle = mixHex('#3f9a52', '#0d1030', t * 0.7);
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 26; i++){
+    const x = i * 58 - (camX * 0.55) % (58 * 26) + 26;
+    if (x < -20 || x > BASE_W + 20) continue;
+    const len = 34 + (i * 41 % 44);
+    ctx.beginPath();
+    ctx.moveTo(x, HUD_H);
+    for (let y = HUD_H; y < HUD_H + len; y += 6) ctx.lineTo(x + Math.sin((y + i * 9) / 9) * 3, y);
+    ctx.stroke();
+  }
+}
+function drawGround(){
+  const t = dayT();
+  const dirt = mixHex('#7a5230', '#171a34', t * 0.7);
+  const grassC = mixHex('#4aa84f', '#16203a', t * 0.7);
+  const water = mixHex('#3a86c8', '#101a44', t * 0.7);
+
+  // water first, then the floor on top of it
+  ctx.fillStyle = water;
+  ctx.fillRect(0, GROUND_Y, BASE_W, BASE_H - GROUND_Y);
+  ctx.fillStyle = mixHex('#6fb6e0', '#1a2a55', t * 0.7);
+  for (let x = 0; x < BASE_W; x += 16){
+    const wob = Math.sin((x + camX + elapsed * 40) / 11) * 2;
+    ctx.fillRect(x, Math.round(GROUND_Y + 6 + wob), 10, 1);
+    ctx.fillRect(x + 6, Math.round(GROUND_Y + 20 + wob), 7, 1);
+  }
+  for (const g of world.gaps){
+    for (const f of g.fish){
+      const fx = f.x - camX + Math.sin(f.t) * 12;
+      if (fx > -14 && fx < BASE_W) drawSprite(FISH, fx, f.y + Math.sin(f.t * 1.7) * 3);
+    }
+  }
+  // floor slabs everywhere except the rivers
+  let x = 0;
+  const edges = [0];
+  world.gaps.forEach(g => { edges.push(g.x0, g.x1); });
+  edges.push(world.len + 200);
+  for (let i = 0; i < edges.length; i += 2){
+    const a = edges[i] - camX, b = edges[i + 1] - camX;
+    if (b < -10 || a > BASE_W + 10) continue;
+    const ax = Math.round(Math.max(-10, a)), bx = Math.round(Math.min(BASE_W + 10, b));
+    ctx.fillStyle = dirt; ctx.fillRect(ax, GROUND_Y, bx - ax, BASE_H - GROUND_Y);
+    ctx.fillStyle = grassC; ctx.fillRect(ax, GROUND_Y, bx - ax, 5);
+    ctx.fillStyle = mixHex('#5e3f22', '#12162e', t * 0.7);
+    for (let px = ax; px < bx; px += 12) ctx.fillRect(px + 3, GROUND_Y + 12, 5, 2);
+  }
+  void x;
+}
+function drawSprite(s, x, y, flip){
+  x = Math.round(x); y = Math.round(y);
+  if (flip){
+    ctx.save(); ctx.translate(x + s.w, y); ctx.scale(-1, 1);
+    ctx.drawImage(s.img, 0, 0); ctx.restore();
+  } else ctx.drawImage(s.img, x, y);
+}
+
+function drawPlay(){
+  drawSky();
+  drawTrees();
+  drawGround();
+
+  // exit clearing
+  const ex = world.len + 20 - camX;
+  if (ex < BASE_W + 40){
+    ctx.fillStyle = 'rgba(255,240,170,0.55)';
+    ctx.fillRect(Math.round(ex), HUD_H, 70, GROUND_Y - HUD_H);
+    ctx.fillStyle = '#ffd24a';
+    ctx.font = 'bold 9px "Trebuchet MS", Verdana, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('WAY OUT', Math.round(ex) + 35, 80); ctx.textAlign = 'left';
+  }
+
+  world.plats.forEach(p => drawSprite(LOG, p.x - camX, p.y));
+  world.logs.forEach(L => drawSprite(LOG, L.x - camX, L.y));
+  world.spikes.forEach(S => drawSprite(SPIKES, S.x - camX, S.y));
+  world.bananas.forEach(b => { if (!b.got) drawSprite(BANANA, b.x - camX, b.y + Math.sin(elapsed * 3 + b.x) * 1.5); });
+  world.enemies.forEach(e => {
+    const s = e.type === 'tiger' ? TIGER : HUNTER;
+    drawSprite(s, e.x - camX, e.y, e.type === 'hunter');
+  });
+  shots.forEach(s => drawSprite(BANANA, s.x - camX, s.y));
+
+  // the runner
+  const flash = player.invul > 0 && Math.floor(player.invul * 12) % 2 === 0;
+  if (!flash){
+    let spr = RUN1;
+    if (player.blocking) spr = BLOCKF;
+    else if (!player.onGround) spr = JUMPF;
+    else if (player.vx !== 0) spr = (Math.floor(player.animT) % 2 === 0) ? RUN1 : RUN2;
+    drawSprite(spr, player.x - camX, player.y, player.face < 0);
+    if (player.blocking){
+      const bx = player.x - camX + (player.face > 0 ? 12 : -5);
+      ctx.fillStyle = '#3f9a52'; ctx.fillRect(Math.round(bx), Math.round(player.y + 3), 6, 13);
+      ctx.fillStyle = '#8ee07a'; ctx.fillRect(Math.round(bx + 1), Math.round(player.y + 5), 4, 9);
+    }
+  }
+
+  bits.forEach(b => { ctx.fillStyle = b.col; ctx.fillRect(Math.round(b.x - camX), Math.round(b.y), 2, 2); });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textBaseline = 'top';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#101820'; ctx.fillText(f.text, Math.round(f.x - camX) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x - camX), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  // dusk settling over the jungle
+  const t = dayT();
+  if (t > 0.35){
+    ctx.fillStyle = 'rgba(12,14,46,' + ((t - 0.35) / 0.65 * 0.5).toFixed(3) + ')';
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+  }
+
+  drawHUD();
+  if (bannerT > 0){
+    ctx.globalAlpha = Math.min(1, bannerT);
+    centreText(bannerText, 108, 16, '#ffd24a', '#101820');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHUD(){
+  ctx.fillStyle = 'rgba(12,26,14,0.86)'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#3f9a52'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffd24a'; ctx.fillText('SCORE ' + String(score).padStart(5, '0'), 5, 4);
+  ctx.fillStyle = '#a8e06a'; ctx.fillText('BANANAS ' + bananasEaten, 5, 15);
+
+  // lives
+  ctx.fillStyle = '#dff3d0'; ctx.fillText('LIVES', 106, 4);
+  for (let i = 0; i < 3; i++){
+    const lx = 106 + i * 11, ly = 15;
+    if (i < lives){ ctx.fillStyle = '#ffd24a'; ctx.fillRect(lx, ly, 4, 7); ctx.fillRect(lx + 4, ly + 1, 3, 5); }
+    else { ctx.fillStyle = '#3d4a36'; ctx.fillRect(lx, ly + 2, 7, 4); }
+  }
+
+  // sun sinking toward night
+  ctx.fillStyle = '#dff3d0'; ctx.fillText('DAYLIGHT', 152, 4);
+  const bw = 84;
+  ctx.fillStyle = '#25321f'; ctx.fillRect(152, 16, bw, 6);
+  const t = dayT();
+  ctx.fillStyle = t < .6 ? '#ffe066' : (t < .85 ? '#f2a06a' : '#e0604a');
+  ctx.fillRect(152, 16, Math.round(bw * (1 - t)), 6);
+  ctx.fillStyle = '#101820'; ctx.fillRect(152 + Math.round(bw * (1 - t)) - 1, 14, 2, 10);
+
+  // how far through the jungle
+  ctx.fillStyle = '#dff3d0'; ctx.fillText('LEVEL ' + level + '/' + LEVELS, 248, 4);
+  const pw = 62;
+  ctx.fillStyle = '#25321f'; ctx.fillRect(248, 16, pw, 6);
+  ctx.fillStyle = '#7fc8ea'; ctx.fillRect(248, 16, Math.round(pw * Math.min(1, player.x / world.len)), 6);
+}
+
+function centreText(text, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+function textAt(text, x, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, x, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, x, y);
+  ctx.textBaseline = 'top';
+}
+
+function drawSimpleJungle(darkT){
+  ctx.fillStyle = skyColour(darkT); ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.fillStyle = mixHex('#27633a', '#0d1030', darkT * .6);
+  for (let i = 0; i < 9; i++){
+    const x = 18 + i * 36;
+    ctx.fillRect(x - 3, 120, 6, 80);
+    ctx.beginPath(); ctx.ellipse(x, 120, 20, 14, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = mixHex('#7a5230', '#171a34', darkT * .6); ctx.fillRect(0, 190, BASE_W, 50);
+  ctx.fillStyle = mixHex('#4aa84f', '#16203a', darkT * .6); ctx.fillRect(0, 190, BASE_W, 5);
+}
+
+function drawTitle(){
+  drawSimpleJungle(0.18);
+  ctx.fillStyle = 'rgba(8,24,12,0.42)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('ESCAPE THE', 44, 28, '#8ee07a', '#0e2a14');
+  centreText('JUNGLE', 74, 30, '#8ee07a', '#0e2a14');
+  centreText('Run and try get out the jungle before night', 100, 10, '#ffe9a0', '#101820');
+
+  drawSprite(RUN1, 88, 154);
+  drawSprite(TIGER, 178, 158);
+  drawSprite(BANANA, 138, 160);
+  drawSprite(HUNTER, 232, 154, true);
+
+  centreText('Game design by Ziki', 128, 12, '#ffd24a', '#101820');
+  centreText('Pixel Quest — Hilton Primary School', 143, 9, '#dff3d0', '#101820');
+
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO RUN', 206, 12, '#a8e06a', '#101820');
+  ctx.globalAlpha = 1;
+  centreText('◀ ▶ move  •  BUTTON 1 jump  •  BUTTON 2 block', 224, 9, '#ffe9a0', '#101820');
+}
+
+function drawOver(){
+  drawSimpleJungle(0.95);
+  ctx.fillStyle = 'rgba(6,8,30,0.6)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  const nightFell = lives > 0;
+  centreText(nightFell ? 'NIGHT FELL' : 'GAME OVER', 52, 28, '#c8a0f0', '#1a1030');
+  centreText(nightFell ? 'The jungle went dark before you got out'
+                       : 'The jungle got you this time', 78, 11, '#ff9a8a', '#101820');
+  drawSprite(TIGER, 24, 108);
+  drawSprite(HUNTER, 274, 104, true);
+  centreText('SCORE ' + score, 116, 18, '#ffd24a', '#101820');
+  centreText('BANANAS ' + bananasEaten + '   •   JUMPED ' + jumpedOver + '   •   DODGED ' + dodged, 138, 10, '#a8e06a', '#101820');
+  centreText('BEST ' + best, 154, 10, '#dff3d0', '#101820');
+  centreText('GREAT JOB', 180, 15, '#ffd24a', '#101820');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO RUN AGAIN', 208, 10, '#a8e06a', '#101820');
+  ctx.globalAlpha = 1;
+}
+
+function drawWin(){
+  drawSimpleJungle(0.12);
+  ctx.fillStyle = 'rgba(255,246,200,0.28)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('YOU ESCAPED', 46, 26, '#3f8f2a', '#f6ffe0');
+  centreText('THE JUNGLE!', 74, 26, '#3f8f2a', '#f6ffe0');
+  drawSprite(RUN1, 148, 152);
+  drawSprite(BANANA, 128, 160);
+  drawSprite(BANANA, 176, 160);
+  centreText('Out of the trees with daylight to spare', 104, 11, '#2a4a1a', '#f6ffe0');
+  centreText('FINAL SCORE ' + score, 126, 17, '#c05a10', '#fff6d0');
+  centreText('BANANAS ' + bananasEaten + '   •   JUMPED ' + jumpedOver + '   •   DODGED ' + dodged, 144, 10, '#2a4a1a', '#f6ffe0');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO PLAY AGAIN', 206, 10, '#2a4a1a', '#f6ffe0');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else if (state === 'levelend') updateLevelEnd(dt);
+  else {
+    const go = jumpEdge || anyEdge;
+    jumpEdge = false; anyEdge = false;
+    if (go){ initAudio(); SFX.start(); resetGame(); state = 'play'; }
+  }
+  anyEdge = false;
+}
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if (state === 'title') drawTitle();
+  else if (state === 'play' || state === 'levelend') drawPlay();
+  else if (state === 'over') drawOver();
+  else if (state === 'win') drawWin();
+  ctx.restore();
+}
+function frame(now){
+  let delta = (now - last) / 1000; last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

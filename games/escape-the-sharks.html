@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Escape the Sharks — by Ellis</title>
+<style>
+  :root{
+    --sea:#1e6fa8; --deep:#12507c; --foam:#dff1ff;
+    --coral:#f4907e; --leaf:#57b96a; --sun:#ffd24a; --grape:#8b6ad6;
+    --ink:#101820;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#08131c;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#fff;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#0b2030;touch-action:none;}
+  /* touch controls laid out like Ellis's cabinet: stick on the left, two buttons on the right */
+  #pad{position:absolute;inset:auto 0 0 0;height:34%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 2.5% 3%;}
+  .cluster{display:flex;gap:2.2vmin;pointer-events:auto;}
+  .btn{width:13vmin;height:13vmin;min-width:56px;min-height:56px;border-radius:50%;
+       border:3px solid rgba(16,24,32,.75);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:4.2vmin;color:#10202c;opacity:.72;user-select:none;
+       box-shadow:0 3px 0 rgba(0,0,0,.35);}
+  .btn:active{transform:translateY(2px);opacity:.95;}
+  .stick{background:var(--coral);}
+  .go{background:var(--leaf);}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.2vmin;color:#dff1ff;opacity:.8;}
+  .btn-wrap{position:relative;}
+  #rotate{position:fixed;inset:0;background:#08131c;display:none;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){
+    #rotate{display:flex;}
+  }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn stick" data-k="left">◀</div><div class="lbl">LEFT</div></div>
+        <div class="btn-wrap"><div class="btn stick" data-k="right">▶</div><div class="lbl">RIGHT</div></div>
+      </div>
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn go" data-k="down">▼</div><div class="lbl">BUTTON 2</div></div>
+        <div class="btn-wrap"><div class="btn go" data-k="up">▲</div><div class="lbl">BUTTON 1</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🌊<br>Escape the Sharks plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   ESCAPE THE SHARKS
+   Game design by Ellis — Pixel Quest, Hilton Primary School
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 26, RIVER_TOP = 48, RIVER_BOT = 214;
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col;
+      c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const ZEPHYR = bake([
+  "................",
+  ".....kk..kk.....",
+  "....kffkkffk....",
+  "....kfpkkfpk....",
+  "....kffkkffk....",
+  "....kffffffk....",
+  "...kffffffffk...",
+  "...kfeffffefk...",
+  "...kffffffffk...",
+  "...kfffppfffk...",
+  "...kkffffffkk...",
+  "....kffffffk....",
+  ".....kffffk.....",
+  "..gggggggggggg..",
+  ".gyyyyyyyyyyyyg.",
+  "..kkkkkkkkkkkk..",
+], { k:"#241a14", f:"#e8c6a4", p:"#f2909e", e:"#1a1a1a", g:"#3fbf6f", y:"#ffd24a" });
+
+const ZEPHYR_HURT = bake([
+  "................",
+  ".....kk..kk.....",
+  "....kffkkffk....",
+  "....kfpkkfpk....",
+  "....kffkkffk....",
+  "....kffffffk....",
+  "...kffffffffk...",
+  "...kfxffffxfk...",
+  "...kffffffffk...",
+  "...kffokkoffk...",
+  "...kkffffffkk...",
+  "....kffffffk....",
+  ".....kffffk.....",
+  "..gggkggkgggg...",
+  ".gyykyyyykyyyg..",
+  "..kk.kkkk.kkk...",
+], { k:"#241a14", f:"#e8c6a4", p:"#f2909e", x:"#1a1a1a", o:"#f2909e", g:"#3fbf6f", y:"#ffd24a" });
+
+const SHARK = bake([
+  "........................",
+  "..........kkkk..........",
+  ".........kkddkk.........",
+  "....kkkkkkddddkk...kkk..",
+  "..kkddddddddddddkk.kkddk",
+  ".kwddddddddddddkkkdddddk",
+  "kwtdrddddddddddddddddddk",
+  ".kwddddddddddddkkkdddddk",
+  "..kkddddddddddddkk.kkddk",
+  "....kkkkkkkkkkkk...kkk..",
+  "........................",
+], { k:"#1d2b38", d:"#93a8ba", w:"#ffffff", t:"#ffffff", r:"#e03a3a" });
+
+const LOG = bake([
+  "....................",
+  "..kkkkkkkkkkkkkkkk..",
+  ".kbbnbbbbbnbbbbbbbk.",
+  "kbnbbbbbbbbbbbnbbbbk",
+  "kbbbbnbbbbbbbbbbbbbk",
+  "kbbbbbbbbnbbbbbbnbbk",
+  ".kbbbbbbbbbbbbbbbbk.",
+  "..kkkkkkkkkkkkkkkk..",
+  "....................",
+], { k:"#3b2412", b:"#8a5a30", n:"#5e3a1c" });
+
+const TURTLE = bake([
+  "......kk......",
+  "....kkkkkk....",
+  "..kkkggggkkk..",
+  ".khggGGGGgghk.",
+  "khhgGGGGGGghhk",
+  "khhgGGGGGGghhk",
+  ".khggGGGGgghk.",
+  "..kkkggggkkk..",
+  "....kkkkkk....",
+], { k:"#22381f", g:"#3f8f4f", G:"#7ac96a", h:"#c8b070" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){
+    const A = window.AudioContext || window.webkitAudioContext;
+    if (A) AC = new A();
+  }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(freq, dur, type, vol, slideTo){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol == null ? 0.12 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + dur + 0.02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => {
+    setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? 0.12 : vol), t * 1000);
+    t += n[1] * 0.85;
+  });
+}
+const SFX = {
+  turtle: () => melody([[660,.08],[880,.12]], 'square', .12),
+  escape: () => melody([[520,.07],[700,.07],[940,.13]], 'square', .1),
+  crack:  () => { tone(200, .28, 'sawtooth', .18, 60); tone(90, .3, 'square', .12); },
+  splash: () => tone(340, .12, 'triangle', .1, 140),
+  right:  () => melody([[660,.1],[880,.1],[1180,.18]], 'square', .13),
+  wrong:  () => melody([[300,.14],[200,.22]], 'sawtooth', .12),
+  start:  () => melody([[520,.09],[660,.09],[880,.16]], 'square', .12),
+  win:    () => melody([[660,.13],[790,.13],[990,.13],[1320,.16],[990,.11],[1320,.34]], 'square', .13),
+  lose:   () => melody([[440,.18],[380,.18],[300,.22],[200,.42]], 'triangle', .14),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { left:false, right:false, up:false, down:false, action:false };
+const KEYMAP = {
+  ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down',
+  a:'left', d:'right', w:'up', s:'down',
+  A:'left', D:'right', W:'up', S:'down',
+  ' ':'action', Enter:'action'
+};
+let actionEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){ e.preventDefault(); if (!keys[k] && (k === 'action' || k === 'up')) actionEdge = true; keys[k] = true; initAudio(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.btn').forEach(b => {
+  const k = b.dataset.k;
+  const on  = e => { e.preventDefault(); initAudio(); if (!keys[k] && (k === 'up')) actionEdge = true; keys[k] = true; };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+
+let tapPoint = null;
+canvas.addEventListener('pointerdown', e => {
+  initAudio();
+  const r = canvas.getBoundingClientRect();
+  tapPoint = { x: (e.clientX - r.left) / r.width * BASE_W, y: (e.clientY - r.top) / r.height * BASE_H };
+});
+
+/* ------------------------------------------------------------------- game */
+const LEVELS = 4;
+const LEVEL_TIME = 30;
+
+let state = 'title';
+let score = 0, best = 0, level = 1, health = 3, turtles = 0, sharksEscaped = 0;
+let levelT = 0, spawnT = 1.2, fallT = 7, invul = 0, bannerT = 0, bannerText = '';
+let scrollX = 0, wobble = 0;
+const player = { x: 60, y: 120, w: 16, h: 16 };
+let things = [], floats = [], splashes = [];
+let puzzle = null, puzzleSel = 0, puzzleResult = null, puzzleResultT = 0;
+
+function resetGame(){
+  score = 0; level = 1; health = 3; turtles = 0; sharksEscaped = 0;
+  player.x = 60; player.y = 120;
+  things = []; floats = []; splashes = [];
+  levelT = 0; spawnT = 1.2; fallT = 7; invul = 0;
+  banner('LEVEL 1 — SURF!');
+}
+function banner(t){ bannerText = t; bannerT = 2; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#ffffff', t: 1.1 }); }
+function splash(x, y, n, col){
+  for (let i = 0; i < n; i++){
+    splashes.push({ x, y, vx: (Math.random() - .5) * 90, vy: (Math.random() - .5) * 90 - 20, t: .5, col: col || '#dff1ff' });
+  }
+}
+
+/* ------------------------------------------------------------- spawn logic */
+function spawnThing(){
+  const roll = Math.random();
+  const sharkChance = 0.38 + level * 0.04;
+  if (roll < sharkChance){
+    things.push({ type:'shark', x: BASE_W + 20, y: rnd(RIVER_TOP, RIVER_BOT - SHARK.h),
+                  w: SHARK.w, h: SHARK.h, vx: -(scrollSpeed() + 18 + level * 5), scored:false, bob: Math.random() * 6 });
+  } else if (roll < sharkChance + 0.22){
+    things.push({ type:'log', x: BASE_W + 20, y: rnd(RIVER_TOP, RIVER_BOT - LOG.h),
+                  w: LOG.w, h: LOG.h, vx: -scrollSpeed(), bob: Math.random() * 6 });
+  } else {
+    things.push({ type:'turtle', x: BASE_W + 20, y: rnd(RIVER_TOP + 4, RIVER_BOT - TURTLE.h - 4),
+                  w: TURTLE.w, h: TURTLE.h, vx: -scrollSpeed() * 0.85, bob: Math.random() * 6 });
+  }
+}
+function spawnFall(){
+  const gapH = 62 - level * 3;
+  const gapY = rnd(RIVER_TOP + 6, RIVER_BOT - gapH - 6);
+  things.push({ type:'fall', x: BASE_W + 24, y: RIVER_TOP, w: 16, h: RIVER_BOT - RIVER_TOP,
+                gapY, gapH, vx: -scrollSpeed() });
+  addFloat(BASE_W - 66, RIVER_TOP + 14, 'WATERFALL!', '#ffd24a');
+}
+function rnd(a, b){ return a + Math.random() * (b - a); }
+function scrollSpeed(){ return 56 + level * 15; }
+
+/* --------------------------------------------------------------- collision */
+function hits(a, b, inset){
+  const i = inset || 0;
+  return a.x + i < b.x + b.w - i && a.x + a.w - i > b.x + i &&
+         a.y + i < b.y + b.h - i && a.y + a.h - i > b.y + i;
+}
+function takeHit(msg){
+  if (invul > 0) return;
+  health--; invul = 2.0; wobble = 1;
+  splash(player.x + 8, player.y + 12, 12, '#ffffff');
+  SFX.crack();
+  addFloat(player.x - 6, player.y - 8, msg, '#ff8a7a');
+  if (health <= 0){
+    state = 'over';
+    best = Math.max(best, score);
+    setTimeout(SFX.lose, 260);
+  }
+}
+
+/* -------------------------------------------------------------- update: play */
+function updatePlay(dt){
+  scrollX += scrollSpeed() * dt;
+  levelT += dt;
+  if (invul > 0) invul -= dt;
+  if (bannerT > 0) bannerT -= dt;
+  if (wobble > 0) wobble = Math.max(0, wobble - dt * 2);
+
+  // movement — joystick left/right, button 1 up, button 2 down
+  const sx = 104, sy = 96;
+  if (keys.left)  player.x -= sx * dt;
+  if (keys.right) player.x += sx * dt;
+  if (keys.up)    player.y -= sy * dt;
+  if (keys.down)  player.y += sy * dt;
+  player.x -= 13 * dt;                       // the current keeps pushing her back
+  player.x = Math.max(8, Math.min(BASE_W - 70, player.x));
+  player.y = Math.max(RIVER_TOP - 2, Math.min(RIVER_BOT - player.h, player.y));
+
+  // spawns
+  spawnT -= dt;
+  if (spawnT <= 0){ spawnThing(); spawnT = Math.max(0.55, rnd(1.1, 1.9) - level * 0.09); }
+  fallT -= dt;
+  if (fallT <= 0){ spawnFall(); fallT = Math.max(6, 11 - level); }
+
+  // things
+  for (let i = things.length - 1; i >= 0; i--){
+    const t = things[i];
+    t.x += t.vx * dt;
+    if (t.bob != null) t.bob += dt * 3;
+
+    if (t.type === 'shark'){
+      const dy = (player.y + 8) - (t.y + t.h / 2);
+      t.y += Math.sign(dy) * Math.min(Math.abs(dy), (7 + level * 3) * dt);
+      t.y = Math.max(RIVER_TOP, Math.min(RIVER_BOT - t.h, t.y));
+      if (hits(player, t, 3)) { takeHit('CHOMP!'); things.splice(i, 1); continue; }
+      if (t.x + t.w < 0 && !t.scored){
+        t.scored = true; score += 1000; sharksEscaped++;
+        addFloat(player.x - 10, player.y - 10, '+1000 ESCAPED!', '#ffd24a');
+        SFX.escape();
+      }
+    } else if (t.type === 'log'){
+      if (hits(player, t, 3)) { takeHit('BUMP!'); things.splice(i, 1); continue; }
+    } else if (t.type === 'turtle'){
+      if (hits(player, t, 1)){
+        score += 250; turtles++;
+        addFloat(t.x, t.y - 8, 'TURTLE SAVED +250', '#7ac96a');
+        splash(t.x + 6, t.y + 4, 6, '#7ac96a');
+        SFX.turtle(); things.splice(i, 1); continue;
+      }
+    } else if (t.type === 'fall'){
+      const inX = player.x + player.w - 3 > t.x && player.x + 3 < t.x + t.w;
+      const inGap = player.y + 2 > t.gapY && player.y + player.h - 2 < t.gapY + t.gapH;
+      if (inX && !inGap) takeHit('WATERFALL!');
+    }
+    if (t.x < -60) things.splice(i, 1);
+  }
+
+  // particles / floating text
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 16 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+  for (let i = splashes.length - 1; i >= 0; i--){
+    const s = splashes[i];
+    s.t -= dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 120 * dt;
+    if (s.t <= 0) splashes.splice(i, 1);
+  }
+
+  // end of stretch → puzzle
+  if (levelT >= LEVEL_TIME){
+    puzzle = newPuzzle(level);
+    puzzleSel = 0; puzzleResult = null; puzzleResultT = 0;
+    state = 'puzzle';
+  }
+}
+
+/* ------------------------------------------------------------------ puzzle */
+function newPuzzle(lvl){
+  const kind = Math.floor(Math.random() * 3);
+  let question = '', answer = 0, title = 'Find the missing number';
+  if (kind === 0){
+    const step = [2, 3, 4, 5, 10][Math.floor(Math.random() * 5)];
+    const start = step * (1 + Math.floor(Math.random() * 3));
+    const seq = [0, 1, 2, 3, 4].map(i => start + i * step);
+    const hide = 2 + Math.floor(Math.random() * 2);
+    answer = seq[hide];
+    question = seq.map((v, i) => (i === hide ? '?' : v)).join('   ');
+  } else if (kind === 1){
+    const a = 12 + Math.floor(Math.random() * (18 + lvl * 12));
+    const b = 8 + Math.floor(Math.random() * (14 + lvl * 8));
+    answer = a + b; question = a + ' + ' + b + ' = ?';
+    title = 'Solve it to fix the surfboard';
+  } else {
+    const a = 6 + Math.floor(Math.random() * (12 + lvl * 8));
+    answer = a * 2; question = 'Double ' + a + ' = ?';
+    title = 'Solve it to fix the surfboard';
+  }
+  const set = new Set([answer]);
+  let guard = 0;
+  while (set.size < 3 && guard++ < 60){
+    const off = Math.floor(Math.random() * 11) - 5;
+    if (off !== 0) set.add(Math.max(1, answer + off));
+  }
+  while (set.size < 3) set.add(answer + set.size * 7);
+  const opts = [...set];
+  for (let i = opts.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  return { title, question, answer, opts };
+}
+
+function optionRects(){
+  const w = 74, h = 34, y = 150, gap = 14;
+  const totalW = w * 3 + gap * 2;
+  const x0 = (BASE_W - totalW) / 2;
+  return [0, 1, 2].map(i => ({ x: x0 + i * (w + gap), y, w, h }));
+}
+
+function updatePuzzle(dt){
+  if (puzzleResult){
+    puzzleResultT -= dt;
+    if (puzzleResultT <= 0){
+      if (level >= LEVELS){
+        state = 'win'; best = Math.max(best, score); setTimeout(SFX.win, 200);
+      } else {
+        level++; levelT = 0; spawnT = 1.1; fallT = 7;
+        things = []; invul = 1.2;
+        banner('LEVEL ' + level + ' — FASTER WATER!');
+        state = 'play';
+      }
+    }
+    return;
+  }
+  if (keys.left && !puzzle.heldL){ puzzleSel = (puzzleSel + 2) % 3; puzzle.heldL = true; SFX.splash(); }
+  if (!keys.left) puzzle.heldL = false;
+  if (keys.right && !puzzle.heldR){ puzzleSel = (puzzleSel + 1) % 3; puzzle.heldR = true; SFX.splash(); }
+  if (!keys.right) puzzle.heldR = false;
+
+  let choose = -1;
+  if (actionEdge){ choose = puzzleSel; actionEdge = false; }
+  if (tapPoint){
+    optionRects().forEach((r, i) => {
+      if (tapPoint.x >= r.x && tapPoint.x <= r.x + r.w && tapPoint.y >= r.y && tapPoint.y <= r.y + r.h){
+        choose = i; puzzleSel = i;
+      }
+    });
+    tapPoint = null;
+  }
+  if (choose >= 0){
+    const correct = puzzle.opts[choose] === puzzle.answer;
+    puzzleResult = correct ? 'right' : 'wrong';
+    puzzleResultT = 2.2;
+    if (correct){
+      score += 500;
+      if (health < 3){ health++; }
+      SFX.right();
+    } else {
+      SFX.wrong();
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ render */
+function drawWater(){
+  ctx.fillStyle = '#1e6fa8';
+  ctx.fillRect(0, RIVER_TOP, BASE_W, RIVER_BOT - RIVER_TOP);
+  ctx.fillStyle = '#2a86c4';
+  for (let y = RIVER_TOP + 6; y < RIVER_BOT; y += 14){
+    const off = (scrollX * 0.8 + y * 7) % 60;
+    for (let x = -60; x < BASE_W + 60; x += 60){
+      ctx.fillRect(Math.round(x - off), y, 22, 2);
+      ctx.fillRect(Math.round(x - off + 32), y + 5, 12, 2);
+    }
+  }
+  ctx.fillStyle = '#5eb6e8';
+  for (let y = RIVER_TOP + 12; y < RIVER_BOT; y += 26){
+    const off = (scrollX * 1.25 + y * 3) % 90;
+    for (let x = -90; x < BASE_W + 90; x += 90){
+      ctx.fillRect(Math.round(x - off), y, 9, 1);
+    }
+  }
+}
+function drawBanks(){
+  // top bank
+  ctx.fillStyle = '#e8cf9a'; ctx.fillRect(0, HUD_H, BASE_W, RIVER_TOP - HUD_H);
+  ctx.fillStyle = '#d3b478'; ctx.fillRect(0, RIVER_TOP - 4, BASE_W, 4);
+  // bottom bank
+  ctx.fillStyle = '#e8cf9a'; ctx.fillRect(0, RIVER_BOT, BASE_W, BASE_H - RIVER_BOT);
+  ctx.fillStyle = '#d3b478'; ctx.fillRect(0, RIVER_BOT, BASE_W, 4);
+  // rocks + tufts scrolling past so speed reads
+  const off = scrollX % 64;
+  for (let x = -64; x < BASE_W + 64; x += 64){
+    const px = Math.round(x - off);
+    ctx.fillStyle = '#a9926a'; ctx.fillRect(px + 8, HUD_H + 6, 8, 6); ctx.fillRect(px + 40, RIVER_BOT + 12, 10, 7);
+    ctx.fillStyle = '#57b96a'; ctx.fillRect(px + 26, HUD_H + 9, 3, 8); ctx.fillRect(px + 30, HUD_H + 11, 3, 6);
+    ctx.fillRect(px + 12, RIVER_BOT + 8, 3, 9); ctx.fillRect(px + 16, RIVER_BOT + 11, 3, 6);
+  }
+}
+function drawFall(t){
+  const x = Math.round(t.x);
+  ctx.fillStyle = '#bfe6ff';
+  ctx.fillRect(x, RIVER_TOP, t.w, t.gapY - RIVER_TOP);
+  ctx.fillRect(x, t.gapY + t.gapH, t.w, RIVER_BOT - (t.gapY + t.gapH));
+  ctx.fillStyle = '#ffffff';
+  for (let y = RIVER_TOP; y < RIVER_BOT; y += 6){
+    if (y > t.gapY - 4 && y < t.gapY + t.gapH) continue;
+    const w = 3 + ((y + Math.floor(scrollX * 2)) % 9);
+    ctx.fillRect(x + ((y * 3 + Math.floor(scrollX * 3)) % (t.w - 3)), y, Math.min(w, 5), 3);
+  }
+  ctx.fillStyle = '#7fc7f0';
+  ctx.fillRect(x - 1, t.gapY, 2, t.gapH);
+  ctx.fillRect(x + t.w - 1, t.gapY, 2, t.gapH);
+}
+function drawSprite(s, x, y){ ctx.drawImage(s.img, Math.round(x), Math.round(y)); }
+
+function drawHUD(){
+  ctx.fillStyle = '#0d2233'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#1b4a68'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffd24a';
+  ctx.fillText('SCORE ' + String(score).padStart(6, '0'), 6, 4);
+  ctx.fillStyle = '#7ac96a';
+  ctx.fillText('TURTLES ' + turtles, 6, 15);
+  ctx.fillStyle = '#dff1ff';
+  ctx.fillText('LEVEL ' + level + '/' + LEVELS, 118, 4);
+  // river progress
+  const pw = 62;
+  ctx.fillStyle = '#123449'; ctx.fillRect(118, 17, pw, 5);
+  ctx.fillStyle = '#5eb6e8'; ctx.fillRect(118, 17, Math.round(pw * Math.min(1, levelT / LEVEL_TIME)), 5);
+  // surfboards left
+  ctx.fillStyle = '#dff1ff';
+  ctx.fillText('BOARD', 210, 4);
+  for (let i = 0; i < 3; i++){
+    const bx = 250 + i * 22, by = 5;
+    if (i < health){
+      ctx.fillStyle = '#3fbf6f'; ctx.fillRect(bx, by, 18, 5);
+      ctx.fillStyle = '#ffd24a'; ctx.fillRect(bx + 1, by + 1, 16, 2);
+    } else {
+      ctx.fillStyle = '#3a4b57'; ctx.fillRect(bx, by, 8, 5); ctx.fillRect(bx + 11, by, 7, 5);
+    }
+  }
+  ctx.fillStyle = '#7d99ad';
+  ctx.fillText('SHARKS ESCAPED ' + sharksEscaped, 210, 15);
+}
+
+function drawPlay(){
+  drawWater(); drawBanks();
+
+  // wake behind Zephyr
+  ctx.fillStyle = 'rgba(223,241,255,0.75)';
+  for (let i = 1; i < 6; i++){
+    const wx = player.x - i * 7, wy = player.y + 13 + Math.sin((scrollX * 0.1) + i) * 1.5;
+    if (wx > 0) ctx.fillRect(Math.round(wx), Math.round(wy), 4, 1);
+  }
+
+  things.forEach(t => {
+    const bob = t.bob != null ? Math.sin(t.bob) * 1.6 : 0;
+    if (t.type === 'shark') drawSprite(SHARK, t.x, t.y + bob);
+    else if (t.type === 'log') drawSprite(LOG, t.x, t.y + bob);
+    else if (t.type === 'turtle') drawSprite(TURTLE, t.x, t.y + bob);
+    else if (t.type === 'fall') drawFall(t);
+  });
+
+  const flash = invul > 0 && Math.floor(invul * 12) % 2 === 0;
+  if (!flash){
+    const shake = wobble > 0 ? Math.sin(wobble * 40) * 2 : 0;
+    drawSprite(invul > 0 ? ZEPHYR_HURT : ZEPHYR, player.x + shake, player.y);
+  }
+
+  splashes.forEach(s => { ctx.fillStyle = s.col; ctx.fillRect(Math.round(s.x), Math.round(s.y), 2, 2); });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#101820'; ctx.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  drawHUD();
+
+  if (bannerT > 0){
+    ctx.globalAlpha = Math.min(1, bannerT);
+    centreText(bannerText, 108, 20, '#ffd24a', '#101820');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function centreText(text, y, size, fill, outline, weight){
+  ctx.font = (weight || 'bold') + ' ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+function textAt(text, x, y, size, fill, outline, align){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, x, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, x, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+
+function drawTitle(){
+  drawWater(); drawBanks();
+  ctx.fillStyle = 'rgba(8,32,50,0.55)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+
+  centreText('ESCAPE THE', 44, 30, '#5eb6e8', '#0b2a44');
+  centreText('SHARKS!', 74, 30, '#5eb6e8', '#0b2a44');
+
+  drawSprite(SHARK, 22, 106);
+  drawSprite(TURTLE, 96, 112);
+  drawSprite(ZEPHYR, 150, 104);
+  drawSprite(SHARK, 246, 116);
+
+  centreText('Game design by Ellis', 152, 12, '#ffd24a', '#101820');
+  centreText('Pixel Quest — Hilton Primary School', 168, 9, '#dff1ff', '#101820');
+
+  const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO SURF', 200, 12, '#57b96a', '#101820');
+  ctx.globalAlpha = 1;
+  centreText('◀ ▶ move  •  BUTTON 1 up  •  BUTTON 2 down', 220, 9, '#bfe6ff', '#101820');
+}
+
+function drawPuzzle(){
+  drawWater(); drawBanks();
+  ctx.fillStyle = 'rgba(8,32,50,0.72)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.fillStyle = '#0d2233'; ctx.fillRect(24, 34, BASE_W - 48, 150);
+  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.strokeRect(25, 35, BASE_W - 50, 148);
+
+  centreText('CALM WATER — PUZZLE TIME', 52, 13, '#ffd24a', '#101820');
+  centreText(puzzle.title, 72, 10, '#bfe6ff', '#101820');
+  centreText(puzzle.question, 106, 26, '#ffffff', '#101820');
+
+  const rects = optionRects();
+  rects.forEach((r, i) => {
+    const sel = i === puzzleSel;
+    ctx.fillStyle = sel ? '#57b96a' : '#123449';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = sel ? '#ffd24a' : '#2a86c4'; ctx.lineWidth = 2;
+    ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+    textAt(String(puzzle.opts[i]), r.x + r.w / 2, r.y + r.h / 2, 18, '#ffffff', '#101820', 'center');
+  });
+
+  if (!puzzleResult){
+    centreText('◀ ▶ to choose  •  BUTTON 1 to answer  •  or tap', 198, 10, '#dff1ff', '#101820');
+  } else if (puzzleResult === 'right'){
+    centreText('CORRECT! +500 and the board is patched up', 198, 11, '#7ac96a', '#101820');
+  } else {
+    centreText('Not this time — the answer was ' + puzzle.answer, 198, 11, '#ff8a7a', '#101820');
+  }
+  centreText('Level ' + level + ' of ' + LEVELS + '  •  Score ' + score, 216, 10, '#ffd24a', '#101820');
+}
+
+function drawOver(){
+  drawWater(); drawBanks();
+  ctx.fillStyle = 'rgba(8,20,32,0.78)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('GAME', 48, 34, '#8b6ad6', '#2a1a4a');
+  centreText('OVER', 82, 34, '#8b6ad6', '#2a1a4a');
+  drawSprite(SHARK, 18, 108);
+  textAt('"Your down going, Sharks!"', 48, 116, 9, '#ffffff', '#101820');
+  centreText('The surfboard snapped', 140, 12, '#ff8a7a', '#101820');
+  centreText('SCORE ' + score + '   •   TURTLES SAVED ' + turtles, 158, 11, '#ffd24a', '#101820');
+  centreText('SHARKS ESCAPED ' + sharksEscaped + '   •   BEST ' + best, 174, 10, '#dff1ff', '#101820');
+  centreText('GREAT JOB', 198, 16, '#ffd24a', '#101820');
+  const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO SURF AGAIN', 220, 10, '#57b96a', '#101820');
+  ctx.globalAlpha = 1;
+}
+
+function drawWin(){
+  drawWater(); drawBanks();
+  ctx.fillStyle = 'rgba(8,32,50,0.62)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('ZEPHYR ESCAPED!', 46, 24, '#ffd24a', '#101820');
+  drawSprite(ZEPHYR, 60, 84);
+  drawSprite(TURTLE, 150, 92);
+  drawSprite(TURTLE, 178, 96);
+  textAt('"Not like I think theres sharks!"', 92, 92, 9, '#ffffff', '#101820');
+  centreText('All 4 rivers surfed. Every turtle safe.', 138, 11, '#bfe6ff', '#101820');
+  centreText('FINAL SCORE ' + score, 158, 16, '#ffd24a', '#101820');
+  centreText('TURTLES ' + turtles + '   •   SHARKS ESCAPED ' + sharksEscaped, 176, 10, '#7ac96a', '#101820');
+  const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO PLAY AGAIN', 208, 10, '#57b96a', '#101820');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function frame(now){
+  let delta = (now - last) / 1000;
+  last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else if (state === 'puzzle') updatePuzzle(dt);
+  else {
+    scrollX += 30 * dt;
+    const go = actionEdge || keys.action || tapPoint;
+    actionEdge = false; tapPoint = null;
+    if (go){
+      initAudio(); SFX.start();
+      resetGame(); state = 'play';
+    }
+  }
+}
+
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  ctx.fillStyle = '#0b2030';
+  ctx.fillRect(0, 0, BASE_W, BASE_H);
+  if (state === 'title') drawTitle();
+  else if (state === 'play') drawPlay();
+  else if (state === 'puzzle') drawPuzzle();
+  else if (state === 'over') drawOver();
+  else if (state === 'win') drawWin();
+  ctx.restore();
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

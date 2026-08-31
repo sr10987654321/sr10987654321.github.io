@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Zombified — by Toby</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:#0d1208;overflow:hidden;
+    font-family:"Trebuchet MS","Verdana",sans-serif;color:#fff;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  #stage{position:relative;width:min(100vw, calc(100vh * 4 / 3));
+         height:min(100vh, calc(100vw * 3 / 4));}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;
+         image-rendering:crisp-edges;background:#0d1208;touch-action:none;}
+  #pad{position:absolute;inset:auto 0 0 0;height:36%;pointer-events:none;
+       display:flex;justify-content:space-between;align-items:flex-end;padding:0 3% 3%;}
+  #dpad{position:relative;width:31vmin;height:21vmin;min-width:138px;min-height:94px;pointer-events:auto;}
+  .dbtn{position:absolute;width:9.5vmin;height:9.5vmin;min-width:44px;min-height:44px;
+        background:#7a9c3a;border:3px solid rgba(10,14,6,.75);border-radius:22%;
+        display:flex;align-items:center;justify-content:center;color:#101806;
+        font-weight:bold;font-size:3.4vmin;opacity:.75;box-shadow:0 3px 0 rgba(0,0,0,.4);}
+  .dbtn:active{opacity:.98;transform:translateY(2px);}
+  #dup{left:10.5vmin;top:0;} #ddown{left:10.5vmin;bottom:0;}
+  #dleft{left:0;top:5.3vmin;} #dright{left:21vmin;top:5.3vmin;}
+  .cluster{display:flex;gap:2.4vmin;pointer-events:auto;align-items:flex-end;}
+  .btn{width:12vmin;height:12vmin;min-width:54px;min-height:54px;border-radius:50%;
+       border:3px solid rgba(10,14,6,.75);display:flex;align-items:center;justify-content:center;
+       font-weight:bold;font-size:3vmin;color:#101806;opacity:.78;
+       box-shadow:0 3px 0 rgba(0,0,0,.4);text-align:center;line-height:1.05;}
+  .btn:active{transform:translateY(2px);opacity:.97;}
+  .b1{background:#e8c020;} .b2{background:#9ad04a;}
+  .lbl{position:absolute;bottom:-2.4vmin;left:0;right:0;text-align:center;
+       font-size:2.1vmin;color:#cfe0b0;opacity:.85;}
+  .btn-wrap{position:relative;}
+  #rotate{position:fixed;inset:0;background:#0d1208;display:none;
+          align-items:center;justify-content:center;text-align:center;padding:24px;
+          font-size:20px;line-height:1.5;z-index:50;}
+  @media (orientation:portrait) and (max-width:820px){ #rotate{display:flex;} }
+  @media (hover:hover) and (pointer:fine){ #pad{display:none;} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pad">
+      <div id="dpad">
+        <div class="dbtn" id="dup"    data-k="up">▲</div>
+        <div class="dbtn" id="dleft"  data-k="left">◀</div>
+        <div class="dbtn" id="dright" data-k="right">▶</div>
+        <div class="dbtn" id="ddown"  data-k="down">▼</div>
+      </div>
+      <div class="cluster">
+        <div class="btn-wrap"><div class="btn b2" data-k="up2">▲</div><div class="lbl">BUTTON 2<br>same as joystick up</div></div>
+        <div class="btn-wrap"><div class="btn b1" data-k="shoot">SHOOT</div><div class="lbl">BUTTON 1</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate">Turn your iPad sideways 🧟<br>Zombified plays in landscape.</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   ZOMBIFIED
+   Game design by Toby — Pixel Quest, Hilton Primary School
+   "You are chasing an evil person who keeps spawning zombies. Shoot them
+    before they touch you or you'll be zombified, and save the people
+    behind you."
+   Single file, no dependencies, offline friendly.
+   ========================================================================= */
+
+const BASE_W = 320, BASE_H = 240, SC = 3;
+const HUD_H = 26;
+const LANES = 5, LANE_H = 36, PLAY_TOP = 34;
+const CROWD_X = 286;                  // the people you're protecting, behind you
+const EVIL_X = 6;                     // the evil person with the zombie gun
+
+const canvas = document.getElementById('c');
+canvas.width = BASE_W * SC; canvas.height = BASE_H * SC;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function laneY(i){ return PLAY_TOP + i * LANE_H + LANE_H / 2; }
+
+/* ---------------------------------------------------------------- sprites */
+function bake(rows, pal){
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c2 = cv.getContext('2d');
+  for (let y = 0; y < h; y++){
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++){
+      const col = pal[row[x]];
+      if (!col) continue;
+      c2.fillStyle = col; c2.fillRect(x, y, 1, 1);
+    }
+  }
+  return { img: cv, w, h };
+}
+
+const HERO = bake([
+  "....kkkkkk......",
+  "...kbbbbbbk.....",
+  "..kbbbbbbbbk....",
+  "..kkkkkkkkkk....",
+  "...kssssssk.....",
+  "...kesssssk.....",
+  "...kssssssk.....",
+  ".kkkkkkkkkkk....",
+  "kgggkrrrrrrk....",
+  "...krrrrrrrrk...",
+  "...krrrrrrrrk...",
+  "...krrrrrrk.....",
+  "...kppppppk.....",
+  "...kppkkppk.....",
+  "...kppk.kppk....",
+  "...kppk.kppk....",
+  "..koook.kook....",
+  "..kkkk..kkkk....",
+], { k:"#1a1408", b:"#3a6ea8", s:"#e8b088", e:"#1a1408", g:"#8a8f9a", r:"#c83a2a", p:"#3a4028", o:"#2a2418" });
+
+const Z_ROWS = [
+  "...kkkkkk.....",
+  "..kggggggk....",
+  "..kggggggk....",
+  "..kgrggrgk....",
+  "..kgwwwwgk....",
+  ".kggggggggk...",
+  ".kggggggggkgk.",
+  ".kggggggggkgk.",
+  ".kkgggggggkk..",
+  "..kggggggk....",
+  "..kggggggk....",
+  "..kggkkggk....",
+  "..kggk.kggk...",
+  "..kggk.kggk...",
+  "..kook..kook..",
+  "..kkkk..kkkk..",
+];
+const Z_GREEN = bake(Z_ROWS, { k:"#122008", g:"#6ca84a", r:"#e03020", w:"#e8e8d0" });
+const Z_BROWN = bake(Z_ROWS, { k:"#241608", g:"#9a6a34", r:"#e0a020", w:"#e8e0c0" });
+
+const BRAIN_ROWS = [
+  "...kbbbbk.....",
+  "..kbnbbnbk....",
+  "..kbbnbbbk....",
+  "..kgrggrgk....",
+  "..kgwwwwgk....",
+  ".kggggggggk...",
+  ".kggggggggkgk.",
+  ".kggggggggkgk.",
+  ".kkgggggggkk..",
+  "..kggggggk....",
+  "..kggggggk....",
+  "..kggkkggk....",
+  "..kggk.kggk...",
+  "..kggk.kggk...",
+  "..kook..kook..",
+  "..kkkk..kkkk..",
+];
+const Z_BRAIN = bake(BRAIN_ROWS, { k:"#122008", g:"#5a9a3a", r:"#e03020",
+                                   w:"#e8e8d0", b:"#f0a0b8", n:"#c86a86" });
+
+const EVIL = bake([
+  "...kkkkkk.......",
+  "..kvvvvvvk......",
+  ".kvvvvvvvvk.....",
+  ".kkkkkkkkkk.....",
+  "..kssssssk......",
+  "..krsssrsk......",
+  "..kssssssk......",
+  ".kvvvvvvvvk.kkk.",
+  ".kvvvvvvvvkkccck",
+  ".kvvvvvvvvkkccck",
+  ".kvvvvvvvvk.kkk.",
+  "..kvvvvvvk......",
+  "..kppppppk......",
+  "..kppkkppk......",
+  "..kppk.kppk.....",
+  "..kppk.kppk.....",
+  ".koook..kook....",
+  ".kkkkk..kkkk....",
+], { k:"#140c1a", v:"#5a3a7a", s:"#d8a878", r:"#e03020", p:"#2a2038", c:"#8a8f9a", o:"#1a1420" });
+
+const PERSON_ROWS = [
+  "..kkkk....",
+  ".kssssk...",
+  ".kessek...",
+  ".kssssk...",
+  "kcccccck..",
+  "kcccccck..",
+  "kcccccck..",
+  ".kcccck...",
+  ".kppppk...",
+  ".kppkppk..",
+  ".kpk.kpk..",
+  ".kok.kok..",
+  ".kk..kk...",
+];
+const PEOPLE = [
+  bake(PERSON_ROWS, { k:"#1a1408", s:"#e8b088", e:"#1a1408", c:"#e06a90", p:"#3a4058", o:"#2a2418" }),
+  bake(PERSON_ROWS, { k:"#1a1408", s:"#d8a070", e:"#1a1408", c:"#4a8ad0", p:"#3a4058", o:"#2a2418" }),
+  bake(PERSON_ROWS, { k:"#1a1408", s:"#f0c098", e:"#1a1408", c:"#e8c840", p:"#3a4058", o:"#2a2418" }),
+];
+const PERSON_Z = bake(PERSON_ROWS, { k:"#122008", s:"#6ca84a", e:"#e03020", c:"#4a7a30", p:"#2a3a18", o:"#1a2410" });
+
+const MUD = bake([
+  ".kkkk..",
+  "kmmmmk.",
+  "kmnmmmk",
+  "kmmnmmk",
+  "kmmmmmk",
+  ".kmmmk.",
+  "..kkk..",
+], { k:"#3a2410", m:"#7a5230", n:"#4a3018" });
+
+/* ------------------------------------------------------------------ audio */
+let AC = null;
+function initAudio(){
+  if (!AC){ const A = window.AudioContext || window.webkitAudioContext; if (A) AC = new A(); }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type, vol, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f, AC.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
+  g.gain.setValueAtTime(vol == null ? .1 : vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + d);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + d + .02);
+}
+function melody(notes, type, vol){
+  if (!AC) return;
+  let t = 0;
+  notes.forEach(n => { setTimeout(() => tone(n[0], n[1], type || 'square', vol == null ? .11 : vol), t * 1000); t += n[1] * .85; });
+}
+const SFX = {
+  shoot:   () => tone(880, .05, 'square', .07, 1400),
+  zHit:    () => tone(200, .05, 'square', .08),
+  zDown:   () => melody([[240,.07],[160,.11]], 'sawtooth', .1),
+  brain:   () => melody([[420,.08],[300,.08],[190,.16]], 'sawtooth', .12),
+  mudFire: () => tone(180, .09, 'triangle', .08, 110),
+  hurt:    () => melody([[340,.14],[220,.24]], 'sawtooth', .14),
+  zombified:()=> melody([[280,.13],[200,.2]], 'triangle', .12),
+  evilHit: () => tone(1200, .06, 'square', .1, 700),
+  win:     () => melody([[660,.13],[790,.13],[990,.13],[1320,.16],[990,.11],[1320,.36]], 'square', .13),
+  lose:    () => melody([[300,.2],[220,.24],[140,.5]], 'triangle', .15),
+  start:   () => melody([[440,.09],[660,.09],[880,.16]], 'square', .12),
+};
+
+/* ------------------------------------------------------------------ input */
+const keys = { up:false, down:false, left:false, right:false, shoot:false, up2:false };
+const KEYMAP = {
+  ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+  w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right',
+  ' ':'shoot', z:'shoot', Z:'shoot', Shift:'up2', x:'up2', X:'up2'
+};
+let upEdge = false, downEdge = false, anyEdge = false;
+addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (k){
+    e.preventDefault();
+    if (!keys[k] && (k === 'up' || k === 'up2')) upEdge = true;
+    if (!keys[k] && k === 'down') downEdge = true;
+    keys[k] = true; anyEdge = true; initAudio();
+  }
+  if (e.key === 'Enter'){ e.preventDefault(); anyEdge = true; initAudio(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k){ e.preventDefault(); keys[k] = false; } });
+
+document.querySelectorAll('.dbtn, .btn').forEach(b => {
+  const k = b.dataset.k;
+  const on = e => {
+    e.preventDefault(); initAudio();
+    if (!keys[k] && (k === 'up' || k === 'up2')) upEdge = true;
+    if (!keys[k] && k === 'down') downEdge = true;
+    keys[k] = true; anyEdge = true;
+  };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); anyEdge = true; });
+
+/* ------------------------------------------------------------------- game */
+const EVIL_HP_MAX = 32;
+let state = 'title';
+let score = 0, best = 0, lives = 3, evilHP = EVIL_HP_MAX;
+let elapsed = 0, spawnT = 2.0, spawnCount = 0, shootCool = 0, invul = 0;
+let bannerT = 0, bannerText = '', flashT = 0;
+let zombiesDown = 0, brainsDown = 0, saved = 0;
+
+let zombies = [], bullets = [], muds = [], crowd = [], floats = [], bits = [];
+const player = { x: 236, lane: 2, y: 0, w: 12, h: 18 };
+const evil = { lane: 2, y: 0, moveT: 1.4, dir: 1 };
+
+function buildCrowd(){
+  crowd = [];
+  for (let col = 0; col < 2; col++)
+    for (let i = 0; i < LANES; i++)
+      crowd.push({ x: CROWD_X + col * 15, lane: i, kind: (i + col) % PEOPLE.length, zombified: false });
+}
+function resetGame(){
+  score = 0; lives = 3; evilHP = EVIL_HP_MAX;
+  elapsed = 0; spawnT = 2.0; spawnCount = 0; shootCool = 0; invul = 1.2;
+  zombiesDown = 0; brainsDown = 0; saved = 0;
+  zombies = []; bullets = []; muds = []; floats = []; bits = [];
+  player.x = 236; player.lane = 2;
+  evil.lane = 2; evil.moveT = 1.4;
+  buildCrowd();
+  banner('SAVE THE PEOPLE BEHIND YOU');
+}
+function banner(t){ bannerText = t; bannerT = 2.2; }
+function addFloat(x, y, text, col){ floats.push({ x, y, text, col: col || '#fff', t: 1.0 }); }
+function burst(x, y, n, col){
+  for (let i = 0; i < n; i++)
+    bits.push({ x, y, vx: (Math.random() - .5) * 110, vy: (Math.random() - .5) * 110, t: .5, col });
+}
+
+/* Toby: the man's gun makes a zombie every 3 seconds; every 4th one is brown */
+function spawnZombie(){
+  spawnCount++;
+  const lane = Math.floor(Math.random() * LANES);
+  let type = 'green';
+  if (spawnCount % 4 === 0) type = 'brown';
+  else if (elapsed > 15 && spawnCount % 5 === 0) type = 'brain';
+  const z = { x: -16, lane, type, w: 12, h: 16,
+              hp: type === 'brain' ? 3 : 1,
+              speed: type === 'brain' ? 9 : (type === 'brown' ? 11 : 14) + elapsed * 0.02,
+              fireT: 5, lurch: Math.random() * 6, flash: 0 };
+  zombies.push(z);
+}
+function fireMud(x, y, vx, vy){ muds.push({ x, y, vx, vy, w: 7, h: 7 }); }
+
+function loseLife(reason){
+  if (invul > 0) return;
+  lives--; invul = 2.2; flashT = 0.4;
+  SFX.hurt();
+  addFloat(player.x - 10, player.y - 12, reason, '#ff8a7a');
+  burst(player.x + 6, player.y + 9, 10, '#c83a2a');
+  if (lives <= 0){
+    state = 'over'; best = Math.max(best, score);
+    setTimeout(SFX.lose, 300);
+  }
+}
+function zombifyOne(lane){
+  let target = crowd.find(p => !p.zombified && p.lane === lane);
+  if (!target) target = crowd.find(p => !p.zombified);
+  if (!target) return;
+  target.zombified = true;
+  SFX.zombified();
+  addFloat(target.x - 14, laneY(target.lane) - 20, 'ZOMBIFIED!', '#8ad04a');
+  if (crowd.every(p => p.zombified)){
+    state = 'over'; best = Math.max(best, score);
+    banner('EVERYONE GOT ZOMBIFIED');
+    setTimeout(SFX.lose, 300);
+  }
+}
+
+/* -------------------------------------------------------------- gameplay */
+function updatePlay(dt){
+  elapsed += dt;
+  if (bannerT > 0) bannerT -= dt;
+  if (invul > 0) invul -= dt;
+  if (flashT > 0) flashT -= dt;
+  if (shootCool > 0) shootCool -= dt;
+
+  // joystick left/right walks, up/down changes lane (Button 2 = joystick up)
+  if (keys.left)  player.x -= 74 * dt;
+  if (keys.right) player.x += 74 * dt;
+  player.x = Math.max(150, Math.min(268, player.x));
+  if (upEdge && player.lane > 0) player.lane--;
+  if (downEdge && player.lane < LANES - 1) player.lane++;
+  upEdge = false; downEdge = false;
+  player.y = laneY(player.lane) - 9;
+
+  // Button 1 shoots, to the left
+  if (keys.shoot && shootCool <= 0){
+    shootCool = 0.22;
+    bullets.push({ x: player.x - 4, y: player.y + 8, lane: player.lane });
+    SFX.shoot();
+  }
+
+  // the evil person paces up and down behind the zombies
+  evil.moveT -= dt;
+  if (evil.moveT <= 0){
+    evil.moveT = 1.1;
+    evil.lane += evil.dir;
+    if (evil.lane < 0){ evil.lane = 1; evil.dir = 1; }
+    if (evil.lane > LANES - 1){ evil.lane = LANES - 2; evil.dir = -1; }
+  }
+  evil.y = laneY(evil.lane) - 9;
+
+  // his gun keeps making zombies
+  spawnT -= dt;
+  if (spawnT <= 0){
+    spawnZombie();
+    spawnT = Math.max(1.1, 3.0 - elapsed * 0.014);
+  }
+
+  // zombies shamble toward the crowd
+  for (let i = zombies.length - 1; i >= 0; i--){
+    const z = zombies[i];
+    z.lurch += dt * 5;
+    if (z.flash > 0) z.flash -= dt;
+    z.x += z.speed * dt;
+    z.y = laneY(z.lane) - 8;
+
+    // brown ones fire a mud ball every 5 seconds
+    if (z.type === 'brown'){
+      z.fireT -= dt;
+      if (z.fireT <= 0){
+        z.fireT = 5;
+        fireMud(z.x + 12, z.y + 5, 66, 0);
+        SFX.mudFire();
+      }
+    }
+    // touching the player
+    if (invul <= 0 && Math.abs(z.x - player.x) < 12 && z.lane === player.lane){
+      loseLife('BITTEN!');
+    }
+    // reaching the people behind you
+    if (z.x > CROWD_X - 14){
+      zombifyOne(z.lane);
+      zombies.splice(i, 1);
+      continue;
+    }
+  }
+
+  // bullets travel left, blocked by the nearest zombie in the lane
+  for (let i = bullets.length - 1; i >= 0; i--){
+    const b = bullets[i];
+    b.x -= 250 * dt;
+    let hitSomething = false;
+    for (let j = zombies.length - 1; j >= 0; j--){
+      const z = zombies[j];
+      if (z.lane !== b.lane) continue;
+      if (b.x > z.x && b.x < z.x + 13){
+        z.hp--; z.flash = 0.12; hitSomething = true;
+        if (z.hp <= 0){
+          if (z.type === 'brown'){
+            // "the brown explodes 7 mud balls"
+            for (let k = 0; k < 7; k++){
+              const ang = (k / 6 - 0.5) * 1.5;
+              fireMud(z.x + 5, z.y + 5, Math.cos(ang) * 62 + 12, Math.sin(ang) * 52);
+            }
+          }
+          if (z.type === 'brain'){
+            score += 100; brainsDown++;
+            addFloat(z.x, z.y - 10, '+100', '#f0a0b8'); SFX.brain();
+          } else {
+            score += 20;
+            addFloat(z.x, z.y - 10, '+20', '#a8e06a'); SFX.zDown();
+          }
+          zombiesDown++;
+          burst(z.x + 6, z.y + 8, 7, z.type === 'brown' ? '#9a6a34' : '#6ca84a');
+          zombies.splice(j, 1);
+        } else {
+          SFX.zHit();
+        }
+        break;
+      }
+    }
+    if (hitSomething){ bullets.splice(i, 1); continue; }
+    // a bullet that gets all the way through hits the evil person
+    if (b.x < EVIL_X + 14){
+      if (b.lane === evil.lane && evilHP > 0){
+        evilHP--; score += 50;
+        addFloat(EVIL_X + 4, evil.y - 12, '+50', '#e8c020');
+        burst(EVIL_X + 8, evil.y + 9, 5, '#c8a0f0');
+        SFX.evilHit();
+        if (evilHP <= 0){
+          saved = crowd.filter(p => !p.zombified).length;
+          score += 3000 + saved * 200;
+          state = 'win'; best = Math.max(best, score);
+          setTimeout(SFX.win, 220);
+        }
+      }
+      bullets.splice(i, 1); continue;
+    }
+  }
+
+  // mud balls fly toward you and the crowd
+  for (let i = muds.length - 1; i >= 0; i--){
+    const m = muds[i];
+    m.x += m.vx * dt; m.y += m.vy * dt;
+    if (invul <= 0 && Math.abs(m.x - (player.x + 6)) < 9 && Math.abs(m.y - (player.y + 9)) < 11){
+      loseLife('MUD BALL!');
+      muds.splice(i, 1); continue;
+    }
+    if (m.x > CROWD_X - 8){
+      const lane = Math.max(0, Math.min(LANES - 1, Math.round((m.y - PLAY_TOP - LANE_H / 2) / LANE_H)));
+      zombifyOne(lane);
+      muds.splice(i, 1); continue;
+    }
+    if (m.y < PLAY_TOP - 10 || m.y > PLAY_TOP + LANES * LANE_H + 10 || m.x < -20) muds.splice(i, 1);
+  }
+
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t -= dt; f.y -= 16 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+  for (let i = bits.length - 1; i >= 0; i--){
+    const b = bits[i]; b.t -= dt; b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 150 * dt;
+    if (b.t <= 0) bits.splice(i, 1);
+  }
+}
+
+/* ------------------------------------------------------------------ paint */
+function drawField(){
+  // graveyard ground, like Toby's cabinet art
+  ctx.fillStyle = '#6b4a2a'; ctx.fillRect(0, PLAY_TOP, BASE_W, LANES * LANE_H);
+  for (let i = 0; i < LANES; i++){
+    ctx.fillStyle = i % 2 ? '#74522f' : '#6b4a2a';
+    ctx.fillRect(0, PLAY_TOP + i * LANE_H, BASE_W, LANE_H);
+    ctx.fillStyle = 'rgba(40,26,14,0.35)';
+    ctx.fillRect(0, PLAY_TOP + i * LANE_H, BASE_W, 1);
+  }
+  // grass tufts + headstones scattered down the field
+  for (let i = 0; i < 46; i++){
+    const x = (i * 53) % (BASE_W - 40) + 20;
+    const ln = i % LANES;
+    const y = PLAY_TOP + ln * LANE_H + 26 + (i % 3) * 3;
+    ctx.fillStyle = '#3f8a3a';
+    ctx.fillRect(x, y, 2, 4); ctx.fillRect(x + 3, y + 1, 2, 3);
+  }
+  for (let i = 0; i < 9; i++){
+    const x = 30 + i * 30, ln = (i * 2) % LANES;
+    const y = PLAY_TOP + ln * LANE_H + 4;
+    ctx.fillStyle = '#b8b2a4'; ctx.fillRect(x, y + 4, 11, 10);
+    ctx.fillRect(x + 2, y, 7, 5);
+    ctx.fillStyle = '#6a655c'; ctx.fillRect(x + 3, y + 7, 5, 1); ctx.fillRect(x + 5, y + 6, 1, 4);
+  }
+  // the town the crowd is standing in front of
+  ctx.fillStyle = '#2e2a24'; ctx.fillRect(CROWD_X - 6, PLAY_TOP, BASE_W - CROWD_X + 6, LANES * LANE_H);
+  ctx.fillStyle = '#4a443a';
+  for (let i = 0; i < 6; i++) ctx.fillRect(CROWD_X - 4, PLAY_TOP + 6 + i * 30, 30, 22);
+  ctx.fillStyle = '#e8c020';
+  for (let i = 0; i < 6; i++){ ctx.fillRect(CROWD_X, PLAY_TOP + 11 + i * 30, 4, 4); ctx.fillRect(CROWD_X + 10, PLAY_TOP + 11 + i * 30, 4, 4); }
+
+  // the evil person's health, the red bar down the left edge of Toby's plan
+  const bh = LANES * LANE_H - 8;
+  ctx.fillStyle = '#2a1418'; ctx.fillRect(0, PLAY_TOP + 4, 4, bh);
+  ctx.fillStyle = '#e03040';
+  const fh = Math.round(bh * (evilHP / EVIL_HP_MAX));
+  ctx.fillRect(0, PLAY_TOP + 4 + (bh - fh), 4, fh);
+}
+
+function drawPlay(){
+  ctx.fillStyle = '#0d1208'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  drawField();
+
+  crowd.forEach(p => {
+    const spr = p.zombified ? PERSON_Z : PEOPLE[p.kind];
+    ctx.drawImage(spr.img, Math.round(p.x), Math.round(laneY(p.lane) - 7));
+  });
+
+  if (evilHP > 0) ctx.drawImage(EVIL.img, EVIL_X, Math.round(evil.y));
+
+  zombies.forEach(z => {
+    const spr = z.type === 'brown' ? Z_BROWN : (z.type === 'brain' ? Z_BRAIN : Z_GREEN);
+    const wob = Math.sin(z.lurch) * 1.2;
+    if (z.flash > 0){ ctx.globalAlpha = 0.55; }
+    ctx.drawImage(spr.img, Math.round(z.x), Math.round(z.y + wob));
+    ctx.globalAlpha = 1;
+  });
+
+  muds.forEach(m => ctx.drawImage(MUD.img, Math.round(m.x - 3), Math.round(m.y - 3)));
+
+  ctx.fillStyle = '#ffe870';
+  bullets.forEach(b => ctx.fillRect(Math.round(b.x), Math.round(b.y), 5, 2));
+
+  const flash = invul > 0 && Math.floor(invul * 12) % 2 === 0;
+  if (!flash) ctx.drawImage(HERO.img, Math.round(player.x - 2), Math.round(player.y));
+
+  bits.forEach(b => { ctx.fillStyle = b.col; ctx.fillRect(Math.round(b.x), Math.round(b.y), 2, 2); });
+
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  floats.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = '#141008'; ctx.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    ctx.globalAlpha = 1;
+  });
+
+  if (flashT > 0){
+    ctx.fillStyle = 'rgba(200,40,30,' + (flashT * 0.7).toFixed(2) + ')';
+    ctx.fillRect(0, HUD_H, BASE_W, BASE_H - HUD_H);
+  }
+
+  drawHUD();
+  if (bannerT > 0){
+    ctx.globalAlpha = Math.min(1, bannerT);
+    centreText(bannerText, 122, 15, '#e8c020', '#141008');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHUD(){
+  ctx.fillStyle = '#141c0c'; ctx.fillRect(0, 0, BASE_W, HUD_H);
+  ctx.fillStyle = '#3f8a3a'; ctx.fillRect(0, HUD_H - 2, BASE_W, 2);
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#e8c020'; ctx.fillText('SCORE ' + String(score).padStart(6, '0'), 5, 4);
+  ctx.fillStyle = '#8ad04a'; ctx.fillText('ZOMBIES ' + zombiesDown, 5, 15);
+
+  ctx.fillStyle = '#cfe0b0'; ctx.fillText('LIVES', 112, 4);
+  for (let i = 0; i < 3; i++){
+    ctx.fillStyle = i < lives ? '#c83a2a' : '#3a3a2a';
+    ctx.fillRect(112 + i * 11, 16, 8, 6);
+  }
+
+  const left = crowd.filter(p => !p.zombified).length;
+  ctx.fillStyle = '#cfe0b0'; ctx.fillText('PEOPLE', 160, 4);
+  ctx.fillStyle = '#3a3a2a'; ctx.fillRect(160, 16, 52, 6);
+  ctx.fillStyle = left > 4 ? '#4a8ad0' : '#e07a3a';
+  ctx.fillRect(160, 16, Math.round(52 * (left / 10)), 6);
+
+  ctx.fillStyle = '#ff7a80'; ctx.fillText('EVIL PERSON', 224, 4);
+  ctx.fillStyle = '#3a2020'; ctx.fillRect(224, 16, 90, 6);
+  ctx.fillStyle = '#e03040'; ctx.fillRect(224, 16, Math.round(90 * (evilHP / EVIL_HP_MAX)), 6);
+}
+
+function centreText(text, y, size, fill, outline){
+  ctx.font = 'bold ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (outline){ ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.strokeText(text, BASE_W / 2, y); }
+  ctx.fillStyle = fill; ctx.fillText(text, BASE_W / 2, y);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+}
+
+function graveyardBackdrop(){
+  ctx.fillStyle = '#6b4a2a'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  ctx.fillStyle = '#5a3d22'; ctx.fillRect(0, 150, BASE_W, BASE_H - 150);
+  for (let i = 0; i < 10; i++){
+    const x = 16 + i * 31, y = 158 + (i % 3) * 12;
+    ctx.fillStyle = '#b8b2a4'; ctx.fillRect(x, y + 5, 13, 14); ctx.fillRect(x + 3, y, 7, 6);
+    ctx.fillStyle = '#6a655c'; ctx.fillRect(x + 4, y + 9, 6, 1); ctx.fillRect(x + 6, y + 8, 1, 5);
+    ctx.fillStyle = '#3f8a3a'; ctx.fillRect(x - 4, y + 17, 3, 5); ctx.fillRect(x + 16, y + 16, 3, 6);
+  }
+}
+
+function drawTitle(){
+  graveyardBackdrop();
+  ctx.fillStyle = 'rgba(20,16,8,0.45)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('ZOMBIFIED', 52, 34, '#4ac85a', '#0e2a12');
+  centreText('An evil person keeps spawning zombies.', 88, 10, '#e8e0c0', '#141008');
+  centreText('Shoot them before they touch you —', 102, 10, '#e8e0c0', '#141008');
+  centreText('and save the people behind you.', 116, 10, '#e8c020', '#141008');
+
+  ctx.drawImage(Z_GREEN.img, 74, 138);
+  ctx.drawImage(Z_BROWN.img, 100, 138);
+  ctx.drawImage(HERO.img, 148, 136);
+  ctx.drawImage(PEOPLE[0].img, 196, 140);
+  ctx.drawImage(PEOPLE[1].img, 208, 140);
+
+  centreText('Game design by Toby', 168, 12, '#e8c020', '#141008');
+  centreText('Pixel Quest — Hilton Primary School', 182, 9, '#cfe0b0', '#141008');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO START', 206, 12, '#4ac85a', '#141008');
+  ctx.globalAlpha = 1;
+  centreText('◀ ▶ walk  •  ▲ ▼ change lane  •  B1 shoot  •  B2 = up', 224, 9, '#cfe0b0', '#141008');
+}
+
+function drawOver(){
+  graveyardBackdrop();
+  ctx.fillStyle = 'rgba(10,14,6,0.68)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('GAME OVER', 52, 30, '#c83a2a', '#2a0c08');
+  ctx.drawImage(Z_GREEN.img, 130, 84);
+  ctx.drawImage(PERSON_Z.img, 162, 88);
+  const left = crowd.filter(p => !p.zombified).length;
+  centreText(left > 0 ? 'You got bitten' : 'Everyone got zombified', 116, 11, '#ff9a8a', '#141008');
+  centreText('SCORE ' + score, 138, 18, '#e8c020', '#141008');
+  centreText('ZOMBIES SHOT ' + zombiesDown + '   •   BRAIN ZOMBIES ' + brainsDown, 158, 10, '#8ad04a', '#141008');
+  centreText('PEOPLE STILL SAFE ' + left + '/10   •   BEST ' + best, 173, 10, '#cfe0b0', '#141008');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO TRY AGAIN', 206, 11, '#4ac85a', '#141008');
+  ctx.globalAlpha = 1;
+}
+
+function drawWin(){
+  graveyardBackdrop();
+  ctx.fillStyle = 'rgba(255,240,180,0.3)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  centreText('EVIL PERSON', 46, 24, '#3f8a2a', '#f6ffe0');
+  centreText('DEFEATED!', 72, 26, '#3f8a2a', '#f6ffe0');
+  ctx.drawImage(HERO.img, 128, 108);
+  ctx.drawImage(PEOPLE[0].img, 156, 112);
+  ctx.drawImage(PEOPLE[1].img, 168, 112);
+  ctx.drawImage(PEOPLE[2].img, 180, 112);
+  centreText('No more zombies. The people are safe.', 100, 11, '#2a3a14', '#f6ffe0');
+  centreText('FINAL SCORE ' + score, 142, 18, '#a04a10', '#fff6d0');
+  centreText('SAVED ' + saved + '/10 PEOPLE   •   ZOMBIES SHOT ' + zombiesDown, 162, 10, '#2a3a14', '#f6ffe0');
+  const pulse = .6 + .4 * Math.sin(performance.now() / 260);
+  ctx.globalAlpha = pulse;
+  centreText('PRESS BUTTON 1 (or tap) TO PLAY AGAIN', 200, 11, '#2a3a14', '#f6ffe0');
+  ctx.globalAlpha = 1;
+}
+
+/* -------------------------------------------------------------- main loop */
+let last = performance.now(), acc = 0;
+const STEP = 1 / 60;
+
+function update(dt){
+  if (state === 'play') updatePlay(dt);
+  else {
+    const go = keys.shoot || anyEdge || upEdge;
+    upEdge = false; downEdge = false; anyEdge = false;
+    if (go){ initAudio(); SFX.start(); resetGame(); state = 'play'; }
+  }
+  anyEdge = false;
+}
+function render(){
+  ctx.save();
+  ctx.setTransform(SC, 0, 0, SC, 0, 0);
+  if (state === 'title') drawTitle();
+  else if (state === 'play') drawPlay();
+  else if (state === 'over') drawOver();
+  else if (state === 'win') drawWin();
+  ctx.restore();
+}
+function frame(now){
+  let delta = (now - last) / 1000; last = now;
+  if (delta > 0.25) delta = 0.25;
+  acc += delta;
+  let steps = 0;
+  while (acc >= STEP && steps < 5){ update(STEP); acc -= STEP; steps++; }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
