@@ -311,7 +311,7 @@
 <div class="nav">
   <div><button id="prev">← Back</button></div>
   <div class="dots" id="dots"></div>
-  <div style="display:flex;gap:8px"><button id="reveal" class="primary">Reveal</button><button id="next">Next →</button></div>
+  <div style="display:flex;gap:8px"><button id="fullscreen">⛶ Fullscreen</button><button id="reveal" class="primary">Reveal</button><button id="next">Next →</button></div>
 </div>
 
 <script>
@@ -340,6 +340,22 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'){e.preventDefault();show(i-1);}
   if(e.key.toLowerCase()==='r') revealNext();
 });
+
+document.getElementById('fullscreen').onclick = async () => {
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (e) {}
+};
+
+document.addEventListener('fullscreenchange', () => {
+  document.getElementById('fullscreen').textContent =
+    document.fullscreenElement ? '⛶ Exit fullscreen' : '⛶ Fullscreen';
+});
+
 show(0);
 </script>
 </body>
