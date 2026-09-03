@@ -429,6 +429,14 @@
     </div>
 
     <div class="card">
+      <h2>Start fresh</h2>
+      <p>Clears everything this device holds — the cached results log and the class list.
+      Use it before a new carnival, after wiping the results sheet, or before handing the iPad back.
+      It does <b>not</b> touch the shared results sheet; clear that separately.</p>
+      <div class="row"><button class="btn dan" id="resetDeviceBtn">🧹 Clear this device</button></div>
+    </div>
+
+    <div class="card">
       <h2>Class lists</h2>
       <p id="rosterNote">—</p>
       <div class="row">
@@ -1758,6 +1766,18 @@ function renderRoster(){
       'until you load <b>carnival-roster.json</b>.';
   $('rosterClearBtn').disabled=!n;
 }
+$('resetDeviceBtn').addEventListener('click',()=>{
+  const n=(LOG.length+pending.length);
+  if(!confirm('Clear everything stored on this device?\n\n'+
+     '· '+n+' cached actions\n'+
+     '· the class list ('+Object.keys(people).length+' students)\n\n'+
+     'The shared results sheet is NOT touched — clear that separately if you want a clean slate.')) return;
+  try{ localStorage.removeItem(STORE); localStorage.removeItem(ROSTER_KEY); }catch(e){}
+  LOG=[]; pending=[]; people={}; rosterRaces={};
+  rebuild(); resolveRoster(); lastHash='';
+  alert('Device cleared.\n\nIf the results sheet still has rows in it, this device will pull them back on the next sync.');
+  render();
+});
 $('downloadXlsxBtn').addEventListener('click',downloadXlsx);
 $('publishBtn').addEventListener('click',publishWorkbook);
 $('rosterBtn').addEventListener('click',()=>$('rosterFile').click());
