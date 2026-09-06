@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>NAIDOC Stories</title>
+
+  <!-- Libraries hosted locally on your own server (avoids school CDN blocking) -->
+  <script src="./lib/aframe.min.js"></script>
+  <script src="./lib/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #0a0a0a;
+      color: #f0e6d3;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      z-index: 100;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    #splash h1 {
+      font-size: clamp(2rem, 8vw, 3.5rem);
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      color: #e8c97a;
+      line-height: 1.2;
+    }
+
+    #splash p {
+      font-size: clamp(0.95rem, 3vw, 1.15rem);
+      color: #c4b08a;
+      max-width: 340px;
+      line-height: 1.7;
+    }
+
+    #splash .dot-row {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    #splash .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #e8c97a;
+      opacity: 0.3;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    #splash .dot:nth-child(2) { animation-delay: 0.3s; background: #c47a3a; }
+    #splash .dot:nth-child(3) { animation-delay: 0.6s; background: #8b4513; }
+    #splash .dot:nth-child(4) { animation-delay: 0.9s; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    .btn {
+      background: transparent;
+      border: 1.5px solid #e8c97a;
+      color: #e8c97a;
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      letter-spacing: 0.15em;
+      padding: 0.85rem 2.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+    }
+    .btn:hover, .btn:active {
+      background: #e8c97a;
+      color: #0a0a0a;
+    }
+
+    body.ar-active {
+      background: transparent !important;
+    }
+
+    #ar-container {
+      position: fixed;
+      inset: 0;
+      /* Always rendered so A-Frame can initialise its WebGL context.
+         The splash screen (z-index 100) covers it until Begin is tapped. */
+    }
+
+    /* Force the MindAR-injected camera video to sit fullscreen behind the 3D canvas */
+    video {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      z-index: 1 !important;
+    }
+
+    /* Our own background video (look-around mode) — only visible when active */
+    #bgvideo {
+      display: none;
+      z-index: 1 !important;
+    }
+    #bgvideo.active { display: block; }
+
+    /* A-Frame scene + its canvas sit above the video, transparent so video shows through */
+    #ar-scene, a-scene {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 2 !important;
+    }
+
+    a-scene canvas, .a-canvas {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: transparent !important;
+      z-index: 2 !important;
+    }
+
+    #hud {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 1.5rem;
+      background: linear-gradient(transparent, rgba(10,10,10,0.85));
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    #hud.active { display: flex; }
+    #hud-title { font-size: 1.1rem; color: #e8c97a; letter-spacing: 0.08em; }
+    #hud-subtitle { font-size: 0.85rem; color: #c4b08a; }
+
+    #scan-prompt {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 50;
+      pointer-events: none;
+      display: none;
+    }
+    #scan-prompt.active { display: block; }
+
+    .scan-ring {
+      width: 160px;
+      height: 160px;
+      border: 2px solid rgba(232, 201, 122, 0.5);
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      position: relative;
+      animation: spin 4s linear infinite;
+    }
+    .scan-ring::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: #e8c97a;
+      border-radius: 50%;
+      transform: translateX(-50%);
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    #scan-prompt p { font-size: 0.9rem; color: rgba(232,201,122,0.8); letter-spacing: 0.1em; text-transform: uppercase; }
+
+    #story-found {
+      position: fixed;
+      top: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(232,201,122,0.15);
+      border: 1px solid rgba(232,201,122,0.4);
+      color: #e8c97a;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.5rem 1.2rem;
+      z-index: 50;
+      display: none;
+      white-space: nowrap;
+    }
+    #story-found.active { display: block; }
+
+    /* Exit button — bottom centre, only while a world is placed */
+    #exitBtn {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10,10,10,0.75);
+      border: 1.5px solid #e8c97a;
+      color: #e8c97a;
+      font-family: 'Georgia', serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.7rem 1.8rem;
+      border-radius: 40px;
+      cursor: pointer;
+      z-index: 60;
+      display: none;
+    }
+    #exitBtn.active { display: block; }
+    #exitBtn:active { background: #e8c97a; color: #0a0a0a; }
+
+    #scale-tuner {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      display: none;
+      align-items: center;
+      gap: 0.8rem;
+      background: rgba(10,10,10,0.7);
+      border: 1px solid rgba(232,201,122,0.3);
+      border-radius: 40px;
+      padding: 0.4rem 0.8rem;
+    }
+    #scale-tuner.active { display: flex; }
+    #scale-tuner button {
+      background: transparent;
+      border: 1px solid #e8c97a;
+      color: #e8c97a;
+      font-family: 'Georgia', serif;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    #scale-tuner button:active { background: #e8c97a; color: #0a0a0a; }
+    #scale-readout { color: #c4b08a; font-size: 0.85rem; font-family: monospace; min-width: 3.5em; text-align: center; }
+
+    #audio-controls {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 50;
+      display: none;
+    }
+    #audio-controls.active { display: flex; }
+    #muteBtn {
+      background: rgba(10,10,10,0.7);
+      border: 1px solid rgba(232,201,122,0.4);
+      color: #e8c97a;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Debug log */
+    #debug {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-height: 40vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.85);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 0.5rem;
+      z-index: 999;
+      display: none;
+    }
+    #debug.active { display: block; }
+    #debug-toggle {
+      position: fixed;
+      top: 1.5rem;
+      left: 1.5rem;
+      z-index: 1000;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #555;
+      color: #888;
+      font-size: 10px;
+      padding: 4px 8px;
+      cursor: pointer;
+      display: none;
+    }
+    #debug-toggle.active { display: block; }
+
+    /* Error screen */
+    #error-screen {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      z-index: 200;
+      padding: 2rem;
+      text-align: center;
+    }
+    #error-screen.active { display: flex; }
+    #error-screen h2 { color: #e8c97a; font-size: 1.3rem; font-weight: 400; }
+    #error-screen p { color: #c4b08a; font-size: 0.9rem; max-width: 320px; line-height: 1.6; }
+    #error-detail { color: #888; font-family: monospace; font-size: 0.75rem; max-width: 320px; word-break: break-word; }
+  </style>
+</head>
+<body>
+
+  <!-- Splash -->
+  <div id="splash">
+    <div class="dot-row">
+      <div class="dot"></div><div class="dot"></div>
+      <div class="dot"></div><div class="dot"></div>
+    </div>
+    <h1>NAIDOC<br>Stories</h1>
+    <p>Point your device at a station marker to enter a student's world and hear their story.</p>
+    <button class="btn" id="startBtn" onclick="startAR()">Begin</button>
+  </div>
+
+  <!-- Error screen -->
+  <div id="error-screen">
+    <h2>Something went wrong</h2>
+    <p id="error-msg">Could not start the camera.</p>
+    <p id="error-detail"></p>
+    <button class="btn" onclick="location.reload()">Try Again</button>
+  </div>
+
+  <!-- AR Container -->
+  <div id="ar-container">
+    <a-scene
+      id="ar-scene"
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;"
+      color-space="sRGB"
+      renderer="colorManagement: true; physicallyCorrectLights: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <!-- No a-assets block — the GLB loads directly via its src URL below,
+           so asset loading can never block the scene from initialising. -->
+
+      <a-camera id="cam" position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Marker target is a BARE trigger with no children. MindAR shows/hides
+           THIS entity, but it has no content, so MindAR's visibility control
+           never touches our world. -->
+      <a-entity mindar-image-target="targetIndex: 0" id="target-0"></a-entity>
+
+      <!-- The world is a direct child of the SCENE (not the marker), so MindAR
+           never hides it. It's positioned in front of the camera on placement
+           and stays fixed in scene space — you look around it freely.
+           Hidden until the marker is scanned. -->
+      <a-entity id="world-wrap" visible="false" position="0 0 -3">
+        <a-gltf-model
+          id="model-0"
+          src="url(./assets/model-1.glb)"
+          scale="0.3 0.3 0.3"
+          position="0 0 0"
+          rotation="0 0 0">
+        </a-gltf-model>
+      </a-entity>
+
+    </a-scene>
+  </div>
+
+  <!-- Audio kept as plain HTML (outside a-assets) so it never blocks scene load -->
+  <audio id="audio-station-1" src="./assets/audio-1.mp3" preload="auto"></audio>
+
+  <!-- Live camera background shown AFTER the world is placed (look-around mode).
+       Sits behind the transparent 3D canvas. -->
+  <video id="bgvideo" playsinline muted></video>
+
+  <!-- Scan prompt -->
+  <div id="scan-prompt">
+    <div class="scan-ring"></div>
+    <p>Point at a marker</p>
+  </div>
+
+  <div id="story-found">Story found</div>
+
+  <div id="audio-controls">
+    <button id="muteBtn" onclick="toggleMute()">🔊</button>
+  </div>
+
+  <!-- Exit button shown only while a world is placed -->
+  <button id="exitBtn" onclick="exitWorld()">✕ Exit</button>
+
+  <!-- Live scale tuner (for finding the right size during setup).
+       Once you know the value, it can be hard-coded and this removed. -->
+  <div id="scale-tuner">
+    <button onclick="adjustScale(0.8)">size −</button>
+    <span id="scale-readout">3.00</span>
+    <button onclick="adjustScale(1.25)">size +</button>
+    <button onclick="forceVisible()">reveal</button>
+  </div>
+
+  <div id="hud">
+    <div id="hud-title">Station 1</div>
+    <div id="hud-subtitle">Look around to explore</div>
+  </div>
+
+  <!-- Debug toggle (visible after AR starts) -->
+  <button id="debug-toggle" onclick="toggleDebug()">DEBUG</button>
+  <div id="debug"></div>
+
+  <script>
+    let arStarted = false;
+    let currentAudio = null;
+    let muted = false;
+    let debugVisible = false;
+
+    const stations = [
+      { title: "Station 1", subtitle: "Noongar Country", audioId: "audio-station-1" },
+    ];
+
+    function log(msg, color) {
+      const d = document.getElementById('debug');
+      const line = document.createElement('div');
+      line.style.color = color || '#0f0';
+      line.textContent = new Date().toISOString().substr(11,8) + ' ' + msg;
+      d.appendChild(line);
+      d.scrollTop = d.scrollHeight;
+      console.log(msg);
+    }
+
+    function toggleDebug() {
+      debugVisible = !debugVisible;
+      document.getElementById('debug').classList.toggle('active', debugVisible);
+    }
+
+    function showError(msg, detail) {
+      document.getElementById('ar-container').classList.remove('active');
+      document.getElementById('scan-prompt').classList.remove('active');
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-detail').textContent = detail || '';
+      document.getElementById('error-screen').classList.add('active');
+      log('ERROR: ' + msg + ' | ' + (detail || ''), '#f55');
+    }
+
+    async function startAR() {
+      if (arStarted) return;
+      arStarted = true;
+
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('startBtn').textContent = 'Starting...';
+
+      log('Begin tapped');
+
+      // Step 0: verify the AR libraries actually loaded from CDN
+      if (typeof AFRAME === 'undefined') {
+        showError('A-Frame library did not load.', 'Check internet connection or that aframe.io is reachable. Try reloading.');
+        return;
+      }
+      log('A-Frame loaded OK (v' + (AFRAME.version || '?') + ')', '#0ff');
+
+      // Request device-orientation (gyroscope) permission — required on iOS 13+,
+      // and must happen from a user gesture (this Begin tap qualifies).
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const res = await DeviceOrientationEvent.requestPermission();
+          log('Motion sensor permission: ' + res, res === 'granted' ? '#0ff' : '#ff0');
+        } else {
+          log('Motion sensor permission not required on this device', '#0ff');
+        }
+      } catch (e) {
+        log('Motion permission request failed: ' + e.message, '#ff0');
+      }
+
+      // Unlock audio for iOS/Safari. iOS only allows audio that was first
+      // triggered by a real user tap. This Begin tap is that gesture, so we
+      // briefly play+pause each audio file to "unlock" it for later autoplay.
+      try {
+        const allAudio = document.querySelectorAll('audio');
+        for (const a of allAudio) {
+          a.muted = true;          // play silently so the user hears nothing now
+          try { await a.play(); } catch (e) { /* ignore */ }
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;         // restore so real playback has sound
+        }
+        log('Audio unlocked for iOS (' + allAudio.length + ' file(s))', '#0ff');
+      } catch (e) {
+        log('Audio unlock failed: ' + e.message, '#ff0');
+      }
+
+      // Step 1: check API availability first
+      log('Requesting camera permission...');
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showError('Camera API not available.', 'navigator.mediaDevices is undefined — page may not be on HTTPS, or browser does not support it.');
+        return;
+      }
+
+      // Log how many cameras the device reports
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        log('Cameras detected: ' + cams.length, '#0ff');
+      } catch (e) {
+        log('Could not enumerate devices: ' + e.message, '#ff0');
+      }
+
+      try {
+        // Try environment camera first
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        } catch (envErr) {
+          log('Environment camera failed (' + envErr.name + '), trying any camera...', '#ff0');
+          // Fall back to ANY camera
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+        log('Camera permission granted', '#0ff');
+        stream.getTracks().forEach(t => t.stop());
+      } catch (err) {
+        // Distinguish error types
+        let explain = '';
+        if (err.name === 'NotAllowedError') {
+          explain = 'Permission was blocked. Check Android Settings > Apps > Chrome > Permissions > Camera = Allow, then reload.';
+        } else if (err.name === 'NotFoundError') {
+          explain = 'No camera found on this device.';
+        } else if (err.name === 'NotReadableError') {
+          explain = 'Camera is in use by another app. Close other camera/video apps and reload.';
+        } else if (err.name === 'SecurityError') {
+          explain = 'Blocked for security reasons — must be served over HTTPS.';
+        } else {
+          explain = err.name + ': ' + err.message;
+        }
+        showError('Camera could not start.', explain);
+        return;
+      }
+
+      // Step 2: hide splash to reveal the already-running scene
+      document.body.classList.add('ar-active');
+      document.getElementById('splash').style.display = 'none';
+      document.getElementById('scan-prompt').classList.add('active');
+      document.getElementById('audio-controls').classList.add('active');
+      document.getElementById('debug-toggle').classList.add('active');
+
+      log('AR container shown');
+
+      // Step 3: start MindAR using a robust poll instead of the 'loaded' event,
+      // which has proven unreliable. We poll for the mindar system to exist,
+      // then start it directly.
+      const scene = document.getElementById('ar-scene');
+
+      log('scene.hasLoaded = ' + scene.hasLoaded, '#0ff');
+
+      let started = false;
+      let attempts = 0;
+
+      function tryStart() {
+        if (started) return;
+        attempts++;
+
+        const arSystem = scene.systems && scene.systems['mindar-image-system'];
+
+        if (arSystem) {
+          started = true;
+          arSystemRef = arSystem; // save for stop/restart during place/exit
+          log('MindAR system found after ' + attempts + ' tries, starting camera...', '#0ff');
+          try {
+            const result = arSystem.start();
+            // arSystem.start() may return a promise
+            if (result && typeof result.then === 'function') {
+              result.then(() => log('MindAR start() resolved — camera should be on', '#0ff'))
+                    .catch(e => showError('MindAR start failed.', e.message));
+            } else {
+              log('MindAR start() called — camera should be on', '#0ff');
+            }
+            bindTargetEvents();
+          } catch (err) {
+            showError('MindAR failed to start.', err.name + ': ' + err.message);
+          }
+          return;
+        }
+
+        if (attempts < 50) {
+          // try again in 200ms (up to ~10s)
+          setTimeout(tryStart, 200);
+        } else {
+          showError('MindAR system never became available.',
+            'scene.hasLoaded=' + scene.hasLoaded + '. The MindAR library may not have loaded — check internet connection / CDN access.');
+        }
+      }
+
+      tryStart();
+
+      scene.addEventListener('arError', (e) => {
+        log('arError event: ' + JSON.stringify(e.detail), '#f55');
+      });
+    }
+
+    let worldPlaced = false;
+    let arSystemRef = null;
+    let currentScale = 3;
+
+    function adjustScale(factor) {
+      currentScale = currentScale * factor;
+      const model = document.getElementById('model-0');
+      if (model) model.setAttribute('scale', currentScale + ' ' + currentScale + ' ' + currentScale);
+      const readout = document.getElementById('scale-readout');
+      if (readout) readout.textContent = currentScale.toFixed(3);
+      log('Scale set to ' + currentScale.toFixed(4), '#0ff');
+    }
+
+    function forceVisible() {
+      const modelEl = document.getElementById('model-0');
+      const mesh = modelEl && modelEl.getObject3D('mesh');
+      if (!mesh || !window.THREE) { log('No mesh to reveal', '#f55'); return; }
+      let count = 0;
+      mesh.traverse(o => {
+        if (o.isMesh) {
+          o.material = new THREE.MeshBasicMaterial({
+            color: 0xe8c97a,
+            side: THREE.DoubleSide
+          });
+          o.visible = true;
+          count++;
+        }
+      });
+      log('Forced bright material on ' + count + ' mesh parts', '#0ff');
+    }
+
+    function bindTargetEvents() {
+      stations.forEach((station, index) => {
+        const target = document.getElementById(`target-${index}`);
+        if (!target) { log(`target-${index} not found`, '#f55'); return; }
+
+        target.addEventListener('targetFound', () => {
+          if (worldPlaced) return; // already placed — ignore further detections
+          log(`Target ${index} found — placing world`);
+          placeWorld(index);
+        });
+
+        // targetLost is intentionally ignored — once placed, the world stays put.
+
+        log(`Bound events for target-${index}`);
+      });
+
+      const modelEl = document.getElementById('model-0');
+      if (modelEl) {
+        function reportModelSize() {
+          try {
+            const mesh = modelEl.getObject3D('mesh');
+            if (mesh && window.THREE) {
+              // Force world matrices up to date before measuring, otherwise an
+              // invisible / not-yet-rendered object can measure as NaN.
+              mesh.updateWorldMatrix(true, true);
+
+              // Measure from each mesh's own geometry bounding box (reliable)
+              // rather than setFromObject on a possibly-hidden parent.
+              let meshCount = 0;
+              let hasRealGeometry = false;
+              const combined = new THREE.Box3();
+              combined.makeEmpty();
+
+              mesh.traverse(o => {
+                if (o.isMesh && o.geometry) {
+                  meshCount++;
+                  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+                  const bb = o.geometry.boundingBox;
+                  if (bb && isFinite(bb.min.x) && isFinite(bb.max.x)) {
+                    hasRealGeometry = true;
+                    // expand combined box by this geometry (local space is fine
+                    // for a size estimate)
+                    combined.union(bb);
+                  }
+                  // also check vertex count
+                  const pos = o.geometry.getAttribute && o.geometry.getAttribute('position');
+                  if (pos && pos.count > 0) hasRealGeometry = true;
+                }
+              });
+
+              log('Mesh parts found: ' + meshCount, meshCount > 0 ? '#0ff' : '#f55');
+
+              if (hasRealGeometry && !combined.isEmpty()) {
+                const size = new THREE.Vector3();
+                combined.getSize(size);
+                log('Model geometry size (local): ' +
+                  size.x.toFixed(2) + ', ' + size.y.toFixed(2) + ', ' + size.z.toFixed(2), '#0ff');
+                log('Geometry looks valid — if you cannot see it, it is a scale/position/material issue, not the file.', '#0ff');
+              } else {
+                log('Geometry has no finite vertices — likely a genuine export problem.', '#f55');
+              }
+            } else {
+              log('Model loaded but no mesh found yet', '#ff0');
+            }
+          } catch (err) {
+            log('Could not measure model: ' + err.message, '#ff0');
+          }
+        }
+
+        // Check if the model ALREADY loaded before this listener was attached
+        if (modelEl.getObject3D('mesh')) {
+          log('GLB model already loaded (before listener)', '#0ff');
+          reportModelSize();
+        } else {
+          log('Model not yet loaded — waiting for load event...', '#ff0');
+        }
+
+        modelEl.addEventListener('model-loaded', () => {
+          log('GLB model loaded OK (event fired)', '#0ff');
+          reportModelSize();
+        });
+        modelEl.addEventListener('model-error', (e) => {
+          log('GLB model FAILED to load — check ./assets/model-1.glb exists and is valid GLB', '#f55');
+          // Try to surface the underlying reason
+          if (e && e.detail) log('Error detail: ' + JSON.stringify(e.detail), '#f55');
+        });
+
+        // Also directly test if the file is reachable at all
+        fetch('./assets/model-1.glb', { method: 'HEAD' })
+          .then(r => {
+            log('Model file HEAD check: HTTP ' + r.status +
+                ' (' + (r.headers.get('content-type') || 'no content-type') + ', ' +
+                (r.headers.get('content-length') || '?') + ' bytes)',
+                r.ok ? '#0ff' : '#f55');
+          })
+          .catch(err => log('Model file fetch failed: ' + err.message, '#f55'));
+      }
+    }
+
+    async function placeWorld(index) {
+      worldPlaced = true;
+      const station = stations[index];
+
+      // 1. Show the world. It's a scene child positioned in front of the camera,
+      //    so MindAR can't hide it. Then enable gyroscope look-around so the
+      //    viewer can look all around the fixed world.
+      const world = document.getElementById('world-wrap');
+      if (world) world.setAttribute('visible', 'true');
+      log('World shown (scene-anchored, persistent)', '#0ff');
+
+      // Enable gyro look-around on the camera. This lets device rotation drive
+      // the view so you can look around the world that's fixed in scene space.
+      try {
+        const cam = document.getElementById('cam');
+        cam.setAttribute('look-controls',
+          'enabled: true; magicWindowTrackingEnabled: true; mouseEnabled: false; touchEnabled: false');
+        log('Look-around enabled', '#0ff');
+      } catch (e) {
+        log('Look-controls enable failed: ' + e.message, '#ff0');
+      }
+
+      // 2. Start the story audio
+      const audioEl = document.getElementById(station.audioId);
+      if (audioEl) {
+        audioEl.muted = muted;
+        audioEl.loop = false;
+        audioEl.currentTime = 0;
+        const playPromise = audioEl.play();
+        if (playPromise && playPromise.then) {
+          playPromise
+            .then(() => log('Audio playing', '#0ff'))
+            .catch(e => log('Audio play blocked: ' + e.name + ' - ' + e.message, '#f55'));
+        }
+        currentAudio = audioEl;
+      } else {
+        log('Audio element not found for ' + station.audioId, '#f55');
+      }
+
+      // 3. MindAR stays running — never stopped. This keeps the camera and the
+      //    WebGL renderer alive (stopping it was what made the world vanish).
+      log('MindAR kept alive — camera + renderer stay on', '#0ff');
+
+      // 4. UI
+      document.getElementById('scan-prompt').classList.remove('active');
+      document.getElementById('exitBtn').classList.add('active');
+      document.getElementById('scale-tuner').classList.add('active');
+      document.getElementById('hud-title').textContent = station.title;
+      document.getElementById('hud-subtitle').textContent = station.subtitle;
+      document.getElementById('hud').classList.add('active');
+      const found = document.getElementById('story-found');
+      found.classList.add('active');
+      setTimeout(() => found.classList.remove('active'), 2500);
+    }
+
+    async function exitWorld() {
+      log('Exiting world');
+
+      // Stop audio
+      stopAudio();
+
+      // Hide the painted world
+      const world = document.getElementById('world-wrap');
+      if (world) world.setAttribute('visible', 'false');
+
+      // Stop the background camera stream
+      const bg = document.getElementById('bgvideo');
+      if (bg && bg.srcObject) {
+        bg.srcObject.getTracks().forEach(t => t.stop());
+        bg.srcObject = null;
+      }
+      if (bg) bg.classList.remove('active');
+
+      // Disable gyro look-controls (reset camera for next scan)
+      const cam = document.getElementById('cam');
+      if (cam) {
+        cam.setAttribute('look-controls', 'enabled: false');
+        cam.setAttribute('rotation', '0 0 0');
+      }
+
+      // UI back to scanning state
+      document.getElementById('exitBtn').classList.remove('active');
+      document.getElementById('scale-tuner').classList.remove('active');
+      document.getElementById('hud').classList.remove('active');
+      document.getElementById('scan-prompt').classList.add('active');
+
+      // Restart MindAR scanning for the next station
+      worldPlaced = false;
+      try {
+        if (arSystemRef) {
+          await arSystemRef.start();
+          log('Scanning restarted — ready for next marker', '#0ff');
+        }
+      } catch (e) {
+        log('Error restarting MindAR: ' + e.message + ' — reloading page', '#ff0');
+        // Fallback: a full reload guarantees a clean scanner
+        setTimeout(() => location.reload(), 500);
+      }
+    }
+
+    function stopAudio() {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+      }
+    }
+
+    function toggleMute() {
+      muted = !muted;
+      document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+      if (currentAudio) currentAudio.muted = muted;
+    }
+
+    // Global error catcher
+    window.addEventListener('error', (e) => {
+      log('JS Error: ' + e.message + ' (' + e.filename + ':' + e.lineno + ')', '#f55');
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      log('Unhandled rejection: ' + e.reason, '#f55');
+    });
+  </script>
+</body>
+</html>
