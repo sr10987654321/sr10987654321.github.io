@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>NAIDOC Stories</title>
+
+  <script src="./lib/aframe.min.js"></script>
+  <script src="./lib/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:Georgia,serif; background:#0a0a0a; color:#f0e6d3; height:100vh; overflow:hidden; }
+    /* Black, not transparent: prevents white flash while the camera starts */
+    /* transparent during scanning so MindAR's feed shows; goes black at handoff */
+    body.live { background:transparent !important; }
+    body.story { background:#000 !important; }
+
+    #splash {
+      position:fixed; inset:0; background:#0a0a0a; z-index:100;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:1.8rem; padding:2rem; text-align:center;
+    }
+    #splash h1 { font-size:clamp(2rem,8vw,3.4rem); font-weight:400; color:#e8c97a; line-height:1.2; letter-spacing:.05em; }
+    #splash p { font-size:clamp(.95rem,3vw,1.1rem); color:#c4b08a; max-width:330px; line-height:1.7; }
+    .dot-row { display:flex; gap:.6rem; }
+    .dot { width:12px; height:12px; border-radius:50%; background:#e8c97a; opacity:.3; animation:pulse 1.8s ease-in-out infinite; }
+    .dot:nth-child(2){ animation-delay:.3s; background:#c47a3a; }
+    .dot:nth-child(3){ animation-delay:.6s; background:#8b4513; }
+    .dot:nth-child(4){ animation-delay:.9s; }
+    @keyframes pulse { 0%,100%{opacity:.3;transform:scale(1);} 50%{opacity:1;transform:scale(1.3);} }
+    .btn {
+      background:transparent; border:1.5px solid #e8c97a; color:#e8c97a;
+      font-family:Georgia,serif; font-size:1rem; letter-spacing:.15em;
+      padding:.85rem 2.5rem; cursor:pointer; text-transform:uppercase;
+    }
+    .btn:active { background:#e8c97a; color:#0a0a0a; }
+
+    #bg {
+      position:fixed; top:0; left:0;
+      width:100vw; height:100vh;
+      min-width:100vw; min-height:100vh;
+      object-fit:cover; background:#000;
+      z-index:0; display:none;
+    }
+    #bg.active { display:block; }
+
+    /* Black backdrop for the story phase only. During scanning it must stay
+       hidden, otherwise it covers MindAR's camera feed and you scan blind. */
+    #backdrop {
+      position:fixed; inset:0; background:#000; z-index:-1; display:none;
+    }
+    #backdrop.active { display:block; }
+
+    a-scene, .a-canvas, a-scene canvas {
+      position:fixed !important; top:0 !important; left:0 !important;
+      width:100% !important; height:100% !important;
+      background:transparent !important;
+    }
+    #scan-wrap a-scene { z-index:1 !important; }
+    #story-wrap a-scene { z-index:2 !important; }
+    #story-wrap { display:none; }
+
+    #scan-prompt {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      text-align:center; z-index:50; pointer-events:none; display:none;
+    }
+    #scan-prompt.active { display:block; }
+    .scan-ring {
+      width:160px; height:160px; border:2px solid rgba(232,201,122,.5);
+      border-radius:50%; margin:0 auto 1rem; position:relative;
+      animation:spin 4s linear infinite;
+    }
+    .scan-ring::after {
+      content:''; position:absolute; top:-2px; left:50%; width:6px; height:6px;
+      background:#e8c97a; border-radius:50%; transform:translateX(-50%);
+    }
+    @keyframes spin { from{transform:rotate(0);} to{transform:rotate(360deg);} }
+    #scan-prompt p { font-size:.9rem; color:rgba(232,201,122,.85); letter-spacing:.1em; text-transform:uppercase; }
+
+    #story-found {
+      position:fixed; top:1.5rem; left:50%; transform:translateX(-50%);
+      background:rgba(232,201,122,.15); border:1px solid rgba(232,201,122,.4);
+      color:#e8c97a; font-size:.8rem; letter-spacing:.12em; text-transform:uppercase;
+      padding:.5rem 1.2rem; z-index:55; display:none; white-space:nowrap;
+    }
+    #story-found.active { display:block; }
+
+    #hud {
+      position:fixed; bottom:0; left:0; right:0; padding:1.4rem 1.4rem 6rem;
+      background:linear-gradient(transparent, rgba(10,10,10,.8));
+      z-index:40; display:none; flex-direction:column; gap:.35rem; pointer-events:none;
+    }
+    #hud.active { display:flex; }
+    #hud-title { font-size:1.05rem; color:#e8c97a; letter-spacing:.08em; }
+    #hud-subtitle { font-size:.82rem; color:#c4b08a; }
+
+    #muteBtn {
+      position:fixed; top:1.5rem; right:1.5rem; z-index:60; display:none;
+      background:rgba(10,10,10,.7); border:1px solid rgba(232,201,122,.4);
+      color:#e8c97a; width:42px; height:42px; border-radius:50%;
+      font-size:1rem; cursor:pointer; align-items:center; justify-content:center;
+    }
+    #muteBtn.active { display:flex; }
+
+    #controls {
+      position:fixed; bottom:1.3rem; left:0; right:0; z-index:60; display:none;
+      justify-content:center; align-items:center; gap:.6rem; flex-wrap:wrap; padding:0 1rem;
+    }
+    #controls.active { display:flex; }
+    #controls button {
+      background:rgba(10,10,10,.75); border:1.5px solid #e8c97a; color:#e8c97a;
+      font-family:Georgia,serif; font-size:.9rem; letter-spacing:.08em;
+      padding:.65rem 1.4rem; border-radius:40px; cursor:pointer;
+    }
+    #controls button:active { background:#e8c97a; color:#0a0a0a; }
+    #controls .small { font-size:.78rem; padding:.5rem .9rem; border-color:rgba(232,201,122,.45); color:#c4b08a; }
+
+    #tuner {
+      position:fixed; bottom:5.2rem; left:50%; transform:translateX(-50%);
+      z-index:60; display:none; gap:.5rem; align-items:center; flex-wrap:wrap;
+      justify-content:center; max-width:94vw;
+      background:rgba(10,10,10,.75); border:1px solid rgba(232,201,122,.3);
+      border-radius:40px; padding:.4rem .7rem;
+    }
+    #tuner.active { display:flex; }
+    #tuner button {
+      background:transparent; border:1px solid rgba(232,201,122,.5); color:#e8c97a;
+      font-family:monospace; font-size:.72rem; padding:.35rem .7rem;
+      border-radius:20px; cursor:pointer;
+    }
+    #tuner span { color:#c4b08a; font-family:monospace; font-size:.72rem; }
+
+    #debug {
+      position:fixed; bottom:0; left:0; right:0; max-height:42vh; overflow-y:auto;
+      background:rgba(0,0,0,.88); color:#0f0; font-family:monospace; font-size:11px;
+      padding:.5rem; z-index:999; display:none;
+    }
+    #debug.active { display:block; }
+    #debug-toggle {
+      position:fixed; top:1.5rem; left:1.5rem; z-index:1000; display:none;
+      background:rgba(0,0,0,.6); border:1px solid #555; color:#888;
+      font-size:10px; padding:4px 8px; cursor:pointer;
+    }
+    #debug-toggle.active { display:block; }
+
+    #error-screen {
+      position:fixed; inset:0; background:#0a0a0a; display:none; z-index:200;
+      flex-direction:column; align-items:center; justify-content:center;
+      gap:1.4rem; padding:2rem; text-align:center;
+    }
+    #error-screen.active { display:flex; }
+    #error-screen h2 { color:#e8c97a; font-size:1.3rem; font-weight:400; }
+    #error-screen p { color:#c4b08a; font-size:.9rem; max-width:320px; line-height:1.6; }
+    #error-detail { color:#888; font-family:monospace; font-size:.75rem; word-break:break-word; }
+  </style>
+</head>
+<body>
+
+  <div id="splash">
+    <div class="dot-row"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <h1>NAIDOC<br>Stories</h1>
+    <p>Find a seat, then point your device at your rock to enter the story.</p>
+    <button class="btn" id="startBtn" onclick="startScan()">Begin</button>
+  </div>
+
+  <div id="error-screen">
+    <h2>Something went wrong</h2>
+    <p id="error-msg">Could not start.</p>
+    <p id="error-detail"></p>
+    <button class="btn" onclick="location.reload()">Try Again</button>
+  </div>
+
+  <div id="backdrop"></div>
+  <video id="bg" playsinline muted autoplay></video>
+
+  <!-- PHASE 1: scanning. MindAR does recognition only and renders no 3D. -->
+  <div id="scan-wrap">
+    <a-scene
+      id="scan-scene"
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      renderer="alpha: true">
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-entity mindar-image-target="targetIndex: 0" id="target-0"></a-entity>
+    </a-scene>
+  </div>
+
+  <!-- PHASE 2: the story scene, built fresh after MindAR is torn down. -->
+  <div id="story-wrap"></div>
+
+  <audio id="audio-station-1" src="./assets/audio-1.mp3" preload="auto"></audio>
+
+  <div id="scan-prompt">
+    <div class="scan-ring"></div>
+    <p>Point at your rock</p>
+  </div>
+
+  <div id="story-found">Story begins</div>
+  <button id="muteBtn" onclick="toggleMute()">🔊</button>
+
+  <div id="hud">
+    <div id="hud-title">Station 1</div>
+    <div id="hud-subtitle">Lower the rock and look around</div>
+  </div>
+
+  <div id="controls">
+    <button onclick="rotateModel(-30)">↺</button>
+    <button onclick="recentre()">Bring to me</button>
+    <button onclick="rotateModel(30)">↻</button>
+    <button onclick="exitStory()">✕ Exit</button>
+    <button class="small" onclick="toggleBeacon()">beacon</button>
+    <button class="small" onclick="toggleTuner()">setup</button>
+  </div>
+
+  <div id="tuner">
+    <button onclick="adjustScale(0.8)">size −</button><span id="scale-readout">1.40</span><button onclick="adjustScale(1.25)">size +</button>
+    <button onclick="adjustDist(-0.5)">closer</button><span id="dist-readout">2.5m</span><button onclick="adjustDist(0.5)">further</button>
+    <button onclick="adjustHeight(0.2)">up</button><span id="height-readout">-1.2</span><button onclick="adjustHeight(-0.2)">down</button>
+    <button onclick="rotateModel(-10)">turn −10</button><span id="rot-readout">0°</span><button onclick="rotateModel(10)">turn +10</button>
+    <button onclick="resetRotation()">face me</button>
+  </div>
+
+  <button id="debug-toggle" onclick="toggleDebug()">DEBUG</button>
+  <div id="debug"></div>
+
+  <script>
+    let started      = false;
+    let storyActive  = false;
+    let currentAudio = null;
+    let muted        = false;
+    let debugVisible = false;
+    let arSystem     = null;
+    let camStream    = null;
+    let beaconOn     = true;
+
+    let currentScale  = 1.4;   // model is 1.83 m tall; 1.4 => ~2.6 m
+    let currentDist   = 2.5;   // metres in front
+    let currentHeight = -1.2;  // ground level below a held device
+    let currentRot    = 0;     // model's own spin, degrees
+
+    const stations = [
+      { title: "Station 1", subtitle: "Lower the rock and look around", audioId: "audio-station-1" }
+    ];
+
+    function log(m, c) {
+      const d = document.getElementById('debug');
+      const l = document.createElement('div');
+      l.style.color = c || '#0f0';
+      l.textContent = new Date().toISOString().substr(11,8) + ' ' + m;
+      d.appendChild(l); d.scrollTop = d.scrollHeight;
+      console.log(m);
+    }
+    function toggleDebug(){ debugVisible=!debugVisible; document.getElementById('debug').classList.toggle('active',debugVisible); }
+    function toggleTuner(){ document.getElementById('tuner').classList.toggle('active'); }
+    function showError(msg, detail) {
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-detail').textContent = detail || '';
+      document.getElementById('error-screen').classList.add('active');
+      log('ERROR: ' + msg + ' | ' + (detail||''), '#f55');
+    }
+
+    /* ============ PHASE 1: scan ============ */
+    async function startScan() {
+      if (started) return;
+      started = true;
+      const b = document.getElementById('startBtn');
+      b.disabled = true; b.textContent = 'Starting...';
+      log('Begin tapped');
+
+      if (typeof AFRAME === 'undefined') {
+        showError('A-Frame did not load.', 'Check ./lib/aframe.min.js'); return;
+      }
+      log('A-Frame v' + AFRAME.version, '#0ff');
+
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const r = await DeviceOrientationEvent.requestPermission();
+          log('Motion permission: ' + r, r === 'granted' ? '#0ff' : '#ff0');
+        } else log('Motion permission not required', '#0ff');
+      } catch(e){ log('Motion perm failed: ' + e.message, '#ff0'); }
+
+      // Unlock audio while we still have the tap gesture (iOS). This is why
+      // the whole experience stays on one page.
+      try {
+        const all = document.querySelectorAll('audio');
+        for (const a of all) {
+          a.muted = true;
+          try { await a.play(); } catch(_){}
+          a.pause(); a.currentTime = 0; a.muted = false;
+        }
+        log('Audio unlocked (' + all.length + ')', '#0ff');
+      } catch(e){ log('Audio unlock failed: ' + e.message, '#ff0'); }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showError('Camera not available.', 'Page must be served over HTTPS.'); return;
+      }
+
+      document.body.classList.add('live');
+      document.getElementById('splash').style.display = 'none';
+      document.getElementById('scan-prompt').classList.add('active');
+      document.getElementById('debug-toggle').classList.add('active');
+
+      const scene = document.getElementById('scan-scene');
+      let tries = 0, go = false;
+      (function attempt(){
+        if (go) return;
+        tries++;
+        const sys = scene.systems && scene.systems['mindar-image-system'];
+        if (sys) {
+          go = true; arSystem = sys;
+          log('MindAR found after ' + tries + ' tries', '#0ff');
+          try {
+            const r = sys.start();
+            if (r && r.then) r.then(()=>log('Scanning camera on','#0ff'))
+                             .catch(e=>showError('MindAR start failed.', e.message));
+            else log('Scanning camera on','#0ff');
+            bindTargets();
+          } catch(e){ showError('MindAR failed to start.', e.message); }
+          return;
+        }
+        if (tries < 50) setTimeout(attempt, 200);
+        else showError('MindAR never loaded.','Check ./lib/mindar-image-aframe.prod.js');
+      })();
+    }
+
+    function bindTargets() {
+      stations.forEach((st, i) => {
+        const t = document.getElementById('target-' + i);
+        if (!t) { log('target-' + i + ' missing', '#f55'); return; }
+        t.addEventListener('targetFound', () => {
+          if (storyActive) return;
+          log('Rock ' + i + ' recognised — handing off', '#0ff');
+          beginStory(i);
+        });
+        log('Bound target-' + i);
+      });
+    }
+
+    /* ============ handoff ============ */
+    async function beginStory(index) {
+      storyActive = true;
+      document.getElementById('scan-prompt').classList.remove('active');
+
+      // Shut MindAR down completely and remove its scene. MindAR is never
+      // involved in rendering the story — that was what hid the artwork.
+      try {
+        if (arSystem) { arSystem.stop(); log('MindAR stopped', '#0ff'); }
+      } catch(e){ log('MindAR stop error: ' + e.message, '#ff0'); }
+
+      try {
+        document.querySelectorAll('video').forEach(v => {
+          if (v.id !== 'bg' && v.srcObject) {
+            v.srcObject.getTracks().forEach(t => t.stop());
+            v.srcObject = null;
+          }
+        });
+        const wrap = document.getElementById('scan-wrap');
+        if (wrap) wrap.remove();
+        log('Scan scene removed', '#0ff');
+      } catch(e){ log('Scene removal error: ' + e.message, '#ff0'); }
+
+      // Now that MindAR's scene is gone, go black to avoid a white flash
+      // while our own camera spins up.
+      document.body.classList.add('story');
+      document.getElementById('backdrop').classList.add('active');
+
+      await new Promise(r => setTimeout(r, 200));
+
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+        const bg = document.getElementById('bg');
+        bg.srcObject = camStream;
+        await bg.play();
+
+        // Wait until the video actually knows its size, otherwise it lays out
+        // at a default size and leaves part of the screen blank.
+        await new Promise(function (resolve) {
+          if (bg.videoWidth > 0) return resolve();
+          const done = function () { bg.removeEventListener('loadedmetadata', done); resolve(); };
+          bg.addEventListener('loadedmetadata', done);
+          setTimeout(resolve, 1500);
+        });
+
+        bg.classList.add('active');
+        log('Story camera started (' + bg.videoWidth + 'x' + bg.videoHeight + ')', '#0ff');
+
+        // Nudge the renderer to match the viewport once everything is visible
+        setTimeout(function () {
+          try {
+            const sc = document.getElementById('story-scene');
+            if (sc && sc.resize) sc.resize();
+            window.dispatchEvent(new Event('resize'));
+            log('Renderer resized to ' + window.innerWidth + 'x' + window.innerHeight, '#0ff');
+          } catch(_) {}
+        }, 300);
+      } catch(e){ log('Story camera failed: ' + e.name + ' ' + e.message, '#f55'); }
+
+      buildStoryScene(index);
+    }
+
+    function buildStoryScene(index) {
+      const wrap = document.getElementById('story-wrap');
+      wrap.style.display = 'block';
+      wrap.innerHTML =
+        '<a-scene id="story-scene" embedded vr-mode-ui="enabled: false" ' +
+        'device-orientation-permission-ui="enabled: false" ' +
+        'renderer="colorManagement: true; alpha: true">' +
+          '<a-entity light="type: ambient; intensity: 1.1"></a-entity>' +
+          '<a-entity light="type: directional; intensity: 1.0" position="2 4 3"></a-entity>' +
+          '<a-entity light="type: directional; intensity: 0.45" position="-3 2 -3"></a-entity>' +
+          '<a-camera id="cam" position="0 0 0" ' +
+          'look-controls="enabled: true; magicWindowTrackingEnabled: true; mouseEnabled: false; touchEnabled: false"></a-camera>' +
+          '<a-entity id="heading-rig" rotation="0 0 0">' +
+            '<a-entity id="world-wrap" position="0 ' + currentHeight + ' 0">' +
+              '<a-gltf-model id="model-0" src="url(./assets/model-1.glb)" ' +
+                'scale="' + currentScale + ' ' + currentScale + ' ' + currentScale + '" ' +
+                'position="0 0 ' + (-currentDist) + '" rotation="0 ' + currentRot + ' 0"></a-gltf-model>' +
+              '<a-entity id="beacon" position="0 0 ' + (-currentDist) + '">' +
+                '<a-box position="0 0.9 0" width="0.12" height="1.8" depth="0.12" material="color:#e8c97a; shader:flat"></a-box>' +
+                '<a-sphere position="0 1.95 0" radius="0.16" material="color:#c47a3a; shader:flat"></a-sphere>' +
+                '<a-torus position="0 0.02 0" radius="0.45" radius-tubular="0.03" rotation="-90 0 0" material="color:#e8c97a; shader:flat"></a-torus>' +
+              '</a-entity>' +
+            '</a-entity>' +
+          '</a-entity>' +
+        '</a-scene>';
+
+      const scene = document.getElementById('story-scene');
+      const onReady = function () {
+        log('Story scene ready', '#0ff');
+        setTimeout(applyHeading, 400);
+
+        const m = document.getElementById('model-0');
+        if (m) {
+          m.addEventListener('model-loaded', function () {
+            log('Model loaded', '#0ff');
+            try {
+              const mesh = m.getObject3D('mesh');
+              mesh.updateWorldMatrix(true, true);
+              const box = new THREE.Box3(); box.makeEmpty();
+              let parts = 0;
+              mesh.traverse(function (o) {
+                if (o.isMesh && o.geometry) {
+                  parts++;
+                  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+                  if (o.geometry.boundingBox) box.union(o.geometry.boundingBox);
+                }
+              });
+              const s = new THREE.Vector3(); box.getSize(s);
+              log('Parts ' + parts + ' | ' + s.x.toFixed(2) + ' x ' + s.y.toFixed(2) + ' x ' + s.z.toFixed(2) + ' m', '#0ff');
+            } catch(e){ log('Measure failed: ' + e.message, '#ff0'); }
+          });
+          m.addEventListener('model-error', function () {
+            log('MODEL FAILED — check ./assets/model-1.glb (upload in BINARY mode)', '#f55');
+          });
+        }
+        startAudioAndUI(index);
+      };
+
+      if (scene.hasLoaded) onReady();
+      else scene.addEventListener('loaded', onReady);
+    }
+
+    function startAudioAndUI(index) {
+      const st = stations[index];
+      const a = document.getElementById(st.audioId);
+      if (a) {
+        a.muted = muted; a.loop = false; a.currentTime = 0;
+        const p = a.play();
+        if (p && p.then) p.then(function(){ log('Audio playing','#0ff'); })
+                          .catch(function(e){ log('Audio blocked: ' + e.name, '#f55'); });
+        currentAudio = a;
+      }
+      document.getElementById('controls').classList.add('active');
+      document.getElementById('muteBtn').classList.add('active');
+      document.getElementById('hud-title').textContent = st.title;
+      document.getElementById('hud-subtitle').textContent = st.subtitle;
+      document.getElementById('hud').classList.add('active');
+      const f = document.getElementById('story-found');
+      f.classList.add('active');
+      setTimeout(function(){ f.classList.remove('active'); }, 2500);
+    }
+
+    /* ============ heading ============ */
+    function cameraYawDeg() {
+      const cam = document.getElementById('cam');
+      const q = new THREE.Quaternion();
+      cam.object3D.getWorldQuaternion(q);
+      const e = new THREE.Euler().setFromQuaternion(q, 'YXZ');
+      return THREE.MathUtils.radToDeg(e.y);
+    }
+    function applyHeading() {
+      const rig = document.getElementById('heading-rig');
+      if (!rig) return;
+      const yaw = cameraYawDeg();
+      rig.setAttribute('rotation', '0 ' + yaw.toFixed(1) + ' 0');
+      log('Heading ' + yaw.toFixed(1) + '°', '#0ff');
+    }
+    function recentre() { if (storyActive) { applyHeading(); log('Re-centred','#0ff'); } }
+
+    /* ============ exit ============ */
+    function exitStory() {
+      log('Exit — reloading for next person');
+      stopAudio();
+      if (camStream) camStream.getTracks().forEach(function(t){ t.stop(); });
+      setTimeout(function(){ location.reload(); }, 250);
+    }
+    function stopAudio() {
+      if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+    }
+    function toggleMute() {
+      muted = !muted;
+      document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+      if (currentAudio) currentAudio.muted = muted;
+    }
+    function toggleBeacon() {
+      beaconOn = !beaconOn;
+      const b = document.getElementById('beacon');
+      if (b) b.setAttribute('visible', beaconOn);
+      log('Beacon ' + (beaconOn ? 'on' : 'off'));
+    }
+
+    /* ============ rotation ============ */
+    function rotateModel(deg) {
+      currentRot = (currentRot + deg) % 360;
+      if (currentRot < 0) currentRot += 360;
+      const m = document.getElementById('model-0');
+      if (m) m.setAttribute('rotation', '0 ' + currentRot + ' 0');
+      const r = document.getElementById('rot-readout');
+      if (r) r.textContent = Math.round(currentRot) + '\u00B0';
+      log('Rotation ' + Math.round(currentRot) + ' deg');
+    }
+
+    // Turn the model to face the viewer's current direction
+    function resetRotation() {
+      currentRot = 0;
+      const m = document.getElementById('model-0');
+      if (m) m.setAttribute('rotation', '0 0 0');
+      const r = document.getElementById('rot-readout');
+      if (r) r.textContent = '0\u00B0';
+      log('Rotation reset');
+    }
+
+    /* ============ tuning ============ */
+    function adjustScale(f) {
+      currentScale *= f;
+      const m = document.getElementById('model-0');
+      if (m) m.setAttribute('scale', currentScale + ' ' + currentScale + ' ' + currentScale);
+      document.getElementById('scale-readout').textContent = currentScale.toFixed(2);
+      log('Scale ' + currentScale.toFixed(3));
+    }
+    function adjustDist(d) {
+      currentDist = Math.max(0.5, currentDist + d);
+      const m = document.getElementById('model-0');
+      const b = document.getElementById('beacon');
+      if (m) m.setAttribute('position', '0 0 ' + (-currentDist));
+      if (b) b.setAttribute('position', '0 0 ' + (-currentDist));
+      document.getElementById('dist-readout').textContent = currentDist.toFixed(1) + 'm';
+      log('Distance ' + currentDist.toFixed(1) + 'm');
+    }
+    function adjustHeight(d) {
+      currentHeight += d;
+      const w = document.getElementById('world-wrap');
+      if (w) w.setAttribute('position', '0 ' + currentHeight.toFixed(2) + ' 0');
+      document.getElementById('height-readout').textContent = currentHeight.toFixed(1);
+      log('Height ' + currentHeight.toFixed(2));
+    }
+
+    window.addEventListener('error', function(e){
+      log('JS Error: ' + e.message + ' (' + e.filename + ':' + e.lineno + ')', '#f55');
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      const r = e.reason;
+      log('Rejection: ' + ((r instanceof Error) ? (r.name + ': ' + r.message) : String(r)), '#f55');
+    });
+  </script>
+</body>
+</html>
