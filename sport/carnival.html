@@ -191,6 +191,25 @@
     font-variant-numeric:tabular-nums}
   .mrow input:focus{border-color:var(--accent)}
   .mrow .unit{width:22px;flex:none;font-size:13px;color:var(--faint);font-weight:700}
+  .game{border:2px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;
+    background:var(--panel)}
+  .game.done{border-color:var(--green)}
+  .game-head{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .game-no{font-size:12px;font-weight:800;letter-spacing:.1em;background:var(--text);color:var(--bg);
+    padding:5px 12px;border-radius:100px}
+  .game.done .game-no{background:var(--green);color:#fff}
+  .game-state{font-size:12.5px;font-weight:700;color:var(--dim);margin-left:auto}
+  .game-pts{font-size:11.5px;color:var(--faint);font-weight:700}
+  .hslots{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px}
+  .hslot{display:flex;align-items:center;gap:9px;border:2px solid var(--border);background:var(--panel-2);
+    border-radius:11px;padding:12px 11px;cursor:pointer;color:var(--text);font-size:15.5px;
+    font-weight:800;text-align:left;border-left:7px solid var(--hc)}
+  .hslot:active{transform:scale(.98)}
+  .hslot.on{background:var(--hc);border-color:var(--hc);color:#fff}
+  .hslot .pos{width:26px;height:26px;border-radius:7px;flex:none;display:flex;align-items:center;
+    justify-content:center;font-size:13px;font-weight:900;background:rgba(0,0,0,.16)}
+  .hslot.on .pos{background:rgba(255,255,255,.28)}
+  .hslot .pts{margin-left:auto;font-size:12px;font-weight:800;opacity:.85}
   .hrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);
     border:1px solid var(--border);border-left:7px solid var(--hc);border-radius:var(--radius);
     padding:15px 14px;cursor:pointer;color:var(--text);font-size:18px;font-weight:800}
@@ -402,6 +421,15 @@
       <div class="list" id="exList2"></div>
     </div>
 
+    <div id="gamesWrap" hidden>
+      <p class="hint">Each game is scored on its own. Tap the houses in finishing order.</p>
+      <div id="gameList"></div>
+      <div class="row">
+        <button class="btn" id="addGame">+ Add another game</button>
+        <button class="btn" id="rmGame">&minus; Remove last game</button>
+      </div>
+    </div>
+
     <div id="houseWrap" hidden>
       <p class="hint">Tap the houses in finishing order.</p>
       <div class="list" id="housePool"></div>
@@ -532,22 +560,25 @@
 
     <div class="card">
       <h2>House award points</h2>
-      <p>What the non-race awards are worth.</p>
+      <p>What the bonus events on the <b>Bonus</b> page are worth. Awarded straight to the house.</p>
       <table class="ptable"><tbody id="bonusBody"></tbody></table>
     </div>
 
     <div class="card">
       <h2>Tabloid house points</h2>
-      <p>Awarded straight to the house — 1st, 2nd, 3rd, 4th.</p>
+      <p>Awarded straight to the house. One table for all four games (Tunnelball, Leaderball,
+      Passball, Peg the Washing), applied to <b>every game</b> within an event.</p>
       <table class="ptable"><thead><tr><th>Place</th><th>Points</th></tr></thead>
         <tbody id="tabBody"></tbody></table>
     </div>
 
     <div class="card">
       <h2>Points by event</h2>
-      <p>Every event, every place. <b>Carnival</b> points feed the house totals and count for
-      everyone. <b>Championship</b> points are a separate tally for Years 3&ndash;6 only, covering
+      <p>Every event a competitor places in. <b>Carnival</b> points feed the house totals and count
+      for everyone. <b>Championship</b> points are a separate tally for Years 3&ndash;6 only, covering
       the sprint Division 1, the 200m, jumps and throws &mdash; the events that decide year champions.</p>
+      <div class="info">Tabloid games and the bonus awards are scored to the house, not to a
+      competitor, so they're set in the two cards below rather than here.</div>
       <div id="evGrid"></div>
       <div class="row">
         <button class="btn" id="addEvPlace">+ Score one more place</button>
@@ -894,6 +925,10 @@ let champPoints={};    // event type -> [points by place]
 // one-off the day throws up. All go straight to the house total.
 let bonusScheme={tidyBay:[40,30,20,10],cheer:[20],ccc:[20]};
 let bonus={extra:[]};   // only the free-form awards live here now
+// A tabloid event is played more than once. Each game is scored on its own,
+// so a house winning both gets paid twice.
+let games={};          // eventId -> [ [houses in order], ... ]
+const DEFAULT_GAMES=2;
 // The roster is the ONLY place names exist. It is held on this device and is
 // never sent to the results store — the store sees opaque ids like s0147, so a
 // leak of it discloses nothing without a school device.
@@ -942,7 +977,7 @@ function saveRoster(){
   try{ localStorage.setItem(ROSTER_KEY,JSON.stringify({students:people,races:rosterRaces})); }catch(e){}
 }
 function rebuild(){
-  results={}; extra={}; removed={}; marks={}; ties={};
+  results={}; extra={}; removed={}; marks={}; ties={}; games={};
   RACES.forEach(r=>{ results[r.id]=[]; extra[r.id]=[]; removed[r.id]=new Set(); marks[r.id]={}; ties[r.id]=[]; });
   scheme=[8,5,3,1]; partPts=0; topHeatOnly=false; overrides={}; evOverrides={}; timeOffset=0;
   tabScheme=[25,20,15,10]; champPoints={};
@@ -968,6 +1003,9 @@ function rebuild(){
           extra[p.raceId]=(extra[p.raceId]||[]).filter(x=>x.id!==p.studentId);
           results[p.raceId]=(results[p.raceId]||[]).filter(x=>x!==p.studentId);
         }
+        break;
+      case 'cn_games':
+        if(p.raceId&&Array.isArray(p.games)) games[p.raceId]=p.games.map(g=>g.slice());
         break;
       case 'cn_bonus':
         if(p.bonus) bonus=p.bonus;
@@ -1055,7 +1093,7 @@ async function poll(){
 }
 
 function stateHash(){
-  return JSON.stringify([results,marks,ties,Object.keys(roster).length,Object.keys(extra).map(k=>extra[k].length),
+  return JSON.stringify([results,marks,ties,games,Object.keys(roster).length,Object.keys(extra).map(k=>extra[k].length),
     Object.keys(removed).map(k=>[...removed[k]].length),scheme,partPts,topHeatOnly,
     overrides,evOverrides,timeOffset,tabScheme,champPoints,bonusScheme,bonus]);
 }
@@ -1187,6 +1225,12 @@ function pointsFor(race,placeIdx){
   return placeIdx<sc.length ? sc[placeIdx] : pp;
 }
 function eventTypes(){ return [...new Set(RACES.map(r=>r.event))]; }
+// Events scored to a competitor. House-scored events (tabloids, bonus awards)
+// are set elsewhere, so listing them in the per-event grid would give you
+// controls that silently do nothing.
+function scoredEventTypes(){
+  return [...new Set(RACES.filter(r=>r.mode!=='houses'&&r.mode!=='extra').map(r=>r.event))];
+}
 function yearOf(div){
   const m=String(div).match(/Year (\d)/);
   return m ? +m[1] : 0;
@@ -1227,6 +1271,14 @@ function measureRanking(div,discipline){
   return rows.sort((a,b)=>b.value-a.value||a.student.name.localeCompare(b.student.name));
 }
 function tabPoints(i){ return i<tabScheme.length ? tabScheme[i] : 0; }
+function gamesOf(r){
+  const g=games[r.id];
+  if(g&&g.length) return g;
+  return Array.from({length:DEFAULT_GAMES},()=>[]);
+}
+function gameCount(r){ return gamesOf(r).length; }
+function saveGames(r,list){ send('cn_games',{raceId:r.id,games:list}); }
+
 // House placings: tabloids share one table, each bonus award has its own.
 function housePointsFor(race,i){
   if(race.page==='bonus'){
@@ -1249,9 +1301,12 @@ function distinctPlaces(r){ return new Set(placeNumbers(r)).size; }
 function countedIn(r){
   if(r.mode==='measure') return Object.keys(marks[r.id]||{}).length;
   if(r.mode==='places') return distinctPlaces(r);
+  if(r.page==='tabloids'&&r.mode==='houses')
+    return gamesOf(r).reduce((a,g)=>a+g.length,0);
   return (results[r.id]||[]).length;
 }
 function expectedIn(r){
+  if(r.page==='tabloids'&&r.mode==='houses') return (r.houses||[]).length*gameCount(r);
   if(r.mode==='houses') return (r.houses||[]).length;
   if(r.mode==='places') return Math.min(r.topN||3, fieldFor(r).length||r.count||0);
   return fieldFor(r).length || (rosterLoaded()?0:(r.count||0));
@@ -1311,7 +1366,13 @@ function champTally(){ return tallies().champ; }
 function tabloidHousePoints(){
   const h={};
   RACES.filter(r=>r.mode==='houses').forEach(r=>{
-    (results[r.id]||[]).forEach((house,i)=>{ h[house]=(h[house]||0)+housePointsFor(r,i); });
+    if(r.page==='tabloids'){
+      gamesOf(r).forEach(order=>order.forEach((house,i)=>{
+        h[house]=(h[house]||0)+housePointsFor(r,i);
+      }));
+    } else {
+      (results[r.id]||[]).forEach((house,i)=>{ h[house]=(h[house]||0)+housePointsFor(r,i); });
+    }
   });
   return h;
 }
@@ -1412,6 +1473,7 @@ function renderProg(){
     c.className='race-card'+(ready?'':' locked');
     applyColors(c,r.division,r.heat,r.heats);
     const sub = r.mode==='extra' ? (bonus.extra||[]).length+' award'+((bonus.extra||[]).length===1?'':'s')+' given'
+      : (r.page==='tabloids'&&r.mode==='houses') ? gameCount(r)+' games · 4 houses'
       : r.mode==='houses' ? (r.page==='bonus'
           ? (bonusScheme[r.bonusKey]||[]).filter(Boolean).join(' · ')+' pts'
           : r.event+' · 4 houses')
@@ -1557,7 +1619,8 @@ function renderRace(){
   $('measureWrap').hidden = r.mode!=='measure';
   $('placesWrap').hidden = r.mode!=='places';
   $('extraWrap').hidden = r.mode!=='extra';
-  $('houseWrap').hidden = r.mode!=='houses';
+  $('gamesWrap').hidden = !(r.page==='tabloids'&&r.mode==='houses');
+  $('houseWrap').hidden = !(r.mode==='houses'&&r.page!=='tabloids');
   $('undoBtn').hidden = r.mode!=='order';
   $('printRaceBtn').hidden = r.mode==='houses';
   $('raceNo').textContent='EVENT '+String(r.no).padStart(2,'0');
@@ -1570,6 +1633,8 @@ function renderRace(){
       : r.event==='200m' ? ''
       : (r.heats>1?(' · '+groupWord(r.division)+' '+r.heat):''))+'</span>';
   $('raceSub').textContent=(r.mode==='extra' ? 'Any points not covered by an event'
+    : (r.page==='tabloids'&&r.mode==='houses')
+        ? r.event+' · '+gameCount(r)+' games, each scored separately'
     : r.mode==='houses' ? (r.page==='bonus'
         ? r.event+' · '+((bonusScheme[r.bonusKey]||[]).filter(Boolean).length===1
             ? 'winning house only' : 'place the four houses')
@@ -1594,6 +1659,7 @@ function renderRace(){
   if(r.mode==='measure') return renderMeasure(r);
   if(r.mode==='places') return renderPlaces(r);
   if(r.mode==='extra') return renderExtra(r);
+  if(r.page==='tabloids'&&r.mode==='houses') return renderGames(r);
   if(r.mode==='houses') return renderHouses(r);
 
   const placed=new Set(results[r.id]||[]);
@@ -1782,6 +1848,51 @@ function renderPlaces(r){
 }
 
 // ---------------- tabloids ----------------
+function renderGames(r){
+  const list=gamesOf(r);
+  const hs=r.houses||[];
+  const box=$('gameList'); box.innerHTML='';
+  list.forEach((order,gi)=>{
+    const done=order.length>=hs.length;
+    const card=document.createElement('div');
+    card.className='game'+(done?' done':'');
+    card.innerHTML='<div class="game-head"><span class="game-no">GAME '+(gi+1)+'</span>'+
+      '<span class="game-pts">'+tabScheme.slice(0,hs.length).join(' · ')+' pts</span>'+
+      '<span class="game-state">'+(done?'✓ Complete':order.length+' of '+hs.length+' placed')+'</span></div>'+
+      '<div class="hslots"></div>';
+    const slots=card.querySelector('.hslots');
+    hs.forEach(h=>{
+      const pos=order.indexOf(h);
+      const b=document.createElement('button');
+      b.className='hslot'+(pos>-1?' on':'');
+      b.style.setProperty('--hc',HOUSE_COLORS[h]||'var(--faint)');
+      b.innerHTML='<span class="pos">'+(pos>-1?(pos+1):'&nbsp;')+'</span>'+
+        '<span>'+esc(h)+'</span>'+
+        (pos>-1?'<span class="pts">'+housePointsFor(r,pos)+'</span>':'');
+      b.addEventListener('click',()=>{
+        const next=list.map(g=>g.slice());
+        next[gi] = pos>-1 ? next[gi].filter(x=>x!==h) : next[gi].concat([h]);
+        saveGames(r,next);
+      });
+      slots.appendChild(b);
+    });
+    box.appendChild(card);
+  });
+  $('rmGame').disabled = list.length<=1;
+  $('addGame').disabled = list.length>=5;
+}
+$('addGame').addEventListener('click',()=>{
+  const r=raceById(curRace); if(!r) return;
+  saveGames(r, gamesOf(r).map(g=>g.slice()).concat([[]]));
+});
+$('rmGame').addEventListener('click',()=>{
+  const r=raceById(curRace); if(!r) return;
+  const list=gamesOf(r);
+  if(list.length<=1) return;
+  if(list[list.length-1].length && !confirm('Remove Game '+list.length+'? Its result will be lost.')) return;
+  saveGames(r, list.slice(0,-1).map(g=>g.slice()));
+});
+
 function renderExtra(r){
   const hs=houses();
   const sel=$('exHouse2');
@@ -1880,7 +1991,7 @@ function renderPoints(){
   const places=Math.max(scheme.length, ...Object.values(champPoints).map(a=>a.length), 1);
   const cTypes=champTypes();
   const grid=$('evGrid'); grid.innerHTML='';
-  eventTypes().forEach(t=>{
+  scoredEventTypes().forEach(t=>{
     const isChamp=cTypes.includes(t);
     const divs=[...new Set(RACES.filter(r=>r.event===t).map(r=>r.division))];
     const carn=evOverrides[t] && evOverrides[t].scheme ? evOverrides[t].scheme : scheme;
