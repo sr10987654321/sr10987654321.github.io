@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -227,11 +228,41 @@
   .ptable th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
   .ptable input{width:74px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
     padding:8px;color:var(--text);font-size:14px}
+  .evblock{border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:11px;
+    background:var(--panel-2)}
+  .evblock h3{margin:0 0 2px;font-size:15px;font-weight:800}
+  .evblock .who{font-size:12.5px;color:var(--dim);margin-bottom:9px}
+  .evblock .nochamp{color:var(--faint);font-style:italic}
+  table.evp{width:100%;border-collapse:collapse}
+  table.evp th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);
+    text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)}
+  table.evp td{padding:4px 6px;border-bottom:1px solid var(--border)}
+  table.evp td.pl{font-weight:800;width:52px}
+  table.evp input{width:72px;background:var(--panel);border:1px solid var(--border);
+    border-radius:8px;padding:7px;color:var(--text);font-size:14px}
+  table.evp input:disabled{opacity:.35}
+  .champtag{font-size:10px;font-weight:800;letter-spacing:.06em;background:var(--accent-dim);
+    color:var(--accent);padding:2px 7px;border-radius:100px;margin-left:7px}
 
   .toggle{display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 0}
   .toggle input{width:18px;height:18px;accent-color:var(--accent)}
   .toggle span{font-size:13.5px;color:var(--text);font-weight:600}
 
+  .award{border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:11px;
+    background:var(--panel-2)}
+  .aw-head{display:flex;align-items:baseline;justify-content:space-between;font-size:15px}
+  .aw-head span{font-size:12.5px;color:var(--accent);font-weight:800}
+  .aw-note{margin:3px 0 9px !important;font-size:12.5px;color:var(--dim)}
+  .pickrow{display:flex;gap:8px;flex-wrap:wrap}
+  .hpick{border:1px solid var(--border);background:var(--panel);color:var(--text);
+    padding:11px 16px;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;
+    border-left:6px solid var(--hc)}
+  .hpick.on{background:var(--hc);color:#fff;border-color:var(--hc)}
+  .exrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);
+    font-size:13.5px}
+  .exrow .h{font-weight:800;color:var(--hc);width:70px}
+  .exrow .p{font-weight:800;width:60px;text-align:right}
+  .exrow .n{flex:1;color:var(--dim)}
   .house-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
   .house-name{width:92px;font-weight:800;font-size:15px;color:var(--hc)}
   .bar-wrap{flex:1;height:30px;background:var(--panel-2);border-radius:8px;overflow:hidden;
@@ -356,6 +387,19 @@
         <p class="hint">Alphabetical by surname · the group each threw in is shown</p>
         <div class="list" id="placesList"></div>
       </div>
+    </div>
+
+    <div id="extraWrap" hidden>
+      <p class="hint">One-off awards. Say what each is for so it's on the record.</p>
+      <div class="card">
+        <div class="row">
+          <select id="exHouse2"></select>
+          <input type="number" id="exPts2" placeholder="Points" style="width:110px">
+          <input type="text" id="exNote2" placeholder="What for?" style="flex:1;min-width:170px">
+          <button class="btn pri" id="exAdd2">Add</button>
+        </div>
+      </div>
+      <div class="list" id="exList2"></div>
     </div>
 
     <div id="houseWrap" hidden>
@@ -487,6 +531,12 @@
     </div>
 
     <div class="card">
+      <h2>House award points</h2>
+      <p>What the non-race awards are worth.</p>
+      <table class="ptable"><tbody id="bonusBody"></tbody></table>
+    </div>
+
+    <div class="card">
       <h2>Tabloid house points</h2>
       <p>Awarded straight to the house — 1st, 2nd, 3rd, 4th.</p>
       <table class="ptable"><thead><tr><th>Place</th><th>Points</th></tr></thead>
@@ -495,8 +545,14 @@
 
     <div class="card">
       <h2>Points by event</h2>
-      <p>Give the 200m a different table from the sprints if it should be worth more.</p>
-      <div id="evList"></div>
+      <p>Every event, every place. <b>Carnival</b> points feed the house totals and count for
+      everyone. <b>Championship</b> points are a separate tally for Years 3&ndash;6 only, covering
+      the sprint Division 1, the 200m, jumps and throws &mdash; the events that decide year champions.</p>
+      <div id="evGrid"></div>
+      <div class="row">
+        <button class="btn" id="addEvPlace">+ Score one more place</button>
+        <button class="btn" id="rmEvPlace">&minus; One fewer</button>
+      </div>
     </div>
 
     <div class="card">
@@ -518,7 +574,15 @@
     </div>
 
     <div class="card">
-      <h2>Champions by division</h2>
+      <h2>Championship</h2>
+      <p>Championship points only &mdash; sprint Division 1, 200m, jumps and throws, Years 3&ndash;6.
+      Separate from the house tally above.</p>
+      <div class="chips" id="champView"></div>
+      <div id="champs2"></div>
+    </div>
+
+    <div class="card">
+      <h2>Carnival points by division</h2>
       <p>Top three in each year group, on points.</p>
       <div id="champs"></div>
     </div>
@@ -542,7 +606,7 @@
 </div>
 
 <script>
-const RACES = [{"id":"r001","no":1,"division":"Kindy","heat":1,"heats":4,"event":"50m","t":730,"page":"races","mode":"order","count":0},{"id":"r002","no":2,"division":"Kindy","heat":2,"heats":4,"event":"50m","t":732,"page":"races","mode":"order","count":0},{"id":"r003","no":3,"division":"Kindy","heat":3,"heats":4,"event":"50m","t":734,"page":"races","mode":"order","count":0},{"id":"r004","no":4,"division":"Kindy","heat":4,"heats":4,"event":"50m","t":736,"page":"races","mode":"order","count":0},{"id":"r005","no":5,"division":"PP1 Girls","heat":1,"heats":1,"event":"50m","t":738,"page":"races","mode":"order","count":11},{"id":"r006","no":6,"division":"PP2 Girls","heat":1,"heats":2,"event":"50m","t":740,"page":"races","mode":"order","count":7},{"id":"r007","no":7,"division":"PP2 Girls","heat":2,"heats":2,"event":"50m","t":742,"page":"races","mode":"order","count":7},{"id":"r008","no":8,"division":"PP3 Girls","heat":1,"heats":2,"event":"50m","t":744,"page":"races","mode":"order","count":7},{"id":"r009","no":9,"division":"PP3 Girls","heat":2,"heats":2,"event":"50m","t":746,"page":"races","mode":"order","count":6},{"id":"r010","no":10,"division":"PP1 Boys","heat":1,"heats":1,"event":"50m","t":748,"page":"races","mode":"order","count":11},{"id":"r011","no":11,"division":"PP2 Boys","heat":1,"heats":1,"event":"50m","t":750,"page":"races","mode":"order","count":11},{"id":"r012","no":12,"division":"PP3 Boys","heat":1,"heats":1,"event":"50m","t":752,"page":"races","mode":"order","count":11},{"id":"r013","no":13,"division":"Year 1 Girls","heat":1,"heats":3,"event":"75m","t":754,"page":"races","mode":"order","count":9},{"id":"r014","no":14,"division":"Year 1 Girls","heat":2,"heats":3,"event":"75m","t":756,"page":"races","mode":"order","count":9},{"id":"r015","no":15,"division":"Year 1 Girls","heat":3,"heats":3,"event":"75m","t":758,"page":"races","mode":"order","count":9},{"id":"r016","no":16,"division":"Year 1 Boys","heat":1,"heats":2,"event":"75m","t":760,"page":"races","mode":"order","count":10},{"id":"r017","no":17,"division":"Year 1 Boys","heat":2,"heats":2,"event":"75m","t":762,"page":"races","mode":"order","count":9},{"id":"r018","no":18,"division":"Year 2 Girls","heat":1,"heats":2,"event":"75m","t":764,"page":"races","mode":"order","count":12},{"id":"r019","no":19,"division":"Year 2 Girls","heat":2,"heats":2,"event":"75m","t":766,"page":"races","mode":"order","count":12},{"id":"r020","no":20,"division":"Year 2 Boys","heat":1,"heats":3,"event":"75m","t":768,"page":"races","mode":"order","count":10},{"id":"r021","no":21,"division":"Year 2 Boys","heat":2,"heats":3,"event":"75m","t":770,"page":"races","mode":"order","count":10},{"id":"r022","no":22,"division":"Year 2 Boys","heat":3,"heats":3,"event":"75m","t":772,"page":"races","mode":"order","count":9},{"id":"r023","no":23,"division":"Year 3 Girls","heat":1,"heats":2,"event":"75m","t":774,"page":"races","mode":"order","count":9},{"id":"r024","no":24,"division":"Year 3 Girls","heat":2,"heats":2,"event":"75m","t":776,"page":"races","mode":"order","count":10},{"id":"r025","no":25,"division":"Year 3 Boys","heat":1,"heats":3,"event":"75m","t":778,"page":"races","mode":"order","count":10},{"id":"r026","no":26,"division":"Year 3 Boys","heat":2,"heats":3,"event":"75m","t":780,"page":"races","mode":"order","count":10},{"id":"r027","no":27,"division":"Year 3 Boys","heat":3,"heats":3,"event":"75m","t":782,"page":"races","mode":"order","count":10},{"id":"r028","no":28,"division":"Year 4 Girls","heat":1,"heats":2,"event":"75m","t":784,"page":"races","mode":"order","count":12},{"id":"r029","no":29,"division":"Year 4 Girls","heat":2,"heats":2,"event":"75m","t":786,"page":"races","mode":"order","count":14},{"id":"r030","no":30,"division":"Year 4 Boys","heat":1,"heats":2,"event":"75m","t":788,"page":"races","mode":"order","count":8},{"id":"r031","no":31,"division":"Year 4 Boys","heat":2,"heats":2,"event":"75m","t":790,"page":"races","mode":"order","count":8},{"id":"r032","no":32,"division":"Year 4 Other","heat":1,"heats":1,"event":"75m","t":792,"page":"races","mode":"order","count":1},{"id":"r033","no":33,"division":"Year 5 Girls","heat":1,"heats":3,"event":"100m","t":794,"page":"races","mode":"order","count":9},{"id":"r034","no":34,"division":"Year 5 Girls","heat":2,"heats":3,"event":"100m","t":796,"page":"races","mode":"order","count":9},{"id":"r035","no":35,"division":"Year 5 Girls","heat":3,"heats":3,"event":"100m","t":798,"page":"races","mode":"order","count":10},{"id":"r036","no":36,"division":"Year 5 Boys","heat":1,"heats":2,"event":"100m","t":800,"page":"races","mode":"order","count":11},{"id":"r037","no":37,"division":"Year 5 Boys","heat":2,"heats":2,"event":"100m","t":802,"page":"races","mode":"order","count":11},{"id":"r038","no":38,"division":"Year 6 Girls","heat":1,"heats":1,"event":"100m","t":804,"page":"races","mode":"order","count":12},{"id":"r039","no":39,"division":"Year 6 Boys","heat":1,"heats":2,"event":"100m","t":806,"page":"races","mode":"order","count":10},{"id":"r040","no":40,"division":"Year 6 Boys","heat":2,"heats":2,"event":"100m","t":808,"page":"races","mode":"order","count":10},{"id":"r041","no":41,"division":"Year 3 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r023","topN":6,"page":"races","mode":"order","count":0},{"id":"r042","no":42,"division":"Year 3 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r025","topN":6,"page":"races","mode":"order","count":0},{"id":"r043","no":43,"division":"Year 4 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r028","topN":6,"page":"races","mode":"order","count":0},{"id":"r044","no":44,"division":"Year 4 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r030","topN":6,"page":"races","mode":"order","count":0},{"id":"r045","no":45,"division":"Year 4 Other","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r032","topN":6,"page":"races","mode":"order","count":0},{"id":"r046","no":46,"division":"Year 5 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r033","topN":6,"page":"races","mode":"order","count":0},{"id":"r047","no":47,"division":"Year 5 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r036","topN":6,"page":"races","mode":"order","count":0},{"id":"r048","no":48,"division":"Year 6 Girls","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r038","topN":6,"page":"races","mode":"order","count":0},{"id":"r049","no":49,"division":"Year 6 Boys","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r039","topN":6,"page":"races","mode":"order","count":0},{"id":"e050","no":50,"division":"Year 3 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":10},{"id":"e051","no":51,"division":"Year 3 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":9},{"id":"e052","no":52,"division":"Year 3 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":15},{"id":"e053","no":53,"division":"Year 3 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":15},{"id":"e054","no":54,"division":"Year 4 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":13},{"id":"e055","no":55,"division":"Year 4 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":13},{"id":"e056","no":56,"division":"Year 4 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":8},{"id":"e057","no":57,"division":"Year 4 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":8},{"id":"e058","no":58,"division":"Year 4 Other","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":1},{"id":"e059","no":59,"division":"Year 5 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":14},{"id":"e060","no":60,"division":"Year 5 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":14},{"id":"e061","no":61,"division":"Year 5 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":11},{"id":"e062","no":62,"division":"Year 5 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":11},{"id":"e063","no":63,"division":"Year 6 Girls","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":6},{"id":"e064","no":64,"division":"Year 6 Girls","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":6},{"id":"e065","no":65,"division":"Year 6 Boys","heat":1,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":10},{"id":"e066","no":66,"division":"Year 6 Boys","heat":2,"heats":2,"event":"Jumps","page":"jumps","mode":"measure","unit":"m","t":null,"count":10},{"id":"e092","no":92,"division":"Year 3 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":19},{"id":"e093","no":93,"division":"Year 3 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":30},{"id":"e094","no":94,"division":"Year 4 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":26},{"id":"e095","no":95,"division":"Year 4 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":16},{"id":"e096","no":96,"division":"Year 4 Other","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":1},{"id":"e097","no":97,"division":"Year 5 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":28},{"id":"e098","no":98,"division":"Year 5 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":22},{"id":"e099","no":99,"division":"Year 6 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":12},{"id":"e100","no":100,"division":"Year 6 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":null,"topN":3,"count":20},{"id":"e101","no":101,"division":"Kindy","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e102","no":102,"division":"Kindy","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e103","no":103,"division":"Kindy","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e104","no":104,"division":"Kindy","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e105","no":105,"division":"Pre-Primary","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e106","no":106,"division":"Pre-Primary","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e107","no":107,"division":"Pre-Primary","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e108","no":108,"division":"Pre-Primary","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e109","no":109,"division":"Year 1","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e110","no":110,"division":"Year 1","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e111","no":111,"division":"Year 1","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e112","no":112,"division":"Year 1","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e113","no":113,"division":"Year 2","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e114","no":114,"division":"Year 2","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e115","no":115,"division":"Year 2","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e116","no":116,"division":"Year 2","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e117","no":117,"division":"Year 3","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e118","no":118,"division":"Year 3","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e119","no":119,"division":"Year 3","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e120","no":120,"division":"Year 3","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e121","no":121,"division":"Year 4","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e122","no":122,"division":"Year 4","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e123","no":123,"division":"Year 4","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e124","no":124,"division":"Year 4","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e125","no":125,"division":"Year 5","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e126","no":126,"division":"Year 5","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e127","no":127,"division":"Year 5","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e128","no":128,"division":"Year 5","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e129","no":129,"division":"Year 6","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e130","no":130,"division":"Year 6","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e131","no":131,"division":"Year 6","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"e132","no":132,"division":"Year 6","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0}];
+const RACES = [{"id":"r001","no":1,"division":"Kindy","heat":1,"heats":4,"event":"50m","t":730,"page":"races","mode":"order","count":0},{"id":"r002","no":2,"division":"Kindy","heat":2,"heats":4,"event":"50m","t":732,"page":"races","mode":"order","count":0},{"id":"r003","no":3,"division":"Kindy","heat":3,"heats":4,"event":"50m","t":734,"page":"races","mode":"order","count":0},{"id":"r004","no":4,"division":"Kindy","heat":4,"heats":4,"event":"50m","t":736,"page":"races","mode":"order","count":0},{"id":"r005","no":5,"division":"PP1 Girls","heat":1,"heats":1,"event":"50m","t":738,"page":"races","mode":"order","count":11},{"id":"r006","no":6,"division":"PP2 Girls","heat":1,"heats":2,"event":"50m","t":740,"page":"races","mode":"order","count":7},{"id":"r007","no":7,"division":"PP2 Girls","heat":2,"heats":2,"event":"50m","t":742,"page":"races","mode":"order","count":7},{"id":"r008","no":8,"division":"PP3 Girls","heat":1,"heats":2,"event":"50m","t":744,"page":"races","mode":"order","count":7},{"id":"r009","no":9,"division":"PP3 Girls","heat":2,"heats":2,"event":"50m","t":746,"page":"races","mode":"order","count":6},{"id":"r010","no":10,"division":"PP1 Boys","heat":1,"heats":1,"event":"50m","t":748,"page":"races","mode":"order","count":11},{"id":"r011","no":11,"division":"PP2 Boys","heat":1,"heats":1,"event":"50m","t":750,"page":"races","mode":"order","count":11},{"id":"r012","no":12,"division":"PP3 Boys","heat":1,"heats":1,"event":"50m","t":752,"page":"races","mode":"order","count":11},{"id":"r013","no":13,"division":"Year 1 Girls","heat":1,"heats":3,"event":"75m","t":754,"page":"races","mode":"order","count":9},{"id":"r014","no":14,"division":"Year 1 Girls","heat":2,"heats":3,"event":"75m","t":756,"page":"races","mode":"order","count":9},{"id":"r015","no":15,"division":"Year 1 Girls","heat":3,"heats":3,"event":"75m","t":758,"page":"races","mode":"order","count":9},{"id":"r016","no":16,"division":"Year 1 Boys","heat":1,"heats":2,"event":"75m","t":760,"page":"races","mode":"order","count":10},{"id":"r017","no":17,"division":"Year 1 Boys","heat":2,"heats":2,"event":"75m","t":762,"page":"races","mode":"order","count":9},{"id":"r018","no":18,"division":"Year 2 Girls","heat":1,"heats":2,"event":"75m","t":764,"page":"races","mode":"order","count":12},{"id":"r019","no":19,"division":"Year 2 Girls","heat":2,"heats":2,"event":"75m","t":766,"page":"races","mode":"order","count":12},{"id":"r020","no":20,"division":"Year 2 Boys","heat":1,"heats":3,"event":"75m","t":768,"page":"races","mode":"order","count":10},{"id":"r021","no":21,"division":"Year 2 Boys","heat":2,"heats":3,"event":"75m","t":770,"page":"races","mode":"order","count":10},{"id":"r022","no":22,"division":"Year 2 Boys","heat":3,"heats":3,"event":"75m","t":772,"page":"races","mode":"order","count":10},{"id":"r023","no":23,"division":"Year 3 Girls","heat":1,"heats":2,"event":"75m","t":774,"page":"races","mode":"order","count":9},{"id":"r024","no":24,"division":"Year 3 Girls","heat":2,"heats":2,"event":"75m","t":776,"page":"races","mode":"order","count":10},{"id":"r025","no":25,"division":"Year 3 Boys","heat":1,"heats":3,"event":"75m","t":778,"page":"races","mode":"order","count":10},{"id":"r026","no":26,"division":"Year 3 Boys","heat":2,"heats":3,"event":"75m","t":780,"page":"races","mode":"order","count":10},{"id":"r027","no":27,"division":"Year 3 Boys","heat":3,"heats":3,"event":"75m","t":782,"page":"races","mode":"order","count":10},{"id":"r028","no":28,"division":"Year 4 Girls","heat":1,"heats":2,"event":"75m","t":784,"page":"races","mode":"order","count":12},{"id":"r029","no":29,"division":"Year 4 Girls","heat":2,"heats":2,"event":"75m","t":786,"page":"races","mode":"order","count":14},{"id":"r030","no":30,"division":"Year 4 Boys","heat":1,"heats":2,"event":"75m","t":788,"page":"races","mode":"order","count":8},{"id":"r031","no":31,"division":"Year 4 Boys","heat":2,"heats":2,"event":"75m","t":790,"page":"races","mode":"order","count":8},{"id":"r032","no":32,"division":"Year 4 Other","heat":1,"heats":1,"event":"75m","t":792,"page":"races","mode":"order","count":1},{"id":"r033","no":33,"division":"Year 5 Girls","heat":1,"heats":3,"event":"100m","t":794,"page":"races","mode":"order","count":10},{"id":"r034","no":34,"division":"Year 5 Girls","heat":2,"heats":3,"event":"100m","t":796,"page":"races","mode":"order","count":9},{"id":"r035","no":35,"division":"Year 5 Girls","heat":3,"heats":3,"event":"100m","t":798,"page":"races","mode":"order","count":9},{"id":"r036","no":36,"division":"Year 5 Boys","heat":1,"heats":2,"event":"100m","t":800,"page":"races","mode":"order","count":11},{"id":"r037","no":37,"division":"Year 5 Boys","heat":2,"heats":2,"event":"100m","t":802,"page":"races","mode":"order","count":11},{"id":"r038","no":38,"division":"Year 6 Girls","heat":1,"heats":1,"event":"100m","t":804,"page":"races","mode":"order","count":12},{"id":"r039","no":39,"division":"Year 6 Boys","heat":1,"heats":2,"event":"100m","t":806,"page":"races","mode":"order","count":10},{"id":"r040","no":40,"division":"Year 6 Boys","heat":2,"heats":2,"event":"100m","t":808,"page":"races","mode":"order","count":10},{"id":"r041","no":41,"division":"Year 3 Girls","heat":1,"heats":1,"event":"200m","t":700,"derivedFrom":"r023","topN":6,"page":"races","mode":"order","count":0},{"id":"r042","no":42,"division":"Year 3 Boys","heat":1,"heats":1,"event":"200m","t":703,"derivedFrom":"r025","topN":6,"page":"races","mode":"order","count":0},{"id":"r043","no":43,"division":"Year 4 Girls","heat":1,"heats":1,"event":"200m","t":706,"derivedFrom":"r028","topN":6,"page":"races","mode":"order","count":0},{"id":"r044","no":44,"division":"Year 4 Boys","heat":1,"heats":1,"event":"200m","t":708,"derivedFrom":"r030","topN":6,"page":"races","mode":"order","count":0},{"id":"r045","no":45,"division":"Year 4 Other","heat":1,"heats":1,"event":"200m","t":null,"derivedFrom":"r032","topN":6,"page":"races","mode":"order","count":0},{"id":"r046","no":46,"division":"Year 5 Girls","heat":1,"heats":1,"event":"200m","t":713,"derivedFrom":"r033","topN":6,"page":"races","mode":"order","count":0},{"id":"r047","no":47,"division":"Year 5 Boys","heat":1,"heats":1,"event":"200m","t":716,"derivedFrom":"r036","topN":6,"page":"races","mode":"order","count":0},{"id":"r048","no":48,"division":"Year 6 Girls","heat":1,"heats":1,"event":"200m","t":717,"derivedFrom":"r038","topN":6,"page":"races","mode":"order","count":0},{"id":"r049","no":49,"division":"Year 6 Boys","heat":1,"heats":1,"event":"200m","t":720,"derivedFrom":"r039","topN":6,"page":"races","mode":"order","count":0},{"id":"r050","no":50,"division":"Year 3 Girls","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":570,"count":19,"topN":4},{"id":"r051","no":51,"division":"Year 3 Boys","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":570,"count":30,"topN":4},{"id":"r052","no":52,"division":"Year 4 Girls","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":600,"count":26,"topN":4},{"id":"r053","no":53,"division":"Year 4 Boys","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":600,"count":16,"topN":4},{"id":"r054","no":54,"division":"Year 4 Other","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":600,"count":1,"topN":4},{"id":"r055","no":55,"division":"Year 5 Girls","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":630,"count":28,"topN":4},{"id":"r056","no":56,"division":"Year 5 Boys","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":630,"count":22,"topN":4},{"id":"r057","no":57,"division":"Year 6 Girls","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":540,"count":12,"topN":4},{"id":"r058","no":58,"division":"Year 6 Boys","heat":1,"heats":1,"event":"Jumps","page":"jumps","mode":"places","t":540,"count":20,"topN":4},{"id":"r059","no":59,"division":"Year 3 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":540,"topN":4,"count":19},{"id":"r060","no":60,"division":"Year 3 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":540,"topN":4,"count":30},{"id":"r061","no":61,"division":"Year 4 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":570,"topN":4,"count":26},{"id":"r062","no":62,"division":"Year 4 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":570,"topN":4,"count":16},{"id":"r063","no":63,"division":"Year 4 Other","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":570,"topN":4,"count":1},{"id":"r064","no":64,"division":"Year 5 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":600,"topN":4,"count":28},{"id":"r065","no":65,"division":"Year 5 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":600,"topN":4,"count":22},{"id":"r066","no":66,"division":"Year 6 Girls","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":630,"topN":4,"count":12},{"id":"r067","no":67,"division":"Year 6 Boys","heat":1,"heats":1,"event":"Throws","page":"throws","mode":"places","t":630,"topN":4,"count":20},{"id":"r068","no":68,"division":"Kindy","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r069","no":69,"division":"Kindy","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r070","no":70,"division":"Kindy","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r071","no":71,"division":"Kindy","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r072","no":72,"division":"Pre-Primary","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r073","no":73,"division":"Pre-Primary","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r074","no":74,"division":"Pre-Primary","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r075","no":75,"division":"Pre-Primary","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r076","no":76,"division":"Year 1","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r077","no":77,"division":"Year 1","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r078","no":78,"division":"Year 1","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r079","no":79,"division":"Year 1","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r080","no":80,"division":"Year 2","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r081","no":81,"division":"Year 2","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r082","no":82,"division":"Year 2","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r083","no":83,"division":"Year 2","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r084","no":84,"division":"Year 3","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r085","no":85,"division":"Year 3","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r086","no":86,"division":"Year 3","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r087","no":87,"division":"Year 3","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r088","no":88,"division":"Year 4","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r089","no":89,"division":"Year 4","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r090","no":90,"division":"Year 4","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r091","no":91,"division":"Year 4","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r092","no":92,"division":"Year 5","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r093","no":93,"division":"Year 5","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r094","no":94,"division":"Year 5","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r095","no":95,"division":"Year 5","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r096","no":96,"division":"Year 6","heat":1,"heats":1,"event":"Tunnelball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r097","no":97,"division":"Year 6","heat":1,"heats":1,"event":"Leaderball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r098","no":98,"division":"Year 6","heat":1,"heats":1,"event":"Passball","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r099","no":99,"division":"Year 6","heat":1,"heats":1,"event":"Peg the Washing","page":"tabloids","mode":"houses","t":null,"houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r100","no":100,"division":"Whole school","heat":1,"heats":1,"event":"Tidiest Bay","page":"bonus","mode":"houses","t":null,"bonusKey":"tidyBay","houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r101","no":101,"division":"Whole school","heat":1,"heats":1,"event":"Cheering","page":"bonus","mode":"houses","t":null,"bonusKey":"cheer","houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r102","no":102,"division":"Whole school","heat":1,"heats":1,"event":"Showing the CCCs","page":"bonus","mode":"houses","t":null,"bonusKey":"ccc","houses":["Blue","Red","Yellow","Purple"],"count":0},{"id":"r103","no":103,"division":"Whole school","heat":1,"heats":1,"event":"Other Awards","page":"bonus","mode":"extra","t":null,"bonusKey":"extra","houses":["Blue","Red","Yellow","Purple"],"count":0}];
 
 const HOUSE_COLORS = {Blue:'var(--h-blue)',Yellow:'var(--h-yellow)',Red:'var(--h-red)',Purple:'var(--h-purple)','—':'var(--faint)'};
 
@@ -815,13 +879,21 @@ let pending=[];        // our own actions not yet seen back
 let results={};        // raceId -> [studentId] in finish order
 let extra={};          // raceId -> [student] added by hand
 let removed={};        // raceId -> Set(studentId)
-let scheme=[8,6,4,3,2,1];
+let scheme=[8,5,3,1];
 let partPts=0;
 let topHeatOnly=false;
 let overrides={};      // division -> {scheme, partPts}
 let evOverrides={};    // event type -> {scheme, partPts}
 let timeOffset=0;      // minutes the whole programme has slipped
-let tabScheme=[10,8,6,4];  // house points for a tabloid placing
+let tabScheme=[25,20,15,10];  // team-game points, straight to the house
+// Championship is a second, independent tally. It runs alongside carnival
+// points rather than replacing them, and only covers Years 3-6 in the sprint
+// Division 1, the 200m, jumps and throws.
+let champPoints={};    // event type -> [points by place]
+// House awards that aren't races: tidiest bay, cheering, the CCCs, and any
+// one-off the day throws up. All go straight to the house total.
+let bonusScheme={tidyBay:[40,30,20,10],cheer:[20],ccc:[20]};
+let bonus={extra:[]};   // only the free-form awards live here now
 // The roster is the ONLY place names exist. It is held on this device and is
 // never sent to the results store — the store sees opaque ids like s0147, so a
 // leak of it discloses nothing without a school device.
@@ -832,7 +904,7 @@ let roster={};         // raceId -> [student]  (resolved locally for the rest of
 let marks={};          // eventId -> {studentId: number}  (jumps)
 let ties={};           // eventId -> [bool]  true = shares the place above (throws)
 let curPage='races';
-let view='prog', curRace=null, yearFilter='all', stuQuery='';
+let view='prog', curRace=null, yearFilter='all', stuQuery='', champView='divis';
 let syncState='idle', lastSynced=null, everSynced=false;
 
 const $=id=>document.getElementById(id);
@@ -872,8 +944,10 @@ function saveRoster(){
 function rebuild(){
   results={}; extra={}; removed={}; marks={}; ties={};
   RACES.forEach(r=>{ results[r.id]=[]; extra[r.id]=[]; removed[r.id]=new Set(); marks[r.id]={}; ties[r.id]=[]; });
-  scheme=[8,6,4,3,2,1]; partPts=0; topHeatOnly=false; overrides={}; evOverrides={}; timeOffset=0;
-  tabScheme=[10,8,6,4];
+  scheme=[8,5,3,1]; partPts=0; topHeatOnly=false; overrides={}; evOverrides={}; timeOffset=0;
+  tabScheme=[25,20,15,10]; champPoints={};
+  bonusScheme={tidyBay:[40,30,20,10],cheer:[20],ccc:[20]};
+  bonus={extra:[]};
 
   LOG.concat(pending).forEach(a=>{
     let p={};
@@ -895,6 +969,9 @@ function rebuild(){
           results[p.raceId]=(results[p.raceId]||[]).filter(x=>x!==p.studentId);
         }
         break;
+      case 'cn_bonus':
+        if(p.bonus) bonus=p.bonus;
+        break;
       case 'cn_mark':
         if(p.raceId&&p.studentId!=null){
           marks[p.raceId]=marks[p.raceId]||{};
@@ -910,6 +987,16 @@ function rebuild(){
         if(p.evOverrides) evOverrides=p.evOverrides;
         if(typeof p.timeOffset==='number') timeOffset=p.timeOffset;
         if(Array.isArray(p.tabScheme)) tabScheme=p.tabScheme.slice();
+        if(p.champPoints) champPoints=p.champPoints;
+        if(p.bonusScheme){
+          // tolerate the older shape where cheer/ccc were a single number
+          const b=p.bonusScheme;
+          bonusScheme={
+            tidyBay:Array.isArray(b.tidyBay)?b.tidyBay:[40,30,20,10],
+            cheer:Array.isArray(b.cheer)?b.cheer:[b.cheer??20],
+            ccc:Array.isArray(b.ccc)?b.ccc:[b.ccc??20]
+          };
+        }
         break;
     }
   });
@@ -931,7 +1018,7 @@ async function send(action,payload){
 }
 function saveRace(id){ send('cn_result',{raceId:id,order:results[id]||[],ties:ties[id]||[]}); }
 function saveSettings(){
-  send('cn_settings',{scheme,partPts,topHeatOnly,overrides,evOverrides,timeOffset,tabScheme});
+  send('cn_settings',{scheme,partPts,topHeatOnly,overrides,evOverrides,timeOffset,tabScheme,champPoints,bonusScheme});
 }
 
 // Anything recorded while the wifi was down sits in `pending`; push it as soon
@@ -970,7 +1057,7 @@ async function poll(){
 function stateHash(){
   return JSON.stringify([results,marks,ties,Object.keys(roster).length,Object.keys(extra).map(k=>extra[k].length),
     Object.keys(removed).map(k=>[...removed[k]].length),scheme,partPts,topHeatOnly,
-    overrides,evOverrides,timeOffset,tabScheme]);
+    overrides,evOverrides,timeOffset,tabScheme,champPoints,bonusScheme,bonus]);
 }
 let lastHash='';
 function renderIfChanged(){
@@ -999,18 +1086,17 @@ function setSync(st){
 
 // ---------------- helpers ----------------
 function raceById(id){ return RACES.find(r=>r.id===id); }
-// A 200m race has no fixed field — it is the first N finishers of that
-// division's Division 1, so it fills itself in as those results are entered.
+// The 200m runs BEFORE the sprints, so its field can't come from a result.
+// It's the top N of that division's Division 1 as seeded — the fastest six on
+// the time trials — so it's known from the moment the programme is built.
 function sourceOf(r){ return r.derivedFrom ? raceById(r.derivedFrom) : null; }
 function derivedReady(r){
   const src=sourceOf(r); if(!src) return true;
-  const need=Math.min(r.topN||6, fieldFor(src).length);
-  return need>0 && (results[src.id]||[]).length>=need;
+  return fieldFor(src).length>0;
 }
 function derivedField(r){
   const src=sourceOf(r); if(!src) return [];
-  const need=Math.min(r.topN||6, fieldFor(src).length);
-  return (results[src.id]||[]).slice(0,need).map(sid=>studentIn(src,sid)).filter(Boolean);
+  return fieldFor(src).slice(0, r.topN||6);
 }
 function studentsOf(r){ return roster[r.id]||[]; }
 function fieldFor(r){
@@ -1101,6 +1187,31 @@ function pointsFor(race,placeIdx){
   return placeIdx<sc.length ? sc[placeIdx] : pp;
 }
 function eventTypes(){ return [...new Set(RACES.map(r=>r.event))]; }
+function yearOf(div){
+  const m=String(div).match(/Year (\d)/);
+  return m ? +m[1] : 0;
+}
+// Which events count towards the championship. Sprints only in Division 1,
+// because that's the division that feeds interschool selection.
+function champEligible(r){
+  const y=yearOf(r.division);
+  if(y<3) return false;
+  if(r.page==='tabloids') return false;
+  if(r.event==='200m') return true;
+  if(r.page==='jumps'||r.page==='throws') return true;
+  if(r.page==='races') return r.heat===1;
+  return false;
+}
+function champTypes(){
+  return [...new Set(RACES.filter(champEligible).map(r=>r.event))];
+}
+const CHAMP_DEFAULT=[8,5,3,1];
+function champSchemeFor(ev){ return champPoints[ev] || CHAMP_DEFAULT; }
+function champPointsFor(race,placeIdx){
+  if(!champEligible(race)) return 0;
+  const sc=champSchemeFor(race.event);
+  return placeIdx<sc.length ? sc[placeIdx] : 0;
+}
 
 // Jumps and throws run two groups side by side purely for logistics, so the
 // standing that scores points is the whole division combined, best mark first.
@@ -1116,6 +1227,14 @@ function measureRanking(div,discipline){
   return rows.sort((a,b)=>b.value-a.value||a.student.name.localeCompare(b.student.name));
 }
 function tabPoints(i){ return i<tabScheme.length ? tabScheme[i] : 0; }
+// House placings: tabloids share one table, each bonus award has its own.
+function housePointsFor(race,i){
+  if(race.page==='bonus'){
+    const sc=bonusScheme[race.bonusKey]||[];
+    return i<sc.length ? sc[i] : 0;
+  }
+  return tabPoints(i);
+}
 
 // Throws are judged off the markers, so only the order matters — and two
 // markers can sit level. A tie shares the place, and the next one down skips
@@ -1147,17 +1266,24 @@ function houses(){
 }
 
 // tally: studentId -> {name,div,house,pts}
-function tally(){
-  const t={};
-  const add=(sid,s,div,p)=>{
+// Walks every result once and returns both tallies together, so the carnival
+// and championship totals can never drift apart.
+function tallies(){
+  const t={}, c={};
+  const add=(sid,s,div,r,placeIdx)=>{
     if(!t[sid]) t[sid]={name:s.name,div,house:s.house,room:s.room,pts:0};
-    t[sid].pts+=p;
+    t[sid].pts+=pointsFor(r,placeIdx);
+    const cp=champPointsFor(r,placeIdx);
+    if(cp||champEligible(r)){
+      if(!c[sid]) c[sid]={name:s.name,div,house:s.house,room:s.room,pts:0,events:0};
+      c[sid].pts+=cp; c[sid].events++;
+    }
   };
   RACES.forEach(r=>{
     if(r.mode!=='order') return;
     (results[r.id]||[]).forEach((sid,i)=>{
       const s=studentIn(r,sid); if(!s) return;
-      add(sid,s,r.division,pointsFor(r,i));
+      add(sid,s,r.division,r,i);
     });
   });
   // placings from the throws, ties sharing the place
@@ -1165,7 +1291,7 @@ function tally(){
     const pn=placeNumbers(r);
     (results[r.id]||[]).forEach((sid,i)=>{
       const st=studentIn(r,sid); if(!st) return;
-      add(sid,st,r.division,pointsFor(r,pn[i]-1));
+      add(sid,st,r.division,r,pn[i]-1);
     });
   });
   // measured events score once per division, not once per group
@@ -1174,23 +1300,44 @@ function tally(){
     const key=r.division+'|'+r.event;
     if(seen.has(key)) return; seen.add(key);
     measureRanking(r.division,r.event).forEach((row,i)=>{
-      add(row.student.id,row.student,r.division,pointsFor(r,i));
+      add(row.student.id,row.student,r.division,r,i);
     });
   });
-  return t;
+  return {carnival:t,champ:c};
 }
+function tally(){ return tallies().carnival; }
+function champTally(){ return tallies().champ; }
 // Tabloids score straight to the house — the individual competitors don't matter.
 function tabloidHousePoints(){
   const h={};
   RACES.filter(r=>r.mode==='houses').forEach(r=>{
-    (results[r.id]||[]).forEach((house,i)=>{ h[house]=(h[house]||0)+tabPoints(i); });
+    (results[r.id]||[]).forEach((house,i)=>{ h[house]=(h[house]||0)+housePointsFor(r,i); });
   });
+  return h;
+}
+function bonusRows(){
+  const out=[];
+  RACES.filter(r=>r.page==='bonus'&&r.mode==='houses').forEach(r=>{
+    (results[r.id]||[]).forEach((house,i)=>{
+      const p=housePointsFor(r,i);
+      if(p) out.push({house,pts:p,label:r.event,note:(i+1)+ord(i+1)});
+    });
+  });
+  (bonus.extra||[]).forEach(e=>out.push({house:e.house,pts:e.pts,label:'Other award',note:e.note||''}));
+  return out;
+}
+// Only the free-form ones need adding separately — the bonus events already
+// come through tabloidHousePoints() with the rest of the house placings.
+function bonusHousePoints(){
+  const h={};
+  (bonus.extra||[]).forEach(e=>{ h[e.house]=(h[e.house]||0)+(+e.pts||0); });
   return h;
 }
 function houseTotals(){
   const h={}; houses().forEach(x=>h[x]=0);
   Object.values(tally()).forEach(s=>{ if(s.house in h) h[s.house]+=s.pts; });
   Object.entries(tabloidHousePoints()).forEach(([k,v])=>{ h[k]=(h[k]||0)+v; });
+  Object.entries(bonusHousePoints()).forEach(([k,v])=>{ h[k]=(h[k]||0)+v; });
   return h;
 }
 
@@ -1205,7 +1352,8 @@ function renderTabs(){
     t.appendChild(b);
   });
 }
-const PAGES=[['races','Races'],['jumps','Jumps'],['throws','Throws'],['tabloids','Tabloids']];
+const PAGES=[['races','Races'],['jumps','Jumps'],['throws','Throws'],
+             ['tabloids','Tabloids'],['bonus','Bonus']];
 function pageRaces(){ return RACES.filter(r=>r.page===curPage); }
 function renderPageTabs(){
   const t=$('pageTabs'); t.innerHTML='';
@@ -1242,14 +1390,10 @@ function renderProg(){
   const all=pageRaces();
   const done=all.filter(eventDone).length;
   if(curPage==='jumps'||curPage==='throws'){
-    // the two groups are stations of a single contest, so count contests
-    const contests=new Set(all.map(r=>r.division)).size;
-    const finished=[...new Set(all.map(r=>r.division))]
-      .filter(d=>all.filter(r=>r.division===d).every(eventDone)).length;
-    $('progSub').textContent=contests+' contest'+(contests===1?'':'s')+
-      ' run across '+all.length+' groups · '+finished+' complete';
+    $('progSub').textContent=all.length+' contest'+(all.length===1?'':'s')+
+      ' · one per year and gender · '+done+' complete';
   } else {
-    const word=curPage==='tabloids'?'event':'race';
+    const word=(curPage==='tabloids'||curPage==='bonus')?'event':'race';
     $('progSub').textContent=all.length+' '+word+(all.length===1?'':'s')+' · '+done+' complete';
   }
 
@@ -1267,13 +1411,16 @@ function renderProg(){
     const c=document.createElement('button');
     c.className='race-card'+(ready?'':' locked');
     applyColors(c,r.division,r.heat,r.heats);
-    const sub = r.mode==='houses' ? r.event+' · 4 houses'
-      : r.mode==='places' ? 'Top '+(r.topN||3)+' off the markers · '+fieldFor(r).length+' competitors'
+    const sub = r.mode==='extra' ? (bonus.extra||[]).length+' award'+((bonus.extra||[]).length===1?'':'s')+' given'
+      : r.mode==='houses' ? (r.page==='bonus'
+          ? (bonusScheme[r.bonusKey]||[]).filter(Boolean).join(' · ')+' pts'
+          : r.event+' · 4 houses')
+      : r.mode==='places' ? 'Place the top '+(r.topN||4)+' · '+fieldFor(r).length+' competitors'
       : r.mode==='measure' ? (r.heats>1
           ? 'Group '+r.heat+' of '+r.heats+' · '+tot+' competitors · one combined contest'
           : tot+' competitor'+(tot===1?'':'s'))
       : r.event==='200m'
-        ? (ready ? 'Top '+tot+' from Division 1' : 'Field set once Division 1 is run')
+        ? (ready ? 'Top '+tot+' seeded from Division 1' : 'Waiting on the class list')
         : groupLabel(r)+' · '+tot+' runners';
     c.innerHTML='<div class="rc-no">EVENT '+String(r.no).padStart(2,'0')+
       '<span class="ev-tag">'+r.event+'</span></div>'+
@@ -1361,7 +1508,7 @@ function renderFinder(){
         : order.indexOf(st.id);
     const row=document.createElement('button');
     row.className='fr';
-    const grp = r.mode==='places' ? 'Top '+(r.topN||3)+' off the markers'
+    const grp = r.mode==='places' ? 'Top '+(r.topN||4)
       : r.mode==='measure' ? 'Group '+r.heat+' of '+r.heats
       : r.event==='200m' ? '200m final'
       : (r.heats>1 ? groupWord(r.division)+' '+r.heat+' of '+r.heats : 'Single '+groupWord(r.division).toLowerCase());
@@ -1409,6 +1556,7 @@ function renderRace(){
   $('orderBoard').hidden = r.mode!=='order';
   $('measureWrap').hidden = r.mode!=='measure';
   $('placesWrap').hidden = r.mode!=='places';
+  $('extraWrap').hidden = r.mode!=='extra';
   $('houseWrap').hidden = r.mode!=='houses';
   $('undoBtn').hidden = r.mode!=='order';
   $('printRaceBtn').hidden = r.mode==='houses';
@@ -1421,13 +1569,17 @@ function renderRace(){
       : r.mode==='measure' ? ' · Group '+r.heat
       : r.event==='200m' ? ''
       : (r.heats>1?(' · '+groupWord(r.division)+' '+r.heat):''))+'</span>';
-  $('raceSub').textContent=(r.mode==='houses' ? r.event+' · place the four houses'
-    : r.mode==='places' ? r.event+' · place the top '+(r.topN||3)+' off the markers · '+fieldFor(r).length+' competitors'
+  $('raceSub').textContent=(r.mode==='extra' ? 'Any points not covered by an event'
+    : r.mode==='houses' ? (r.page==='bonus'
+        ? r.event+' · '+((bonusScheme[r.bonusKey]||[]).filter(Boolean).length===1
+            ? 'winning house only' : 'place the four houses')
+        : r.event+' · place the four houses')
+    : r.mode==='places' ? r.event+' · place the top '+(r.topN||4)+' · '+fieldFor(r).length+' competitors'
     : r.mode==='measure' ? (r.heats>1
         ? r.event+' · group '+r.heat+' of '+r.heats+' (both groups score as one contest) · '+fieldFor(r).length+' competitors'
         : r.event+' · '+fieldFor(r).length+' competitor'+(fieldFor(r).length===1?'':'s'))
     : r.event==='200m'
-      ? '200m · top '+fieldFor(r).length+' from Division 1'
+      ? '200m · top '+fieldFor(r).length+' seeded from Division 1'
       : groupLabel(r)+' · '+fieldFor(r).length+' runners')
     +(topHeatOnly&&r.heat>1&&r.event!=='200m'?(' · placings not scored ('+groupWord(r.division)+' 1 only)'):'');
   $('noRoster').hidden = Object.keys(people).length>0 || r.mode==='houses';
@@ -1435,12 +1587,13 @@ function renderRace(){
   $('notReady').hidden=!notReady;
   if(notReady){
     const src=sourceOf(r);
-    $('notReady').textContent='The 200m field is the first '+(r.topN||6)+
-      ' finishers of '+r.division+' Division 1 (Event '+src.no+'). Run that race first and this fills in automatically.';
+    $('notReady').textContent='The 200m field is the top '+(r.topN||6)+
+      ' of '+r.division+' Division 1 (Event '+src.no+'), but no class list is loaded for it yet.';
   }
 
   if(r.mode==='measure') return renderMeasure(r);
   if(r.mode==='places') return renderPlaces(r);
+  if(r.mode==='extra') return renderExtra(r);
   if(r.mode==='houses') return renderHouses(r);
 
   const placed=new Set(results[r.id]||[]);
@@ -1538,9 +1691,7 @@ function renderMeasure(r){
   });
 
   $('standingHead').textContent=r.division+' '+r.event+' — full standing';
-  $('standingNote').textContent = r.heats>1
-    ? 'One contest. The two groups just move it along faster; every mark is ranked together here and this is what scores.'
-    : 'Every mark ranked together. This is what scores.';
+  $('standingNote').textContent='Every mark ranked together. This is what scores.';
   const rank=measureRanking(r.division,r.event);
   const tb=$('measureRank'); tb.innerHTML='';
   if(!rank.length){
@@ -1566,7 +1717,7 @@ function renderPlaces(r){
   const got=distinctPlaces(r);
   $('placesHint').textContent = got>=need
     ? 'Top '+need+' recorded. Add more if you want them.'
-    : got+' of '+need+' places recorded — tap the furthest marker first.';
+    : got+' of '+need+' places recorded — tap the winner first.';
 
   const ol=$('placesOrder'); ol.innerHTML='';
   $('placesEmpty').style.display = order.length?'none':'block';
@@ -1631,8 +1782,30 @@ function renderPlaces(r){
 }
 
 // ---------------- tabloids ----------------
+function renderExtra(r){
+  const hs=houses();
+  const sel=$('exHouse2');
+  if(sel.options.length!==hs.length){
+    sel.innerHTML=''; hs.forEach(h=>{const o=document.createElement('option');o.value=h;o.textContent=h;sel.appendChild(o);});
+  }
+  const el=$('exList2'); el.innerHTML='';
+  (bonus.extra||[]).forEach(e=>{
+    const row=document.createElement('div');
+    row.className='res-row'; row.style.setProperty('--hc',HOUSE_COLORS[e.house]||'var(--faint)');
+    row.innerHTML='<div class="ri"><div class="n">'+esc(e.note||'Award')+'</div>'+
+      '<div class="m"><span class="hdot"></span><span>'+esc(e.house)+'</span></div></div>'+
+      '<div class="pts">'+e.pts+' pts</div>'+
+      '<div class="ctrls"><button class="ib rm">✕</button></div>';
+    row.querySelector('button').addEventListener('click',()=>{
+      bonus.extra=bonus.extra.filter(x=>x.id!==e.id); saveBonus(); });
+    el.appendChild(row);
+  });
+  if(!(bonus.extra||[]).length)
+    el.innerHTML='<div class="empty">Nothing added yet.</div>';
+}
 function renderHouses(r){
   const order=results[r.id]||[];
+  const scoring=r.page==='bonus' ? (bonusScheme[r.bonusKey]||[]).filter(Boolean).length : (r.houses||[]).length;
   const pool=(r.houses||[]).filter(h=>!order.includes(h));
   const pl=$('housePool'); pl.innerHTML='';
   pool.forEach(h=>{
@@ -1644,6 +1817,9 @@ function renderHouses(r){
     pl.appendChild(b);
   });
   if(!pool.length) pl.innerHTML='<div class="empty">All four houses placed.</div>';
+  else if(order.length>=scoring&&scoring<(r.houses||[]).length)
+    pl.insertAdjacentHTML('afterbegin','<div class="notice">Only the top '+scoring+
+      ' score'+(scoring===1?'s':'')+' for this award — anything below is just for the record.</div>');
 
   const ol=$('houseOrder'); ol.innerHTML='';
   order.forEach((h,i)=>{
@@ -1651,7 +1827,7 @@ function renderHouses(r){
     row.className='hrow';
     row.style.setProperty('--hc',HOUSE_COLORS[h]||'var(--faint)');
     row.innerHTML='<span class="pl'+(i<3?' p'+(i+1):'')+'">'+(i+1)+'</span><span>'+h+'</span>'+
-      '<span class="pts">'+tabPoints(i)+' pts</span>'+
+      '<span class="pts">'+housePointsFor(r,i)+' pts</span>'+
       '<button class="ib rm" style="margin-left:10px">✕</button>';
     row.querySelector('button').addEventListener('click',()=>{
       results[r.id]=order.filter(x=>x!==h); saveRace(r.id);
@@ -1675,6 +1851,23 @@ function renderPoints(){
   $('allHeats').checked=!topHeatOnly;
   $('topHeatOnly').checked=topHeatOnly;
 
+  const bb=$('bonusBody'); bb.innerHTML='';
+  const bonusFields=[
+    ['Tidiest Bay — 1st','tidyBay',0],['Tidiest Bay — 2nd','tidyBay',1],
+    ['Tidiest Bay — 3rd','tidyBay',2],['Tidiest Bay — 4th','tidyBay',3],
+    ['Cheering — winner','cheer',0],['Showing the CCCs — winner','ccc',0]];
+  bonusFields.forEach(([label,key,idx])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+label+'</td><td><input type="number" min="0" step="1" value="'+
+      ((bonusScheme[key]||[])[idx]??0)+'"></td>';
+    tr.querySelector('input').addEventListener('change',e=>{
+      bonusScheme[key]=(bonusScheme[key]||[]).slice();
+      bonusScheme[key][idx]=Math.max(0,parseInt(e.target.value,10)||0);
+      saveSettings();
+    });
+    bb.appendChild(tr);
+  });
+
   const tb2=$('tabBody'); tb2.innerHTML='';
   tabScheme.forEach((v,i)=>{
     const tr=document.createElement('tr');
@@ -1684,25 +1877,49 @@ function renderPoints(){
     tb2.appendChild(tr);
   });
 
-  const ev=$('evList'); ev.innerHTML='';
+  const places=Math.max(scheme.length, ...Object.values(champPoints).map(a=>a.length), 1);
+  const cTypes=champTypes();
+  const grid=$('evGrid'); grid.innerHTML='';
   eventTypes().forEach(t=>{
-    const has=!!evOverrides[t];
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap';
-    row.innerHTML='<span style="flex:1;min-width:110px;font-size:14px;font-weight:700">'+t+'</span>'+
-      '<span style="font-size:12.5px;color:var(--faint)">'+(has?evOverrides[t].scheme.join(' · '):'uses the table above')+'</span>'+
-      '<button class="btn" style="flex:0 0 auto;padding:8px 12px;font-size:12.5px">'+(has?'Remove':'Set points')+'</button>';
-    row.querySelector('button').addEventListener('click',()=>{
-      if(has) delete evOverrides[t];
-      else{
-        const v=prompt('Points for 1st, 2nd, 3rd… in the '+t+' (comma separated)',scheme.join(','));
-        if(!v) return;
-        const arr=v.split(',').map(x=>Math.max(0,parseInt(x.trim(),10)||0));
-        if(arr.length) evOverrides[t]={scheme:arr,partPts:partPts};
-      }
-      saveSettings();
+    const isChamp=cTypes.includes(t);
+    const divs=[...new Set(RACES.filter(r=>r.event===t).map(r=>r.division))];
+    const carn=evOverrides[t] && evOverrides[t].scheme ? evOverrides[t].scheme : scheme;
+    const champ=champSchemeFor(t);
+    const box=document.createElement('div');
+    box.className='evblock';
+    let rows='';
+    for(let i=0;i<places;i++){
+      rows+='<tr><td class="pl">'+(i+1)+ord(i+1)+'</td>'+
+        '<td><input type="number" min="0" step="1" data-k="c" data-i="'+i+'" value="'+(carn[i]??0)+'"></td>'+
+        '<td><input type="number" min="0" step="1" data-k="p" data-i="'+i+'" value="'+(isChamp?(champ[i]??0):'')+'"'+
+          (isChamp?'':' disabled')+'></td></tr>';
+    }
+    box.innerHTML='<h3>'+esc(t)+(isChamp?'<span class="champtag">CHAMPIONSHIP</span>':'')+'</h3>'+
+      '<div class="who'+(isChamp?'':' nochamp')+'">'+
+        (isChamp
+          ? 'Years 3\u20136'+(RACES.some(r=>r.event===t&&r.page==='races')?', Division 1 only':'')+
+            ' \u00b7 counts towards year champions'
+          : 'Carnival points only \u2014 not a championship event')+
+      '</div>'+
+      '<table class="evp"><thead><tr><th>Place</th><th>Carnival</th><th>Championship</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table>';
+    box.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        const i=+inp.dataset.i, v=Math.max(0,parseInt(inp.value,10)||0);
+        if(inp.dataset.k==='c'){
+          const arr=(evOverrides[t]&&evOverrides[t].scheme ? evOverrides[t].scheme : scheme).slice();
+          while(arr.length<places) arr.push(0);
+          arr[i]=v;
+          evOverrides[t]=Object.assign({},evOverrides[t]||{},{scheme:arr});
+        } else {
+          const arr=champSchemeFor(t).slice();
+          while(arr.length<places) arr.push(0);
+          arr[i]=v; champPoints[t]=arr;
+        }
+        saveSettings();
+      });
     });
-    ev.appendChild(row);
+    grid.appendChild(box);
   });
 
   const ov=$('ovrList'); ov.innerHTML='';
@@ -1810,7 +2027,9 @@ $('rosterClearBtn').addEventListener('click',()=>{
 
 function renderOffset(){
   $('offsetIn').value=timeOffset;
-  const timed=RACES.filter(r=>r.t!=null);
+  // sort by clock, not programme order — field events run in the morning but
+  // sit after the sprints in the list
+  const timed=RACES.filter(r=>r.t!=null).slice().sort((a,b)=>a.t-b.t);
   const note=$('offsetNote');
   if(!timed.length){ note.textContent=''; return; }
   const first=timeOf(timed[0]), last=timeOf(timed[timed.length-1]);
@@ -1832,9 +2051,30 @@ $('partPts').addEventListener('input',e=>{ partPts=Math.max(0,parseInt(e.target.
 $('allHeats').addEventListener('change',e=>{ topHeatOnly=!e.target.checked; saveSettings(); });
 $('topHeatOnly').addEventListener('change',e=>{ topHeatOnly=e.target.checked; saveSettings(); });
 $('addPlaceBtn').addEventListener('click',()=>{ scheme.push(0); saveSettings(); });
+$('addEvPlace').addEventListener('click',()=>{
+  scheme.push(0);
+  Object.keys(evOverrides).forEach(k=>{ if(evOverrides[k].scheme) evOverrides[k].scheme.push(0); });
+  Object.keys(champPoints).forEach(k=>champPoints[k].push(0));
+  saveSettings();
+});
+$('rmEvPlace').addEventListener('click',()=>{
+  if(scheme.length>1) scheme.pop();
+  Object.keys(evOverrides).forEach(k=>{ const a=evOverrides[k].scheme; if(a&&a.length>1) a.pop(); });
+  Object.keys(champPoints).forEach(k=>{ if(champPoints[k].length>1) champPoints[k].pop(); });
+  saveSettings();
+});
 $('rmPlaceBtn').addEventListener('click',()=>{ if(scheme.length>1){ scheme.pop(); saveSettings(); } });
 
 // ---------------- standings ----------------
+function saveBonus(){ send('cn_bonus',{bonus}); }
+$('exAdd2').addEventListener('click',()=>{
+  const pts=parseInt($('exPts2').value,10);
+  if(!pts){ $('exPts2').focus(); return; }
+  bonus.extra=(bonus.extra||[]).concat([{id:uid(),house:$('exHouse2').value,pts,
+    note:$('exNote2').value.trim()}]);
+  $('exPts2').value=''; $('exNote2').value='';
+  saveBonus();
+});
 function renderStand(){
   const t=tally(), ht=houseTotals();
   const scored=Object.keys(t).length;
@@ -1851,6 +2091,48 @@ function renderStand(){
       '<span class="house-pts">'+p+'</span>';
     hb.appendChild(d);
   });
+
+  // --- championship, viewable overall or split by year and gender ---
+  const ct=champTally();
+  const vc=$('champView'); vc.innerHTML='';
+  [['divis','By year & gender'],['overall','Overall']].forEach(([v,l])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(champView===v?' on':'');
+    b.textContent=l;
+    b.addEventListener('click',()=>{ champView=v; renderStand(); });
+    vc.appendChild(b);
+  });
+  const cbox=$('champs2'); cbox.innerHTML='';
+  const champScored=Object.values(ct).filter(x=>x.pts>0);
+  if(!champScored.length){
+    cbox.innerHTML='<div style="color:var(--faint);font-size:13.5px;padding:8px 0">'+
+      'Nothing recorded yet in a championship event.</div>';
+  } else if(champView==='overall'){
+    const tb=document.createElement('table');
+    tb.className='rank';
+    tb.innerHTML='<thead><tr><th class="p">#</th><th>Name</th><th>Division</th><th>House</th>'+
+      '<th>Events</th><th>Points</th></tr></thead><tbody>'+
+      champScored.sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name)).map((x,i)=>
+        '<tr><td class="p '+(i<3?'m'+(i+1):'')+'">'+(i+1)+'</td><td>'+esc(x.name)+'</td>'+
+        '<td style="color:var(--dim)">'+esc(x.div)+'</td><td style="color:var(--dim)">'+esc(x.house)+'</td>'+
+        '<td style="color:var(--dim)">'+x.events+'</td><td style="font-weight:800">'+x.pts+'</td></tr>').join('')+
+      '</tbody>';
+    cbox.appendChild(tb);
+  } else {
+    const cdivs=[...new Set(RACES.filter(champEligible).map(r=>r.division))];
+    cdivs.forEach(d=>{
+      const top=champScored.filter(x=>x.div===d).sort((a,b)=>b.pts-a.pts).slice(0,3);
+      if(!top.length) return;
+      const box=document.createElement('div');
+      box.style.cssText='padding:9px 0;border-bottom:1px solid var(--border)';
+      box.innerHTML='<div style="font-size:13px;font-weight:800;color:var(--accent);margin-bottom:4px">'+d+'</div>'+
+        top.map((x,i)=>'<div style="font-size:13.5px;padding:2px 0"><span class="m'+(i+1)+
+          '" style="font-weight:800;display:inline-block;width:22px">'+(i+1)+'</span>'+
+          esc(x.name)+' <span style="color:var(--faint)">· '+esc(x.house)+' · '+x.pts+' pts · '+
+          x.events+' event'+(x.events===1?'':'s')+'</span></div>').join('');
+      cbox.appendChild(box);
+    });
+  }
 
   const ch=$('champs'); ch.innerHTML='';
   divisions().forEach(d=>{
@@ -2456,6 +2738,12 @@ $('exportBtn').addEventListener('click',()=>{
     const s=studentIn(r,sid); if(!s) return;
     lines.push([r.no,r.division,groupWord(r.division)+' '+r.heat,laneOf(r,sid),i+1,s.name,s.house,s.room,pointsFor(r,i)].map(esc).join(','));
   }));
+  lines.push(''); lines.push('Championship,Division,Name,House,Points,Events');
+  const ct2=champTally();
+  Object.values(ct2).filter(x=>x.pts>0).sort((a,b)=>a.div.localeCompare(b.div)||b.pts-a.pts)
+    .forEach(x=>lines.push(['',x.div,x.name,x.house,x.pts,x.events].map(esc).join(',')));
+  lines.push(''); lines.push('House award,House,Points,Detail');
+  bonusRows().forEach(b=>lines.push(['',b.label,b.house,b.pts,b.note].slice(1).map(esc).join(',')));
   lines.push(''); lines.push('House,Points');
   Object.entries(houseTotals()).sort((a,b)=>b[1]-a[1]).forEach(([h,p])=>lines.push(esc(h)+','+p));
   const b=new Blob([lines.join('\n')],{type:'text/csv'});
