@@ -1,0 +1,21 @@
+UNO ARENA — DOWNLOADABLE WEBSITE
+
+Extract the ZIP before using it. Keep index.html, style.css, app.js and tv.js together.
+
+For the full computer + TV experience:
+1. Open Terminal in the extracted UNO-Arena folder.
+2. If Python 3 is installed, run:
+   python3 -m http.server 8000 --bind 127.0.0.1
+3. Open http://localhost:8000/?mode=control in Chrome.
+4. Choose Load demo tournament, or enter your own names.
+5. Choose Open TV display. Move that window to the TV and choose Full screen.
+6. Keep Terminal running while using the website. Press Control-C there to stop it.
+
+You can also open index.html directly for a quick look, but browser security rules can prevent the control and TV windows synchronising from local files. Use the local server above for tournaments.
+
+Tournament progress is saved in that browser. Names and results already entered on the hosted website are not included in this download, and do not automatically transfer to the local copy.
+
+Fonts load from Google Fonts when online; system fonts are used without internet access.
+
+Hosted version (no installation required):
+https://uno-classroom-arena.richmond-shane.chatgpt.site
