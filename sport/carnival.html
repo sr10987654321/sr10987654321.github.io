@@ -298,6 +298,17 @@
   .exrow .h{font-weight:800;color:var(--hc);width:70px}
   .exrow .p{font-weight:800;width:60px;text-align:right}
   .exrow .n{flex:1;color:var(--dim)}
+  .todo-grp{margin-bottom:14px}
+  .todo-grp h4{margin:0 0 7px;font-size:12px;font-weight:800;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--dim)}
+  .todo-row{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+    background:var(--panel-2);border:1px solid var(--border);border-left:5px solid var(--tc);
+    border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;color:var(--text)}
+  .todo-row:active{transform:scale(.995)}
+  .todo-row .ev{font-size:11px;font-weight:800;color:var(--faint);width:60px;flex:none}
+  .todo-row .nm{flex:1;font-size:14.5px;font-weight:700;min-width:0}
+  .todo-row .st{font-size:12px;font-weight:800;flex:none;color:var(--tc)}
+  .todo-none{padding:14px 0;font-size:14px;font-weight:700;color:var(--green)}
   .house-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
   .house-name{width:92px;font-weight:800;font-size:15px;color:var(--hc)}
   .bar-wrap{flex:1;height:30px;background:var(--panel-2);border-radius:8px;overflow:hidden;
@@ -614,6 +625,12 @@
     <div class="card">
       <h2>Houses</h2>
       <div id="houseBars" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card" id="todoCard">
+      <h2>Still to record</h2>
+      <p id="todoNote">—</p>
+      <div id="todoList"></div>
     </div>
 
     <div class="card">
@@ -1337,6 +1354,14 @@ function expectedIn(r){
   return fieldFor(r).length || (rosterLoaded()?0:(r.count||0));
 }
 function eventStarted(r){ return countedIn(r)>0; }
+// Three states, because "nothing recorded" and "nobody to record" are very
+// different problems on the day.
+function eventState(r){
+  if(!derivedReady(r)) return 'blocked';
+  if(expectedIn(r)===0) return 'empty';
+  if(eventDone(r)) return 'done';
+  return countedIn(r)>0 ? 'part' : 'todo';
+}
 function eventDone(r){ const t=expectedIn(r); return t>0 && countedIn(r)>=t; }
 function divisions(){ return [...new Set(RACES.map(r=>r.division))]; }
 function houses(){
@@ -1457,7 +1482,8 @@ function renderProg(){
   renderPageTabs();
   const stages=[...new Set(pageRaces().map(r=>stageOf(r.division)))];
   const ch=$('yearChips'); ch.innerHTML='';
-  const chipDefs=[['all','All'],...stages.map(y=>[y,y])];
+  const outstanding=pageRaces().filter(r=>['todo','part','blocked'].includes(eventState(r))).length;
+  const chipDefs=[['all','All'],['todo','Outstanding · '+outstanding],...stages.map(y=>[y,y])];
   if(curPage==='races') chipDefs.push(['200m','200m only']);
   if(curPage==='tabloids')
     [...new Set(pageRaces().map(r=>r.event))].forEach(g=>chipDefs.push(['game:'+g,g]));
@@ -1470,6 +1496,7 @@ function renderProg(){
   });
 
   const list=pageRaces().filter(r=>yearFilter==='all' ? true
+    : yearFilter==='todo' ? ['todo','part','blocked'].includes(eventState(r))
     : yearFilter==='200m' ? r.event==='200m'
     : yearFilter.startsWith('game:') ? r.event===yearFilter.slice(5)
     : stageOf(r.division)===yearFilter);
@@ -2248,6 +2275,53 @@ $('exAdd2').addEventListener('click',()=>{
   $('exPts2').value=''; $('exNote2').value='';
   saveBonus();
 });
+const STATE_LABEL={todo:'Not started',part:'Part done',blocked:'Waiting',empty:'No field'};
+const STATE_COLOR={todo:'var(--danger)',part:'var(--accent)',blocked:'var(--faint)',empty:'var(--faint)'};
+function renderTodo(){
+  const groups={};
+  RACES.forEach(r=>{
+    const st=eventState(r);
+    if(st==='done') return;
+    (groups[r.page]=groups[r.page]||[]).push({r,st});
+  });
+  const counts=Object.values(groups).flat();
+  const real=counts.filter(x=>x.st!=='empty').length;
+  $('todoNote').innerHTML = counts.length===0
+    ? ''
+    : '<b>'+real+'</b> event'+(real===1?'':'s')+' still to record'+
+      (counts.length>real ? ' · '+(counts.length-real)+' with nobody entered' : '')+
+      ' · tap one to go straight there.';
+  const box=$('todoList'); box.innerHTML='';
+  if(!counts.length){
+    box.innerHTML='<div class="todo-none">✓ Everything is recorded.</div>';
+    return;
+  }
+  PAGES.forEach(([pg,label])=>{
+    const rows=groups[pg]; if(!rows||!rows.length) return;
+    const grp=document.createElement('div');
+    grp.className='todo-grp';
+    grp.innerHTML='<h4>'+label+' — '+rows.length+'</h4>';
+    rows.forEach(({r,st})=>{
+      const b=document.createElement('button');
+      b.className='todo-row';
+      b.style.setProperty('--tc',STATE_COLOR[st]);
+      const name=r.page==='races'
+        ? r.division+(r.heats>1?' · '+groupWord(r.division)+' '+r.heat:'')+' · '+r.event
+        : r.division+' · '+r.event;
+      b.innerHTML='<span class="ev">EV '+String(r.no).padStart(2,'0')+'</span>'+
+        '<span class="nm">'+esc(name)+'</span>'+
+        '<span class="st">'+STATE_LABEL[st]+
+          (st==='part'?' '+countedIn(r)+'/'+expectedIn(r):'')+'</span>';
+      b.addEventListener('click',()=>{
+        curPage=r.page; yearFilter='all'; curRace=r.id; view='race';
+        render(); window.scrollTo(0,0);
+      });
+      grp.appendChild(b);
+    });
+    box.appendChild(grp);
+  });
+}
+
 function renderStand(){
   const t=tally(), ht=houseTotals();
   const scored=Object.keys(t).length;
@@ -2264,6 +2338,8 @@ function renderStand(){
       '<span class="house-pts">'+p+'</span>';
     hb.appendChild(d);
   });
+
+  renderTodo();
 
   // --- championship, viewable overall or split by year and gender ---
   const ct=champTally();
