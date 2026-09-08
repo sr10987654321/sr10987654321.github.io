@@ -689,7 +689,13 @@ const HUES={
   'Year 3 Girls':96,'Year 3 Boys':84,
   'Year 4 Girls':158,'Year 4 Boys':142,'Year 4 Other':172,
   'Year 5 Girls':204,'Year 5 Boys':192,
-  'Year 6 Girls':256,'Year 6 Boys':244
+  'Year 6 Girls':256,'Year 6 Boys':244,
+  // Tabloids and bonus events are named by year level alone, so they need their
+  // own entries — otherwise they all fall back to the default and come out blue.
+  'Pre-Primary':330,'Year 1':32,'Year 2':58,'Year 3':90,
+  'Year 4':150,'Year 5':198,'Year 6':250,
+  // bonus events all sit under "Whole school", so they key off their own names
+  'Tidiest Bay':40,'Cheering':20,'Showing the CCCs':54,'Other Awards':6
 };
 function isLight(){ return document.documentElement.getAttribute('data-theme')==='light'; }
 
@@ -727,7 +733,7 @@ function readable(h,sat,l,target){
 }
 const SPREAD=17;
 function raceColors(div,heat,heats){
-  const h=HUES[div]??210;
+  const h=HUES[div]??210;   // callers pass the event name where the division is shared
   const step=heats>1?(heat-1)/(heats-1):0;    // 1st division deepest, later ones lighter
   const light=isLight();
   const sat=light?(88-step*6):(78-step*6);
@@ -1523,7 +1529,7 @@ function renderProg(){
     else if(n>0&&n>=tot){cls='done';txt='Complete';}
     const c=document.createElement('button');
     c.className='race-card'+(ready?'':' locked');
-    applyColors(c,r.division,r.heat,r.heats);
+    applyColors(c, r.page==='bonus'?r.event:r.division, r.heat, r.heats);
     const sub = r.mode==='extra' ? (bonus.extra||[]).length+' award'+((bonus.extra||[]).length===1?'':'s')+' given'
       : (r.page==='tabloids'&&r.mode==='houses')
           ? gameTypesOf(r).length+' games · '+
@@ -1680,7 +1686,7 @@ function renderRace(){
   $('raceNo').textContent='EVENT '+String(r.no).padStart(2,'0');
   $('raceNo').className='eyebrow tinted';
   $('raceDiv').textContent=r.division;
-  applyColors($('scrRace'),r.division,r.heat,r.heats);
+  applyColors($('scrRace'), r.page==='bonus'?r.event:r.division, r.heat, r.heats);
   $('raceBanner').innerHTML='<span>'+(r.t!=null?timeLabel(r)+' · ':'')+r.event+' · '+r.division+
     (r.mode==='places' ? ''
       : r.mode==='measure' ? ' · Group '+r.heat
