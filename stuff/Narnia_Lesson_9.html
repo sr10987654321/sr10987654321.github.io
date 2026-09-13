@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Narnia Lesson 9 - Read as a Writer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800;900&display=swap');
+    :root{
+      --night:#17102f;--deep:#2d1765;--purple:#4b2c91;--violet:#7253cc;
+      --teal:#129e97;--mint:#dff8f3;--coral:#ef6683;--gold:#f4b938;
+      --cream:#fbf8f1;--paper:#fffefb;--ink:#2b2051;--muted:#6a6085;
+      --line:#ded5ef;--green:#41b883;--red:#e65c78;--blue:#4f87db;
+      --tool1:#f4c542;--tool2:#f07b73;--tool3:#34b7a7;--tool4:#6f8fdf;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;overflow:hidden;background:var(--night);font-family:Nunito,Aptos,sans-serif;color:var(--ink)}
+    button{font:inherit;-webkit-tap-highlight-color:transparent}
+    #deck{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 64px;gap:10px;padding:12px}
+    .screen{width:min(100%,calc((100vh - 98px)*16/9));aspect-ratio:16/9;margin:auto;position:relative;overflow:hidden;border-radius:22px;background:var(--cream);box-shadow:0 28px 90px #000b,0 0 0 3px #9b80e555}
+    .slide{display:none;position:absolute;inset:0;overflow:hidden;background:linear-gradient(145deg,#fcf9f3,#eefbfa)}
+    .slide.active{display:block}
+    .slide:before,.slide:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+    .slide:before{width:310px;height:310px;right:-155px;top:-160px;background:#8468dd18}
+    .slide:after{width:250px;height:250px;left:-130px;bottom:-140px;background:#20bdb21b}
+    .content{position:absolute;inset:0;padding:4.4% 5.3% 4.1%;z-index:2}
+    .chapter{position:absolute;right:4.5%;top:4%;z-index:4;padding:.5em .85em;border-radius:999px;background:#fff;color:#735caa;font-size:clamp(9px,.72vw,12px);font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 5px 16px #5039881a}
+    .folio{position:absolute;right:3.4%;bottom:2.7%;z-index:4;color:#786b9b;font-size:clamp(9px,.72vw,12px);font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    .eyebrow{display:inline-flex;align-items:center;gap:.5em;padding:.47em .85em;border-radius:999px;background:var(--violet);box-shadow:0 5px 0 #40227f;color:white;font-size:clamp(10px,.88vw,15px);font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+    .eyebrow.gold{background:var(--gold);box-shadow:0 5px 0 #b97511;color:var(--deep)}
+    h1,h2,h3{font-family:Fredoka,Nunito,sans-serif}
+    h1{font-size:clamp(38px,4.05vw,70px);line-height:1;letter-spacing:-.035em;color:var(--deep);margin:.28em 0 .22em}
+    h2{color:var(--purple)}
+    .lead{max-width:91%;font-size:clamp(16px,1.42vw,25px);line-height:1.4;color:var(--muted);font-weight:700}
+    .rule{height:7px;width:64%;margin:1.5% 0 2.4%;border-radius:9px;background:linear-gradient(90deg,var(--coral),var(--gold),var(--teal),transparent)}
+
+    /* Cover */
+    .hero{background:radial-gradient(circle at 73% 20%,#ffe99b 0 2px,transparent 3px) 0 0/74px 74px,linear-gradient(135deg,#351b72 0 58%,#181037 58%)}
+    .hero:before{width:460px;height:460px;right:-80px;top:-120px;background:radial-gradient(circle,#43d7c755 0 4%,transparent 4.5% 100%);filter:blur(2px)}
+    .hero:after{display:none}
+    .hero-copy{position:absolute;left:6.3%;top:11%;width:58%;z-index:3}
+    .hero h1{color:white;font-size:clamp(54px,6.15vw,104px);line-height:.91;text-shadow:0 6px 0 #140a34;margin:.28em 0}
+    .hero p{max-width:88%;color:#eee9ff;font-size:clamp(17px,1.52vw,26px);line-height:1.4;font-weight:800}
+    .hero .tool{margin-top:5.4%;color:#ffe58c;font-size:clamp(14px,1.12vw,20px);font-weight:900}
+    .scroll{position:absolute;right:7%;top:12%;width:27%;height:70%;z-index:2;transform:rotate(3deg);border-radius:15px;background:linear-gradient(90deg,#e0c28b,#fff5cf 12% 88%,#d2af72);box-shadow:0 22px 0 #0c0825,0 0 50px #75e4d451;padding:11% 3% 5%;border:7px solid #d9ac5f}
+    .scroll:before,.scroll:after{content:"";position:absolute;left:-7%;width:114%;height:12%;border-radius:50%;background:linear-gradient(#7e461f,#cf843b 42%,#754019 46%,#d18a42);box-shadow:0 7px 10px #2a153a55}
+    .scroll:before{top:-5%}.scroll:after{bottom:-5%}
+    .scroll-lines{height:100%;background:repeating-linear-gradient(transparent 0 8%,#775f8b30 8% 8.7%);position:relative}
+    .quill{position:absolute;right:4.5%;bottom:6%;width:31%;height:58%;z-index:4;transform:rotate(22deg);filter:drop-shadow(0 12px 8px #14082788)}
+    .quill:before{content:"";position:absolute;left:45%;top:0;width:23%;height:86%;border-radius:90% 8% 90% 10%;background:linear-gradient(90deg,#30c9bb,#e4fff9 52%,#168b85);clip-path:polygon(49% 0,100% 12%,67% 55%,54% 100%,42% 56%,0 19%)}
+    .quill:after{content:"";position:absolute;left:53%;top:45%;width:5%;height:58%;border-radius:5px;background:#f5d480;transform:rotate(2deg);transform-origin:top}
+
+    /* Goals */
+    .goal{display:grid;grid-template-columns:31% 1fr;gap:5%;height:72%;align-items:center}
+    .lesson-number{font-family:Fredoka;font-size:clamp(185px,23vw,365px);line-height:.7;color:var(--gold);text-shadow:9px 10px 0 var(--coral),-7px -7px 0 var(--teal);text-align:center;transform:rotate(-3deg)}
+    .goal-card{background:#fff;border-radius:28px;padding:4.2% 5%;box-shadow:0 14px 0 #ddd2f5}
+    .goal-card h2{font-size:clamp(22px,2.15vw,37px);line-height:1.15;margin:0 0 .6em}
+    .checkline{display:grid;grid-template-columns:31px 1fr;align-items:center;gap:12px;margin:.68em 0;font-size:clamp(14px,1.17vw,20px);font-weight:700}
+    .checkline i{display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:var(--teal);box-shadow:0 4px 0 #0f7772;color:#fff;font-style:normal;font-weight:900}
+    .checkline:nth-child(even) i{background:var(--gold);box-shadow:0 4px 0 #ba7710;color:var(--deep)}
+
+    /* Toolkit cards and key */
+    .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px;margin-top:2.5%}
+    .tool-card{position:relative;display:grid;grid-template-columns:68px 1fr;gap:16px;align-items:center;min-height:158px;padding:18px 22px;border-radius:22px;background:#fff;box-shadow:0 9px 0 #dbcff3;overflow:hidden}
+    .tool-card:after{content:"";position:absolute;inset:auto 0 0;height:8px;background:var(--tool-colour)}
+    .tool-card[data-tool="1"]{--tool-colour:var(--tool1)}.tool-card[data-tool="2"]{--tool-colour:var(--tool2)}.tool-card[data-tool="3"]{--tool-colour:var(--tool3)}.tool-card[data-tool="4"]{--tool-colour:var(--tool4)}
+    .tool-number{display:grid;place-items:center;width:61px;height:61px;border-radius:19px;background:var(--tool-colour);color:#27194f;font-family:Fredoka;font-size:33px;box-shadow:0 5px 0 #3d286b44}
+    .tool-card h2{font-size:clamp(21px,1.65vw,29px);line-height:1.06;margin:0 0 .24em;color:var(--deep)}
+    .tool-card p{font-size:clamp(13px,1vw,17px);line-height:1.3;color:var(--muted);font-weight:800;margin:0}
+    .key-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:3%}
+    .key{min-height:117px;border-radius:19px;background:#fff;padding:17px 18px 15px;border-bottom:9px solid var(--tool-colour);box-shadow:0 6px 18px #49337718}
+    .key[data-tool="1"]{--tool-colour:var(--tool1)}.key[data-tool="2"]{--tool-colour:var(--tool2)}.key[data-tool="3"]{--tool-colour:var(--tool3)}.key[data-tool="4"]{--tool-colour:var(--tool4)}
+    .key strong{font-family:Fredoka;font-size:clamp(18px,1.45vw,25px);color:var(--deep)}
+    .key span{display:block;margin-top:.34em;color:var(--muted);font-size:clamp(12px,.93vw,16px);line-height:1.25;font-weight:800}
+    .key .swatch{display:inline-block;width:18px;height:18px;border-radius:5px;margin-right:8px;vertical-align:-2px;background:var(--tool-colour)}
+    .link-menu{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:3%}
+    .link-group{min-height:230px;padding:21px 23px;border-radius:22px;background:#fff;border-bottom:10px solid var(--tool4);box-shadow:0 9px 0 #d9cff2}
+    .link-group h2{font-size:clamp(22px,1.7vw,30px);margin:.05em 0 .55em}.link-group p{font-size:clamp(15px,1.14vw,20px);line-height:1.48;color:var(--muted);font-weight:900;margin:0}
+    .link-group strong{display:inline-block;margin:.16em .08em;padding:.22em .48em;border-radius:8px;background:#e7edfc;color:#3d5da5}
+
+    /* Warm-up */
+    .spot-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:2.4%}
+    .spot-card{min-height:153px;padding:20px 22px;border-radius:21px;background:#fff;box-shadow:0 8px 0 #d9cff2;font-size:clamp(16px,1.25vw,22px);line-height:1.36;font-weight:800;position:relative}
+    .spot-card .answer-note{display:none;margin-top:.65em;color:#4a367e;font-size:.78em;font-weight:900}
+    .answers-on .spot-card .answer-note{display:block}
+    .spot-card .mini{position:absolute;right:13px;top:12px;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#eee9f9;color:#7a65ad;font-size:13px;font-weight:900}
+
+    /* Model text */
+    .reading-slide{background:linear-gradient(145deg,#f9f4ff,#e9fbfa)}
+    .reading-head{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .reading-part{color:#765dac;font-size:clamp(13px,1vw,17px);font-weight:900}
+    .reading-page{margin-top:2.1%;padding:3.1% 4%;border-radius:25px;background:#fff;box-shadow:0 13px 0 #d9cff2;font-size:clamp(20px,1.65vw,29px);line-height:1.57;color:#34285d}
+    .reading-page.dense{font-size:clamp(17px,1.34vw,23px);line-height:1.53}
+    .reading-page p{margin:0}.reading-page p+p{margin-top:.72em}
+    .writer-focus{display:flex;align-items:center;gap:13px;margin-top:1.8%;font-size:clamp(13px,1.01vw,18px);font-weight:900;color:var(--muted)}
+    .writer-focus:before{content:"✦";display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--gold);box-shadow:0 4px 0 #b87310;color:var(--deep);font-family:Fredoka;font-size:21px;flex:none}
+    .toolmark{border-radius:.25em;padding:.02em .09em;box-decoration-break:clone;-webkit-box-decoration-break:clone;transition:.18s background-color}
+    .answers-on .toolmark.t1{background:#f4c542a8}.answers-on .toolmark.t2{background:#f07b739e}.answers-on .toolmark.t3{background:#34b7a795}.answers-on .toolmark.t4{background:#6f8fdf8f}
+    .legend{display:flex;flex-wrap:wrap;gap:9px 14px;margin-top:1.5%;font-size:clamp(11px,.85vw,15px);font-weight:900;color:var(--muted)}
+    .legend span{display:flex;align-items:center;gap:6px}.legend i{width:15px;height:15px;border-radius:4px;background:var(--c);box-shadow:0 2px 0 #3d286b33}
+
+    /* Tap sorter */
+    .sorter{display:grid;grid-template-columns:43% 1fr;gap:24px;margin-top:2.2%;align-items:start}
+    .phrase-bank,.category-bank{padding:17px;border-radius:22px;background:#ffffffad;border:3px dashed #bba9e7}
+    .category-bank{border-color:#77d7ce}
+    .phrase-bank h2,.category-bank h2{text-align:center;margin:.05em 0 .55em;font-size:clamp(18px,1.45vw,25px)}
+    .phrase-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .phrase{min-height:55px;padding:10px 12px;border:3px solid transparent;border-radius:13px;background:#fff;color:var(--ink);font-size:clamp(12px,.92vw,16px);line-height:1.18;font-weight:900;cursor:pointer;box-shadow:0 5px 0 #d9cff2}
+    .phrase.selected{border-color:var(--gold);transform:translateY(-2px)}
+    .phrase[data-chosen="1"]{border-color:var(--tool1)}.phrase[data-chosen="2"]{border-color:var(--tool2)}.phrase[data-chosen="3"]{border-color:var(--tool3)}.phrase[data-chosen="4"]{border-color:var(--tool4)}
+    .phrase.correct{background:#e2f7eb;border-color:var(--green)}.phrase.wrong{background:#fff0f3;border-color:var(--red)}
+    .answers-on .phrase[data-correct="1"]{background:#fdf4c8;border-color:var(--tool1)}
+    .answers-on .phrase[data-correct="2"]{background:#fde2df;border-color:var(--tool2)}
+    .answers-on .phrase[data-correct="3"]{background:#dff7f3;border-color:var(--tool3)}
+    .answers-on .phrase[data-correct="4"]{background:#e6ecfb;border-color:var(--tool4)}
+    .category-list{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+    .category{min-height:83px;padding:12px;border:0;border-radius:15px;color:var(--deep);font-weight:900;cursor:pointer;background:color-mix(in srgb,var(--tool-colour) 28%,white);border-bottom:7px solid var(--tool-colour)}
+    .category[data-tool="1"]{--tool-colour:var(--tool1)}.category[data-tool="2"]{--tool-colour:var(--tool2)}.category[data-tool="3"]{--tool-colour:var(--tool3)}.category[data-tool="4"]{--tool-colour:var(--tool4)}
+    .sort-actions{display:flex;justify-content:center;gap:11px;margin-top:14px}.sort-actions button{border:0;border-radius:11px;padding:10px 17px;background:var(--purple);color:#fff;font-weight:900;cursor:pointer}.sort-actions button:last-child{background:#8c7aa8}
+    .sort-status{text-align:center;margin-top:10px;min-height:25px;color:var(--purple);font-weight:900;font-size:clamp(12px,.92vw,16px)}
+
+    /* Impact matching and independent task */
+    .impact-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:2.5%}
+    .impact{display:grid;grid-template-columns:54px 1fr;gap:15px;align-items:center;min-height:134px;padding:18px 21px;border-radius:20px;background:#fff;box-shadow:0 8px 0 #d9cff2}
+    .impact:nth-child(2){box-shadow:0 8px 0 #f4beb9}.impact:nth-child(3){box-shadow:0 8px 0 #8cddd3}.impact:nth-child(4){box-shadow:0 8px 0 #b9c8f1}
+    .impact b{display:grid;place-items:center;width:50px;height:50px;border-radius:15px;background:var(--tool-colour);font-family:Fredoka;font-size:27px;color:var(--deep)}
+    .impact[data-tool="1"]{--tool-colour:var(--tool1)}.impact[data-tool="2"]{--tool-colour:var(--tool2)}.impact[data-tool="3"]{--tool-colour:var(--tool3)}.impact[data-tool="4"]{--tool-colour:var(--tool4)}
+    .impact strong{display:block;color:var(--purple);font-size:clamp(16px,1.2vw,21px)}.impact span{color:var(--muted);font-size:clamp(13px,.98vw,17px);line-height:1.3;font-weight:800}
+    .task-board{display:grid;grid-template-columns:1fr 37%;gap:4%;align-items:stretch;margin-top:2.5%;height:61%}
+    .task-main{padding:25px 28px;border-radius:25px;background:#fff;box-shadow:0 12px 0 #d9cff2}
+    .task-main h2{font-size:clamp(24px,2vw,35px);margin:.05em 0 .55em}.task-main ol{margin:.2em 0 0;padding-left:1.35em}.task-main li{margin:.65em 0;font-size:clamp(16px,1.26vw,22px);line-height:1.33;font-weight:800;color:var(--muted)}
+    .task-side{padding:23px;border-radius:25px;background:var(--deep);box-shadow:0 12px 0 #12092f;color:#fff}
+    .task-side h2{color:#ffe58c;font-size:clamp(21px,1.7vw,30px);margin:.05em 0 .6em}.task-side p{font-size:clamp(14px,1.08vw,19px);line-height:1.4;font-weight:800}.task-side strong{color:#73eadf}
+    .review-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-top:3%}
+    .review-card{min-height:245px;padding:20px;border-radius:22px;background:#fff;border-bottom:10px solid var(--tool-colour);box-shadow:0 9px 0 #d9cff2}
+    .review-card[data-tool="1"]{--tool-colour:var(--tool1)}.review-card[data-tool="2"]{--tool-colour:var(--tool2)}.review-card[data-tool="3"]{--tool-colour:var(--tool3)}.review-card[data-tool="4"]{--tool-colour:var(--tool4)}
+    .review-card h2{font-size:clamp(20px,1.55vw,27px);margin:.1em 0 .45em}.review-card p{font-size:clamp(13px,1vw,17px);line-height:1.34;color:var(--muted);font-weight:800}.review-card .example{display:none;margin-top:.7em;padding:.6em;border-radius:10px;background:#f5f2fb;color:var(--purple);font-weight:900}.answers-on .review-card .example{display:block}
+    .exit-board{display:grid;grid-template-columns:40% 1fr;gap:4%;align-items:center;height:70%}
+    .exit-prompt{padding:25px;border-radius:24px;background:var(--deep);box-shadow:0 12px 0 #12092f;color:#fff}
+    .exit-prompt h2{color:#ffe58c;font-size:clamp(24px,2vw,35px);margin:.1em 0 .5em}.exit-prompt p{font-size:clamp(16px,1.23vw,21px);line-height:1.4;font-weight:800}
+    .write-area{height:86%;border:5px dashed #9f8ad5;border-radius:26px;background:#fff;padding:24px;font-size:clamp(18px,1.5vw,26px);color:#9889b7;font-weight:800}
+
+    /* Controls and ink */
+    .controls{display:flex;align-items:center;gap:9px;padding:0 10px;border-radius:16px;background:#26164d;box-shadow:0 10px 30px #0005}
+    .controls button{height:43px;padding:0 15px;border:0;border-radius:11px;background:#47307c;color:#fff;font-weight:900;cursor:pointer;white-space:nowrap}
+    .controls button:hover{background:#5f43a1}.controls button.primary{background:var(--teal);box-shadow:0 4px 0 #0e716c}.controls button.active{background:var(--gold);color:var(--deep);box-shadow:0 4px 0 #b6740f}.controls button:disabled{opacity:.35;cursor:default}
+    .progress{height:9px;flex:1;min-width:70px;border-radius:9px;background:#4b3676;overflow:hidden}.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--coral),var(--gold),var(--teal));transition:.18s width}
+    .count{min-width:58px;color:#e9e2ff;font-weight:900;text-align:center}.answer-status{color:#ffdf7f;font-size:11px;font-weight:900;letter-spacing:.08em;min-width:66px;text-align:center}
+    #ink{position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;touch-action:none}.ink-on #ink{pointer-events:auto;cursor:crosshair}.ink-on .screen{box-shadow:0 0 0 5px var(--coral),0 28px 90px #000b}
+    .ink-tool{display:none}.ink-on .ink-tool{display:block}.ink-status{display:none;color:#ff9bb1;font-size:11px;font-weight:900}.ink-on .ink-status{display:block}
+    @media(max-width:900px){#deck{grid-template-rows:minmax(0,1fr) 58px;padding:8px}.controls{gap:5px;padding:0 6px}.controls button{padding:0 9px;font-size:11px}.tool-grid{gap:10px}.tool-card{min-height:137px;padding:13px}.spot-grid{gap:10px}.spot-card{min-height:133px;padding:14px}.phrase-list,.category-list{gap:7px}.phrase{min-height:47px;padding:7px}.category{min-height:70px;padding:7px}.impact-grid{gap:9px}.impact{min-height:115px;padding:13px}.review-grid{gap:9px}.review-card{min-height:215px;padding:14px}}
+  </style>
+</head>
+<body>
+<main id="deck">
+  <div class="screen" id="screen" aria-live="polite">
+
+    <section class="slide hero active">
+      <div class="hero-copy">
+        <div class="eyebrow gold">Lesson 9 · Read as a Writer</div>
+        <h1>Follow the<br>writer's magic.</h1>
+        <p>The Narnia text did not become clear and convincing by accident. Today we uncover the tools behind it.</p>
+        <div class="tool">spot it · name it · explain its effect</div>
+      </div>
+      <div class="scroll" aria-hidden="true"><div class="scroll-lines"></div></div><div class="quill" aria-hidden="true"></div>
+      <div class="folio" style="color:#d9ceff">Narnia · 01</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Today's mission</div>
+      <div class="content">
+        <div class="eyebrow">Learning intention</div>
+        <h1>I will highlight the tools in the text.</h1>
+        <div class="rule"></div>
+        <div class="goal">
+          <div class="lesson-number">9</div>
+          <div class="goal-card">
+            <h2>We are learning to read the Narnia text as writers.</h2>
+            <div class="checkline"><i>✓</i><span>Find examples of all four toolkits.</span></div>
+            <div class="checkline"><i>✓</i><span>Use the correct toolkit name.</span></div>
+            <div class="checkline"><i>✓</i><span>Explain how an example helps the reader.</span></div>
+            <div class="checkline"><i>✓</i><span>Highlight only the words that do the job.</span></div>
+          </div>
+        </div>
+      </div><div class="folio">Narnia · 02</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Writer toolkit</div>
+      <div class="content">
+        <div class="eyebrow">Four ways to build information</div><h1>What tools did the writer use?</h1>
+        <div class="tool-grid">
+          <div class="tool-card" data-tool="1"><div class="tool-number">1</div><div><h2>Explain how many, often or much</h2><p>Use a full range of generalisers.</p></div></div>
+          <div class="tool-card" data-tool="2"><div class="tool-number">2</div><div><h2>Add on more facts</h2><p>Use adding-on words and conjunctions.</p></div></div>
+          <div class="tool-card" data-tool="3"><div class="tool-number">3</div><div><h2>Sound like an expert</h2><p>Use technical language and proper nouns.</p></div></div>
+          <div class="tool-card" data-tool="4"><div class="tool-number">4</div><div><h2>Create links between facts</h2><p>Show comparison, cause and effect, or add related information.</p></div></div>
+        </div>
+      </div><div class="folio">Narnia · 03</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Highlighting key</div>
+      <div class="content">
+        <div class="eyebrow">One colour for each toolkit</div><h1>Keep the highlighting precise.</h1>
+        <p class="lead">Highlight the smallest useful phrase. A whole sentence rarely needs one colour.</p>
+        <div class="key-row">
+          <div class="key" data-tool="1"><strong><i class="swatch"></i>Generalisers</strong><span>predominantly, a vast majority, typically</span></div>
+          <div class="key" data-tool="2"><strong><i class="swatch"></i>Adding on</strong><span>also, additionally</span></div>
+          <div class="key" data-tool="3"><strong><i class="swatch"></i>Expert words</strong><span>precise terms and named places</span></div>
+          <div class="key" data-tool="4"><strong><i class="swatch"></i>Linking facts</strong><span>as a result, such as, with the exception of</span></div>
+        </div>
+        <div class="writer-focus">Some words can do more than one job. Choose the job they are doing in that sentence.</div>
+      </div><div class="folio">Narnia · 04</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Toolkit 4 word bank</div>
+      <div class="content">
+        <div class="eyebrow">Different links for different jobs</div><h1>How should these facts connect?</h1>
+        <div class="link-menu">
+          <div class="link-group"><h2>Compare</h2><p><strong>like</strong> <strong>equally</strong> <strong>in contrast</strong> <strong>similarly</strong> <strong>unlike</strong> <strong>by comparison</strong></p></div>
+          <div class="link-group"><h2>Cause and effect</h2><p><strong>as a result</strong> <strong>consequently</strong> <strong>this leads to</strong> <strong>therefore</strong></p></div>
+          <div class="link-group"><h2>Add information</h2><p><strong>moreover</strong> <strong>in addition</strong> <strong>furthermore</strong></p></div>
+        </div>
+        <div class="writer-focus">The writer chooses a linking phrase that shows the exact relationship between the facts.</div>
+      </div><div class="folio">Narnia · 05</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Warm-up</div>
+      <div class="content">
+        <div class="eyebrow">Name the toolkit</div><h1>Which writer tool is at work?</h1>
+        <div class="spot-grid">
+          <div class="spot-card"><span class="mini">1</span>“A <strong>vast majority</strong> of animals...”<div class="answer-note">Toolkit 1: generaliser</div></div>
+          <div class="spot-card"><span class="mini">2</span>“<strong>Furthermore</strong>, the foods served included...”<div class="answer-note">Toolkit 4: linking facts by adding information</div></div>
+          <div class="spot-card"><span class="mini">3</span>“...the <strong>Great River of Narnia</strong>...”<div class="answer-note">Toolkit 3: proper noun</div></div>
+          <div class="spot-card"><span class="mini">4</span>“<strong>As a result</strong>, your Earth friends...”<div class="answer-note">Toolkit 4: cause and effect link</div></div>
+        </div>
+        <div class="writer-focus">Say the toolkit name and explain how you know. Press A to check.</div>
+      </div><div class="folio">Narnia · 06</div>
+    </section>
+
+    <section class="slide reading-slide">
+      <div class="content">
+        <div class="reading-head"><div class="eyebrow">Model together</div><div class="reading-part">Introduction and landscape</div></div>
+        <h1>The Kingdom of Narnia</h1>
+        <div class="reading-page dense"><p>The <span class="toolmark t3">Kingdom of Narnia</span> is a <span class="toolmark t3">fantasy world</span> home to lions, witches and wardrobes. Narnia's landscape is a mix of rolling rugged hills and low mountains. It is formed from <span class="toolmark t1">predominantly</span> <span class="toolmark t3">dense forest</span> <span class="toolmark t4">with the exception of</span> the <span class="toolmark t3">flooded wetlands</span> to the north.</p><p><span class="toolmark t3">Geographically</span>, the country centres around the <span class="toolmark t3">Great River of Narnia</span> and bordered on the west by an <span class="toolmark t3">uninhabited mountain range</span> known as <span class="toolmark t3">The Western Wild</span> and the <span class="toolmark t3">River Shribble</span>, with the country of <span class="toolmark t3">Archenland</span> to the south.</p></div>
+        <div class="legend"><span><i style="--c:var(--tool1)"></i>Toolkit 1</span><span><i style="--c:var(--tool2)"></i>Toolkit 2</span><span><i style="--c:var(--tool3)"></i>Toolkit 3</span><span><i style="--c:var(--tool4)"></i>Toolkit 4</span></div>
+        <div class="writer-focus">Find one example first. Then press A to compare with the suggested highlighting.</div>
+      </div><div class="folio">Narnia · 07</div>
+    </section>
+
+    <section class="slide reading-slide">
+      <div class="content">
+        <div class="reading-head"><div class="eyebrow">Guided highlighting</div><div class="reading-part">Celebrations</div></div>
+        <h1>Feasting at Cair Paravel</h1>
+        <div class="reading-page dense"><p>Narnians take pride in hosting <span class="toolmark t3">lavish, celebratory feasts</span>. The one true king of Narnia, <span class="toolmark t3">Aslan</span>, hosts such banquets to celebrate the arrival of human visitors. Interestingly, the celebration at <span class="toolmark t3">Cair Paravel</span>, saw the dining hall ceremoniously decorated with <span class="toolmark t3">candelabras, garlands and nature-inspired décor</span>.</p><p><span class="toolmark t4">Furthermore</span>, the foods served included soups, venison, pies, toffees, <span class="toolmark t3">Turkish Delight</span>, and <span class="toolmark t1">many kinds of tea</span>. <span class="toolmark t4">Following dinner</span>, attendees could partake in a traditional game called ‘<span class="toolmark t3">Hunt the Slipper</span>’.</p></div>
+        <div class="legend"><span><i style="--c:var(--tool1)"></i>Toolkit 1</span><span><i style="--c:var(--tool2)"></i>Toolkit 2</span><span><i style="--c:var(--tool3)"></i>Toolkit 3</span><span><i style="--c:var(--tool4)"></i>Toolkit 4</span></div>
+        <div class="writer-focus">Which toolkit helps the writer make the feast sound authentic?</div>
+      </div><div class="folio">Narnia · 08</div>
+    </section>
+
+    <section class="slide reading-slide">
+      <div class="content">
+        <div class="reading-head"><div class="eyebrow">Guided highlighting</div><div class="reading-part">Wildlife</div></div>
+        <h1>Ordinary and extraordinary creatures</h1>
+        <div class="reading-page dense"><p>Narnia is well known for its <span class="toolmark t3">abundant wildlife</span>. <span class="toolmark t1">A vast majority</span> of animals commonly found in England are <span class="toolmark t2">also</span> located in Narnia, <span class="toolmark t4">such as</span> badgers, beavers and foxes.</p><p><span class="toolmark t2">Additionally</span>, you may be lucky enough to spot a <span class="toolmark t3">gryphon</span> or even a <span class="toolmark t3">minotaur</span> in the snow-covered forests. <span class="toolmark t4">Furthermore</span>, there is nothing quite like experiencing the wonder of watching a rare <span class="toolmark t3">phoenix</span> fly across a moonlit sky.</p></div>
+        <div class="legend"><span><i style="--c:var(--tool1)"></i>Toolkit 1</span><span><i style="--c:var(--tool2)"></i>Toolkit 2</span><span><i style="--c:var(--tool3)"></i>Toolkit 3</span><span><i style="--c:var(--tool4)"></i>Toolkit 4</span></div>
+        <div class="writer-focus">How do the adding-on words help this paragraph grow?</div>
+      </div><div class="folio">Narnia · 09</div>
+    </section>
+
+    <section class="slide reading-slide">
+      <div class="content">
+        <div class="reading-head"><div class="eyebrow">Guided highlighting</div><div class="reading-part">Conclusion</div></div>
+        <h1>A secret of Narnian time</h1>
+        <div class="reading-page"><p>A trip to Narnia <span class="toolmark t1">typically</span> lasts longer than the <span class="toolmark t3">corresponding period</span> of their absence from Earth, and visitors to Narnia will experience this incredible <span class="toolmark t3">phenomenon</span>.</p><p><span class="toolmark t4">As a result</span>, your Earth friends and family may not even notice that you have disappeared into a wardrobe!</p></div>
+        <div class="legend"><span><i style="--c:var(--tool1)"></i>Toolkit 1</span><span><i style="--c:var(--tool2)"></i>Toolkit 2</span><span><i style="--c:var(--tool3)"></i>Toolkit 3</span><span><i style="--c:var(--tool4)"></i>Toolkit 4</span></div>
+        <div class="writer-focus">What two ideas does “As a result” connect?</div>
+      </div><div class="folio">Narnia · 10</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Touch-friendly sorter</div>
+      <div class="content">
+        <div class="eyebrow">Tap a phrase, then tap its toolkit</div><h1>Sort the writer's choices.</h1>
+        <div class="sorter" id="sorter">
+          <div class="phrase-bank"><h2>Phrases from the text</h2><div class="phrase-list">
+            <button class="phrase" data-correct="1">predominantly</button>
+            <button class="phrase" data-correct="4">furthermore</button>
+            <button class="phrase" data-correct="3">Cair Paravel</button>
+            <button class="phrase" data-correct="4">as a result</button>
+            <button class="phrase" data-correct="1">a vast majority</button>
+            <button class="phrase" data-correct="3">candelabras</button>
+            <button class="phrase" data-correct="2">additionally</button>
+            <button class="phrase" data-correct="4">such as</button>
+          </div></div>
+          <div class="category-bank"><h2>Toolkit</h2><div class="category-list">
+            <button class="category" data-tool="1">1<br>Generalisers</button>
+            <button class="category" data-tool="2">2<br>Adding on</button>
+            <button class="category" data-tool="3">3<br>Expert words</button>
+            <button class="category" data-tool="4">4<br>Linking facts</button>
+          </div><div class="sort-actions"><button id="checkSort">Check</button><button id="resetSort">Reset</button></div><div class="sort-status" id="sortStatus">Select a phrase to begin.</div></div>
+        </div>
+      </div><div class="folio">Narnia · 11</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">The effect on the reader</div>
+      <div class="content">
+        <div class="eyebrow">Go beyond spotting</div><h1>What does each toolkit help the writer do?</h1>
+        <div class="impact-grid">
+          <div class="impact" data-tool="1"><b>1</b><div><strong>Make claims accurate</strong><span>Generalisers show whether something happens always, often or only sometimes.</span></div></div>
+          <div class="impact" data-tool="2"><b>2</b><div><strong>Grow the information</strong><span>Adding-on words signal that another related fact is coming.</span></div></div>
+          <div class="impact" data-tool="3"><b>3</b><div><strong>Build authority</strong><span>Precise terms and proper nouns make the writer sound knowledgeable.</span></div></div>
+          <div class="impact" data-tool="4"><b>4</b><div><strong>Make relationships clear</strong><span>Linking words show how one fact connects with another.</span></div></div>
+        </div>
+      </div><div class="folio">Narnia · 12</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Independent task</div>
+      <div class="content">
+        <div class="eyebrow">Read as a writer</div><h1>Highlight the model text.</h1>
+        <div class="task-board">
+          <div class="task-main"><h2>In your copy of “The Kingdom of Narnia”</h2><ol>
+            <li>Find and highlight at least two examples of each toolkit.</li>
+            <li>Use the four colours from our class key.</li>
+            <li>Choose one example and explain how it helps the reader.</li>
+          </ol></div>
+          <div class="task-side"><h2>Be precise</h2><p>Highlight the <strong>word or phrase</strong> that performs the job.</p><p>Do not colour an entire paragraph just because it contains one useful word.</p><p><strong>Challenge:</strong> find an example that could belong to two toolkits. Defend your choice.</p></div>
+        </div>
+      </div><div class="folio">Narnia · 13</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Class check</div>
+      <div class="content">
+        <div class="eyebrow">Press A for suggested examples</div><h1>Have we found all four toolkits?</h1>
+        <div class="review-grid">
+          <div class="review-card" data-tool="1"><h2>1 · Generalisers</h2><p>Words that show how many, how often or how much.</p><div class="example">predominantly<br>a vast majority<br>typically</div></div>
+          <div class="review-card" data-tool="2"><h2>2 · Adding on</h2><p>Words that introduce another related fact.</p><div class="example">also<br>additionally</div></div>
+          <div class="review-card" data-tool="3"><h2>3 · Expert words</h2><p>Precise vocabulary and proper nouns.</p><div class="example">flooded wetlands<br>Cair Paravel<br>phenomenon</div></div>
+          <div class="review-card" data-tool="4"><h2>4 · Linking facts</h2><p>Words that show the relationship between ideas.</p><div class="example">furthermore<br>such as<br>as a result</div></div>
+        </div>
+      </div><div class="folio">Narnia · 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Exit ticket</div>
+      <div class="content">
+        <div class="eyebrow">Write with your finger or discuss</div><h1>One final writer's choice.</h1>
+        <div class="exit-board">
+          <div class="exit-prompt"><h2>Choose one highlighted example</h2><p>Name the toolkit, then explain how that word or phrase helps the reader.</p><p><strong>Sentence stem:</strong><br>The writer uses ______. This helps the reader because ______.</p></div>
+          <div class="write-area">Write or annotate here...</div>
+        </div>
+      </div><div class="folio">Narnia · 15</div>
+    </section>
+
+    <canvas id="ink" aria-label="Finger and stylus drawing layer"></canvas>
+  </div>
+  <nav class="controls" aria-label="Slide controls">
+    <button id="prev">← Back</button>
+    <div class="progress"><span id="bar"></span></div>
+    <span class="count"><span id="now">1</span> / 15</span>
+    <button id="next" class="primary">Next →</button>
+    <button id="answers">A · Answers</button><span class="answer-status" id="answerStatus">HIDDEN</span>
+    <button id="draw">✏ Write</button><button id="erase" class="ink-tool">Eraser</button><button id="clearInk" class="ink-tool">Clear ink</button><span class="ink-status" id="inkStatus">PEN</span>
+    <button id="full">⛶ Full screen</button>
+  </nav>
+</main>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const deck=document.getElementById('deck'),screen=document.getElementById('screen');
+  const now=document.getElementById('now'),bar=document.getElementById('bar');
+  const prev=document.getElementById('prev'),next=document.getElementById('next'),full=document.getElementById('full');
+  let index=0,answerMode=false;
+  function basicShow(n){
+    index=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((slide,i)=>slide.classList.toggle('active',i===index));
+    now.textContent=index+1;bar.style.width=((index+1)/slides.length*100)+'%';
+    prev.disabled=index===0;next.disabled=index===slides.length-1;
+  }
+  function show(n){saveInk();if(n!==index&&answerMode)toggleAnswers(false);basicShow(n);loadInk()}
+  prev.onclick=()=>show(index-1);next.onclick=()=>show(index+1);
+  full.onclick=async()=>{
+    if(!document.fullscreenElement){
+      const target=document.documentElement;
+      if(target.requestFullscreen)await target.requestFullscreen();
+      else if(target.webkitRequestFullscreen)target.webkitRequestFullscreen();
+    }else if(document.exitFullscreen){await document.exitFullscreen()}
+  };
+  const answers=document.getElementById('answers'),answerStatus=document.getElementById('answerStatus');
+  function toggleAnswers(force){
+    answerMode=typeof force==='boolean'?force:!answerMode;
+    deck.classList.toggle('answers-on',answerMode);answers.classList.toggle('active',answerMode);
+    answerStatus.textContent=answerMode?'SHOWING':'HIDDEN';
+  }
+  answers.onclick=()=>toggleAnswers();
+  document.addEventListener('keydown',e=>{
+    if(e.repeat)return;
+    if(e.target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;
+    const forward=['ArrowRight','ArrowDown','PageDown',' ','Enter','MediaTrackNext'];
+    const back=['ArrowLeft','ArrowUp','PageUp','Backspace','MediaTrackPrevious'];
+    if(forward.includes(e.key)){e.preventDefault();show(index+1);return}
+    if(back.includes(e.key)){e.preventDefault();show(index-1);return}
+    if(e.key==='Home'){e.preventDefault();show(0)}
+    if(e.key==='End'){e.preventDefault();show(slides.length-1)}
+    if(e.key.toLowerCase()==='a'){e.preventDefault();toggleAnswers()}
+    if(e.key.toLowerCase()==='f'){e.preventDefault();full.click()}
+  });
+
+  /* Tap sorter: no dragging, so it works equally well with touch or mouse. */
+  const sorter=document.getElementById('sorter'),sortStatus=document.getElementById('sortStatus');
+  let selectedPhrase=null;
+  sorter.querySelectorAll('.phrase').forEach(phrase=>phrase.onclick=()=>{
+    if(selectedPhrase)selectedPhrase.classList.remove('selected');
+    selectedPhrase=phrase;phrase.classList.add('selected');
+    sortStatus.textContent='Now tap the toolkit for “'+phrase.textContent+'”.';
+  });
+  sorter.querySelectorAll('.category').forEach(category=>category.onclick=()=>{
+    if(!selectedPhrase){sortStatus.textContent='Choose a phrase first.';return}
+    selectedPhrase.dataset.chosen=category.dataset.tool;
+    selectedPhrase.classList.remove('selected','correct','wrong');
+    sortStatus.textContent='Placed. Choose the next phrase.';selectedPhrase=null;
+  });
+  document.getElementById('checkSort').onclick=()=>{
+    let right=0,placed=0;
+    sorter.querySelectorAll('.phrase').forEach(phrase=>{
+      phrase.classList.remove('correct','wrong');
+      if(phrase.dataset.chosen){placed++;const ok=phrase.dataset.chosen===phrase.dataset.correct;phrase.classList.add(ok?'correct':'wrong');if(ok)right++}
+    });
+    sortStatus.textContent=placed<8?'Place every phrase, then check again.':right===8?'✓ Every phrase is in the right toolkit.':right+' of 8 correct. Reconsider the red cards.';
+  };
+  document.getElementById('resetSort').onclick=()=>{
+    sorter.querySelectorAll('.phrase').forEach(phrase=>{delete phrase.dataset.chosen;phrase.classList.remove('selected','correct','wrong')});
+    selectedPhrase=null;sortStatus.textContent='Select a phrase to begin.';
+  };
+
+  /* Finger and stylus writing */
+  const ink=document.getElementById('ink'),ctx=ink.getContext('2d');
+  const drawButton=document.getElementById('draw'),eraseButton=document.getElementById('erase'),clearButton=document.getElementById('clearInk'),inkStatus=document.getElementById('inkStatus');
+  let drawing=false,inkMode=false,erasing=false,lastX=0,lastY=0,inkPages=Array(slides.length).fill(null);
+  function saveInk(){if(ink.width&&ink.height)inkPages[index]=ink.toDataURL('image/png')}
+  function clearCanvas(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ink.width,ink.height);ctx.restore()}
+  function loadInk(){clearCanvas();const src=inkPages[index];if(src){const im=new Image();im.onload=()=>{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(im,0,0,ink.width,ink.height);ctx.restore()};im.src=src}}
+  function sizeInk(){const r=screen.getBoundingClientRect(),d=Math.max(1,devicePixelRatio||1);ink.width=Math.round(r.width*d);ink.height=Math.round(r.height*d);ink.style.width=r.width+'px';ink.style.height=r.height+'px';ctx.setTransform(d,0,0,d,0,0);ctx.lineCap='round';ctx.lineJoin='round'}
+  function point(e){const r=ink.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+  ink.onpointerdown=e=>{if(!inkMode)return;e.preventDefault();ink.setPointerCapture(e.pointerId);drawing=true;const p=point(e);lastX=p.x;lastY=p.y};
+  ink.onpointermove=e=>{if(!drawing)return;e.preventDefault();const p=point(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.globalCompositeOperation=erasing?'destination-out':'source-over';ctx.strokeStyle='#ff3f78';ctx.lineWidth=erasing?34:6;ctx.stroke();lastX=p.x;lastY=p.y};
+  function stop(){if(!drawing)return;drawing=false;ctx.globalCompositeOperation='source-over';saveInk()}
+  ink.onpointerup=stop;ink.onpointercancel=stop;
+  drawButton.onclick=()=>{inkMode=!inkMode;deck.classList.toggle('ink-on',inkMode);drawButton.classList.toggle('active',inkMode);drawButton.textContent=inkMode?'✓ Finish writing':'✏ Write';if(!inkMode){erasing=false;eraseButton.classList.remove('active');inkStatus.textContent='PEN'}};
+  eraseButton.onclick=()=>{erasing=!erasing;eraseButton.classList.toggle('active',erasing);inkStatus.textContent=erasing?'ERASER':'PEN'};
+  clearButton.onclick=()=>{clearCanvas();inkPages[index]=null};
+  document.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>setTimeout(()=>button.blur(),0)));
+  window.addEventListener('resize',()=>{saveInk();sizeInk();loadInk()});
+  sizeInk();basicShow(0);
+</script>
+</body>
+</html>
