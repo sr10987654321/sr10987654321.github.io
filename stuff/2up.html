@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Two-up: History Meets Chance</title>
+<style>
+:root{--navy:#101923;--ink:#16222d;--cream:#f5efdf;--paper:#fffaf0;--gold:#e7ad32;--red:#b54732;--blue:#386a81;--green:#56725a;--muted:#68737c}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--navy);font-family:Arial,"Helvetica Neue",sans-serif;color:var(--ink)}
+button,input{font:inherit}.deck{width:100%;height:100%;position:relative}.slide{display:none;position:absolute;inset:0;padding:clamp(28px,5vw,78px);background:var(--cream);overflow:hidden}.slide.active{display:flex;flex-direction:column}
+.slide.dark{color:white;background:var(--navy)}.slide.photo{padding:0;background:#111}.photo-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.48}.shade{position:absolute;inset:0;background:rgba(8,15,21,.58)}
+.content{position:relative;z-index:1;max-width:1200px}.eyebrow{font-size:clamp(14px,1.5vw,22px);font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:18px}h1{font-size:clamp(54px,8vw,118px);line-height:.92;letter-spacing:-.055em;margin:0 0 24px;max-width:1000px}h2{font-size:clamp(38px,5.4vw,76px);line-height:1;letter-spacing:-.045em;margin:0 0 28px;max-width:1100px}h3{font-size:clamp(22px,2.3vw,34px);margin:0 0 10px}p,li{font-size:clamp(22px,2.35vw,36px);line-height:1.28}.lead{font-size:clamp(27px,3vw,44px);max-width:950px}.small{font-size:clamp(15px,1.45vw,21px);line-height:1.35}.muted{color:var(--muted)}
+.rule{width:86px;height:8px;background:var(--gold);margin:2px 0 25px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(22px,4vw,64px);align-items:center;flex:1}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2vw,30px);align-items:stretch;flex:1}.panel{background:var(--paper);border:3px solid var(--ink);padding:clamp(18px,2vw,32px);box-shadow:8px 8px 0 var(--gold)}.dark .panel{background:#192733;border-color:#edf1ed;box-shadow:8px 8px 0 var(--gold)}
+.source-photo{width:100%;height:min(50vh,460px);object-fit:cover;filter:grayscale(1);border:5px solid var(--paper);box-shadow:12px 12px 0 var(--gold)}ul{margin:8px 0 0;padding-left:1.2em}li{margin:.36em 0}.question{font-size:clamp(32px,4.4vw,64px);font-weight:800;line-height:1.12;max-width:1100px}.quote{border-left:10px solid var(--gold);padding-left:28px}
+.result{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:260px;border:4px solid var(--ink);background:var(--paper)}.coin-pair{font-size:clamp(48px,6vw,86px);font-weight:900;letter-spacing:.14em;color:var(--blue)}.result strong{font-size:clamp(30px,3vw,46px);margin-top:15px}.result.odds{background:#fff2c6;border-color:#8e6818}.result.odds .coin-pair{color:var(--red)}
+.combo{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:20px}.combo>div{background:var(--paper);border:3px solid var(--ink);padding:22px 10px;text-align:center;font-size:clamp(30px,4vw,58px);font-weight:900}.combo span{display:block;font-size:clamp(17px,1.6vw,23px);margin-top:8px;color:var(--muted)}
+.chance-line{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;margin:42px 2vw 0}.chance-line:before{content:"";grid-column:1/4;grid-row:1;height:10px;background:var(--ink)}.chance-line div{grid-row:1;position:relative;text-align:center;padding-top:58px;font-size:clamp(20px,2vw,30px);font-weight:800}.chance-line div:before{content:"";position:absolute;top:-10px;left:calc(50% - 15px);width:30px;height:30px;background:var(--gold);border:5px solid var(--ink);border-radius:50%}
+.steps{counter-reset:s}.step{display:grid;grid-template-columns:70px 1fr;gap:22px;align-items:center;margin:16px 0}.step:before{counter-increment:s;content:counter(s);width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--navy);font-size:30px;font-weight:900}.step p{margin:0}
+.tally{width:100%;border-collapse:collapse;background:var(--paper);font-size:clamp(20px,2vw,30px)}.tally th,.tally td{border:3px solid var(--ink);padding:16px;text-align:center}.tally th{background:var(--ink);color:white}.tally input{width:100%;border:0;border-bottom:3px solid var(--gold);background:transparent;text-align:center;font-size:clamp(28px,4vw,58px);font-weight:900;color:var(--ink);outline:0}
+.example-chart{display:grid;grid-template-columns:76px 1fr;grid-template-rows:1fr 58px;flex:1;min-height:0;margin:0 auto;width:min(100%,960px)}.y-title{grid-row:1;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-size:clamp(18px,1.7vw,25px);font-weight:800}.plot{position:relative;display:grid;grid-template-columns:repeat(3,1fr);align-items:end;gap:8%;padding:0 7%;border-left:4px solid var(--ink);border-bottom:4px solid var(--ink)}.gridlines{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}.gridlines span{display:block;border-top:2px solid rgba(22,34,45,.18)}.axis-numbers{position:absolute;inset:0 auto 0 -52px;width:42px;display:flex;flex-direction:column-reverse;justify-content:space-between;text-align:right;font-size:clamp(13px,1.25vw,18px);font-weight:700}.example-bar{position:relative;z-index:1;background:var(--blue);height:var(--h);border:3px solid var(--ink);border-bottom:0}.example-bar.odds-example{background:var(--gold)}.example-bar strong{position:absolute;top:-38px;left:0;right:0;text-align:center;font-size:clamp(20px,2.1vw,30px)}.x-labels{grid-column:2;display:grid;grid-template-columns:repeat(3,1fr);gap:8%;padding:10px 7% 0;text-align:center;font-size:clamp(18px,1.7vw,25px);font-weight:800}.x-title{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:clamp(15px,1.35vw,20px);font-weight:700;color:var(--muted)}
+.bars{height:40vh;display:flex;align-items:flex-end;justify-content:center;gap:7vw;border-bottom:5px solid var(--ink);padding:0 5vw}.bar-wrap{text-align:center;font-weight:800;font-size:clamp(18px,1.8vw,27px)}.bar{width:clamp(85px,10vw,150px);height:30px;background:var(--blue);transition:height .35s}.bar.oddsbar{background:var(--gold)}.bar-wrap input{width:110px;margin:10px 0;border:2px solid var(--ink);background:white;text-align:center}.streak{font-size:clamp(45px,7vw,105px);font-weight:900;letter-spacing:.18em;color:var(--gold);margin:20px 0}.reveal{visibility:hidden;opacity:0;transform:translateY(12px);transition:.25s}.revealed .reveal,.reveal.show{visibility:visible;opacity:1;transform:none}
+.source{position:absolute;left:clamp(28px,5vw,78px);bottom:24px;font-size:13px;color:rgba(255,255,255,.78);z-index:2}.controls{position:fixed;right:18px;bottom:16px;z-index:20;display:flex;gap:8px}.controls button,.notes-btn{border:2px solid currentColor;background:rgba(255,250,240,.9);color:var(--navy);width:44px;height:44px;border-radius:50%;font-size:22px;font-weight:900;cursor:pointer}.notes-btn{position:fixed;left:18px;bottom:16px;z-index:20}.progress{position:fixed;left:0;bottom:0;height:6px;background:var(--gold);z-index:30;transition:width .2s}.counter{position:fixed;right:130px;bottom:27px;color:var(--navy);font-size:14px;font-weight:800;z-index:20}.dark.active~.counter,.photo.active~.counter{color:white}.notes{display:none;position:fixed;left:18px;bottom:70px;z-index:40;width:min(520px,calc(100vw - 36px));background:#fffbea;border:3px solid var(--ink);padding:18px;box-shadow:8px 8px 0 var(--gold);font-size:17px;line-height:1.35}.notes.open{display:block}.notes:empty:after{content:"No teacher notes for this slide."}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.grid3{overflow:auto}.combo{grid-template-columns:1fr 1fr}.slide{padding:28px 26px 70px}.source{left:26px}.panel{box-shadow:5px 5px 0 var(--gold)}.source-photo{height:32vh}.result{min-height:150px}}
+</style>
+</head>
+<body>
+<main class="deck" id="deck">
+  <section class="slide photo active" data-notes="Let the image sit silently for a moment. Do not name the game yet. Ask students to notice details before interpreting them.">
+    <img class="photo-bg" src="https://s3-ap-southeast-2.amazonaws.com/awm-media/collection/076941/screen/4111641.JPG" alt="Australian troops playing Two-up in Lae, New Guinea, 1944">
+    <div class="shade"></div><div class="content" style="margin:auto 7vw"><div class="eyebrow">History meets chance</div><h1>Two-up</h1><p class="lead">What can an old Australian game teach us about probability?</p></div>
+    <div class="source">Australian War Memorial, C77406. Lae, New Guinea, 10 November 1944.</div>
+  </section>
+
+  <section class="slide dark" data-notes="Use HASS source-analysis language: observation, inference and question. Accept uncertainty. Ask students to point to evidence in the image.">
+    <div class="eyebrow">Historical source</div><h2>What is happening here?</h2>
+    <div class="grid2"><img class="source-photo" src="https://s3-ap-southeast-2.amazonaws.com/awm-media/collection/P02572.015/screen/4162179.JPG" alt="Soldiers playing Two-up in a Cairo hotel yard"><div><p class="lead">Look closely before you decide.</p><ul><li>What can you see?</li><li>Where and when might this be?</li><li>What might the people be doing?</li><li>What evidence supports your thinking?</li></ul></div></div>
+    <div class="source">Australian War Memorial, P02572.015. Cairo, Egypt.</div>
+  </section>
+
+  <section class="slide" data-notes="Keep the history brief. Two-up predates the world wars, but its popularity among Australian service personnel helped make it an Anzac Day tradition. Explain that today we use points only.">
+    <div class="eyebrow">The HASS connection</div><h2>An Australian tradition</h2><div class="rule"></div>
+    <div class="grid2"><p class="lead quote">Australians played Two-up during the nineteenth century. Australian soldiers later made it strongly associated with military life and Anzac Day.</p><div class="panel"><h3>Historical thinking</h3><p>Games can reveal how people spent their free time, built friendships and carried traditions with them.</p><p class="small muted">Today we investigate the history and mathematics. We use classroom points, not money.</p></div></div>
+  </section>
+
+  <section class="slide dark" data-notes="Demonstrate with two large coins and a ruler or paddle. Keep the rules limited to the three outcomes needed for the maths.">
+    <div class="eyebrow">How it works</div><h2>Two coins. Three named results.</h2>
+    <div class="grid3"><div class="result"><div class="coin-pair">H H</div><strong>HEADS</strong></div><div class="result"><div class="coin-pair">T T</div><strong>TAILS</strong></div><div class="result odds"><div class="coin-pair">H T</div><strong>ODDS</strong></div></div>
+  </section>
+
+  <section class="slide" data-notes="Take a vote. Ask students to commit before the reveal. Common prediction: each named result has the same chance because there are three labels.">
+    <div class="eyebrow">Your prediction</div><h2>Are the three results equally likely?</h2>
+    <div class="chance-line"><div>HEADS</div><div>TAILS</div><div>ODDS</div></div>
+    <p class="question" style="margin-top:auto">Which result do you expect to occur most often? Why?</p>
+  </section>
+
+  <section class="slide dark click-reveal" data-notes="Use two distinguishable coins or mark one with a sticker. Reveal the conclusion after students identify the duplicate route to odds.">
+    <div class="eyebrow">Every possible combination</div><h2>There are four ways the coins can land</h2>
+    <div class="combo"><div>H H<span>Heads</span></div><div>H T<span>Odds</span></div><div>T H<span>Odds</span></div><div>T T<span>Tails</span></div></div>
+    <div class="reveal" style="margin-top:32px"><p class="question"><span style="color:var(--gold)">Odds</span> can happen in two ways.</p><p class="lead">Heads and tails can each happen in only one way.</p></div>
+  </section>
+
+  <section class="slide" data-notes="Fractions support the reasoning, but formal probability notation is not required. Emphasise more likely rather than guaranteed.">
+    <div class="eyebrow">Compare the chances</div><h2>Odds is twice as likely</h2>
+    <div class="grid3"><div class="panel"><h3>HEADS</h3><p class="question">1 out of 4</p><p>Less likely</p></div><div class="panel"><h3>TAILS</h3><p class="question">1 out of 4</p><p>Less likely</p></div><div class="panel" style="background:#fff2c6"><h3>ODDS</h3><p class="question">2 out of 4</p><p>Most likely</p></div></div>
+  </section>
+
+  <section class="slide dark" data-notes="Pairs need two coins, a results sheet and a flat space. A coin that falls off the table is tossed again. Make sure students record every trial.">
+    <div class="eyebrow">Investigation</div><h2>Twenty tosses of Two-up</h2>
+    <div class="steps"><div class="step"><p>Predict how many <strong>heads, tails and odds</strong> you might get.</p></div><div class="step"><p>Toss both coins and record the named result.</p></div><div class="step"><p>Repeat until you have completed <strong>20 trials</strong>.</p></div><div class="step"><p>Compare the results with your prediction.</p></div></div>
+  </section>
+
+  <section class="slide" data-notes="Leave this slide displayed during the experiment if students need the table structure. They can copy it into books or use a prepared sheet.">
+    <div class="eyebrow">Record every trial</div><h2>Prediction and results</h2>
+    <table class="tally"><thead><tr><th>Outcome</th><th>Prediction</th><th>Tally</th><th>Total</th></tr></thead><tbody><tr><td><strong>Heads</strong></td><td></td><td></td><td></td></tr><tr><td><strong>Tails</strong></td><td></td><td></td><td></td></tr><tr><td><strong>Odds</strong></td><td></td><td></td><td></td></tr></tbody></table>
+    <p class="lead">Did the most likely result occur most often?</p>
+  </section>
+
+  <section class="slide" data-notes="Model the graph after students finish their table. Check the conventions together: descriptive title, labelled axes, equal bar widths, gaps between categories and a scale increasing by one. The example totals 20 tosses.">
+    <div class="eyebrow">Example</div><h2 style="margin-bottom:12px">Results from 20 Two-up tosses</h2>
+    <div class="example-chart"><div class="y-title">Number of tosses</div><div class="plot"><div class="gridlines"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="axis-numbers"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span></div><div class="example-bar" style="--h:45.45%"><strong>5</strong></div><div class="example-bar" style="--h:36.36%"><strong>4</strong></div><div class="example-bar odds-example" style="--h:100%"><strong>11</strong></div></div><div></div><div class="x-labels"><span>Heads</span><span>Tails</span><span>Odds</span></div></div>
+    <div class="x-title">Two-up result</div>
+  </section>
+
+  <section class="slide" data-notes="Enter the combined class totals. The bars update automatically. Ask whether the result proves what will happen next time. It does not.">
+    <div class="eyebrow">Class results</div><h2>What happened across the room?</h2>
+    <div class="bars"><div class="bar-wrap"><div class="bar" id="barH"></div><input id="numH" type="number" min="0" value="0" aria-label="Heads total"><div>HEADS</div></div><div class="bar-wrap"><div class="bar" id="barT"></div><input id="numT" type="number" min="0" value="0" aria-label="Tails total"><div>TAILS</div></div><div class="bar-wrap"><div class="bar oddsbar" id="barO"></div><input id="numO" type="number" min="0" value="0" aria-label="Odds total"><div>ODDS</div></div></div>
+  </section>
+
+  <section class="slide dark click-reveal" data-notes="Let students argue their case. Then reveal: the next toss still has the same four combinations. A streak can happen without changing future chances.">
+    <div class="eyebrow">Does chance remember?</div><h2>The last four results were odds</h2><div class="streak">ODDS · ODDS · ODDS · ODDS</div>
+    <p class="question">Are heads or tails now “due”?</p><div class="reveal panel"><p class="lead"><strong>No.</strong> The next toss still has the same four possible combinations.</p><p>Previous results describe what happened. They do not control the next toss.</p></div>
+  </section>
+
+  <section class="slide" data-notes="Push the distinction between possible and likely. Any of the three results may appear next. Odds remains most likely, but heads or tails would not be surprising or impossible.">
+    <div class="eyebrow">Think like a mathematician</div><h2>Possible does not mean equally likely</h2>
+    <div class="grid2"><div class="panel"><h3>What we can predict</h3><p>Odds should occur more often over many tosses because it has two possible combinations.</p></div><div class="panel"><h3>What we cannot predict</h3><p>We cannot know the exact result of the next toss.</p></div></div>
+  </section>
+
+  <section class="slide dark" data-notes="Use these orally or have students answer in books. Question 3 assesses independence. Question 4 returns to the HASS connection.">
+    <div class="eyebrow">Exit ticket</div><h2>Show what you know</h2>
+    <ol><li>List the three named results in Two-up.</li><li>Which result is most likely? Explain why.</li><li>After three heads, is tails more likely on the next toss? Explain.</li><li>What did Two-up reveal about Australian history?</li></ol>
+  </section>
+</main>
+<button class="notes-btn" id="notesBtn" title="Teacher notes">i</button><div class="notes" id="notes"></div>
+<div class="counter" id="counter"></div><div class="controls"><button id="full" title="Full screen">⛶</button><button id="prev" title="Previous">‹</button><button id="next" title="Next">›</button></div><div class="progress" id="progress"></div>
+<script>
+const slides=[...document.querySelectorAll('.slide')],counter=document.getElementById('counter'),progress=document.getElementById('progress'),notes=document.getElementById('notes');let index=0;
+function show(n){index=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,i)=>{s.classList.toggle('active',i===index);if(i!==index)s.classList.remove('revealed')});counter.textContent=`${index+1} / ${slides.length}`;progress.style.width=`${(index+1)/slides.length*100}%`;notes.textContent=slides[index].dataset.notes||'';notes.classList.remove('open')}
+function forward(){const s=slides[index];if(s.classList.contains('click-reveal')&&!s.classList.contains('revealed')){s.classList.add('revealed');return}show(index+1)}
+document.getElementById('next').onclick=forward;document.getElementById('prev').onclick=()=>show(index-1);document.getElementById('full').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();document.getElementById('notesBtn').onclick=()=>notes.classList.toggle('open');
+document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;if(['ArrowRight',' ','PageDown','Enter'].includes(e.key)){e.preventDefault();forward()}if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();show(index-1)}if(e.key.toLowerCase()==='f')document.getElementById('full').click();if(e.key.toLowerCase()==='n')document.getElementById('notesBtn').click()});
+let sx=0;document.addEventListener('touchstart',e=>sx=e.changedTouches[0].screenX,{passive:true});document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].screenX-sx;if(Math.abs(dx)>70)(dx<0?forward():show(index-1))},{passive:true});
+function bars(){const vals=['H','T','O'].map(x=>+document.getElementById('num'+x).value||0),max=Math.max(1,...vals);['H','T','O'].forEach((x,i)=>document.getElementById('bar'+x).style.height=`${Math.max(12,vals[i]/max*34)}vh`)}['H','T','O'].forEach(x=>document.getElementById('num'+x).addEventListener('input',bars));show(0);bars();
+</script>
+</body>
+</html>
