@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Narnia Lesson 10 - First Boxing Up Lesson</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800;900&display=swap');
+    :root{
+      --night:#17102f;--deep:#2d1765;--purple:#4b2c91;--violet:#7253cc;
+      --teal:#16a49c;--mint:#dff8f3;--pink:#ef6683;--gold:#f4b938;
+      --cream:#fbf8f1;--paper:#fffefb;--ink:#2b2051;--muted:#6a6085;
+      --line:#ded5ef;--green:#41b883;--red:#e65c78;--blue:#4f87db;
+      --intro:#f4b938;--land:#ef7b73;--feast:#9b6bd1;--wild:#16a49c;--time:#5a88d8;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;overflow:hidden;background:var(--night);font-family:Nunito,Aptos,sans-serif;color:var(--ink)}
+    button{font:inherit;-webkit-tap-highlight-color:transparent}
+    #deck{height:100%;display:grid;grid-template-rows:minmax(0,1fr) 64px;gap:10px;padding:12px}
+    .screen{width:min(100%,calc((100vh - 98px)*16/9));aspect-ratio:16/9;margin:auto;position:relative;overflow:hidden;border-radius:22px;background:var(--cream);box-shadow:0 28px 90px #000b,0 0 0 3px #9b80e555}
+    .slide{display:none;position:absolute;inset:0;overflow:hidden;background:linear-gradient(145deg,#fcf9f3,#eefbfa)}
+    .slide.active{display:block}
+    .slide:before,.slide:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+    .slide:before{width:310px;height:310px;right:-155px;top:-160px;background:#8468dd18}
+    .slide:after{width:250px;height:250px;left:-130px;bottom:-140px;background:#20bdb21b}
+    .content{position:absolute;inset:0;padding:4.5% 5.4% 4.2%;z-index:2}
+    .chapter{position:absolute;right:4.5%;top:4%;z-index:4;padding:.5em .85em;border-radius:999px;background:#fff;color:#735caa;font-size:clamp(9px,.72vw,12px);font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 5px 16px #5039881a}
+    .folio{position:absolute;right:3.4%;bottom:2.7%;z-index:4;color:#786b9b;font-size:clamp(9px,.72vw,12px);font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    .eyebrow{display:inline-flex;align-items:center;gap:.5em;padding:.47em .85em;border-radius:999px;background:var(--violet);box-shadow:0 5px 0 #40227f;color:white;font-size:clamp(10px,.88vw,15px);font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+    .eyebrow.gold{background:var(--gold);box-shadow:0 5px 0 #b97511;color:var(--deep)}
+    h1,h2,h3{font-family:Fredoka,Nunito,sans-serif}
+    h1{font-size:clamp(38px,4.05vw,70px);line-height:1;letter-spacing:-.035em;color:var(--deep);margin:.28em 0 .22em}
+    h2{color:var(--purple)}
+    .lead{max-width:91%;font-size:clamp(16px,1.42vw,25px);line-height:1.4;color:var(--muted);font-weight:700}
+    .rule{height:7px;width:64%;margin:1.5% 0 2.4%;border-radius:9px;background:linear-gradient(90deg,var(--pink),var(--gold),var(--teal),transparent)}
+
+    /* Cover */
+    .hero{background:radial-gradient(circle at 73% 20%,#ffe99b 0 2px,transparent 3px) 0 0/74px 74px,linear-gradient(135deg,#351b72 0 58%,#181037 58%)}
+    .hero:after{display:none}.hero:before{width:450px;height:450px;right:-90px;top:-130px;background:radial-gradient(circle,#66e0d455 0 4%,transparent 4.5% 100%)}
+    .hero-copy{position:absolute;left:6.3%;top:11%;width:57%;z-index:3}
+    .hero h1{color:white;font-size:clamp(55px,6.2vw,106px);line-height:.9;text-shadow:0 6px 0 #140a34;margin:.28em 0}
+    .hero p{max-width:88%;color:#eee9ff;font-size:clamp(17px,1.5vw,26px);line-height:1.4;font-weight:800}
+    .hero .tool{margin-top:5.2%;color:#ffe58c;font-size:clamp(14px,1.12vw,20px);font-weight:900}
+    .map-stack{position:absolute;right:6%;top:11%;width:31%;height:75%;z-index:3;transform:rotate(3deg)}
+    .map-sheet{position:absolute;inset:0;border-radius:22px;background:#fff4ce;border:8px solid #d59c42;box-shadow:0 24px 0 #0d0827,0 0 55px #76e4d558;padding:10% 9%;overflow:hidden}
+    .map-sheet:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(18deg,transparent 0 42px,#9f77421d 43px 45px);opacity:.7}
+    .map-boxes{position:relative;display:grid;gap:7%;height:100%;z-index:2}.map-boxes i{display:block;border-radius:10px;border:4px solid var(--box);background:color-mix(in srgb,var(--box) 23%,#fff7d8);box-shadow:0 4px 0 #69488333}
+    .map-boxes i:nth-child(1){--box:var(--intro)}.map-boxes i:nth-child(2){--box:var(--land)}.map-boxes i:nth-child(3){--box:var(--feast)}.map-boxes i:nth-child(4){--box:var(--wild)}.map-boxes i:nth-child(5){--box:var(--time)}
+    .map-quill{position:absolute;right:-10%;bottom:-6%;width:27%;height:58%;transform:rotate(18deg);z-index:4;background:linear-gradient(90deg,#23bdb1,#e7fff9 50%,#147f79);clip-path:polygon(50% 0,100% 15%,65% 68%,54% 100%,43% 68%,0 20%);filter:drop-shadow(0 9px 6px #14082788)}
+
+    /* Goal */
+    .goal{display:grid;grid-template-columns:31% 1fr;gap:5%;height:72%;align-items:center}
+    .lesson-number{font-family:Fredoka;font-size:clamp(155px,20vw,320px);line-height:.75;color:var(--gold);text-shadow:9px 10px 0 var(--pink),-7px -7px 0 var(--teal);text-align:center;transform:rotate(-3deg)}
+    .goal-card{background:#fff;border-radius:28px;padding:4.2% 5%;box-shadow:0 14px 0 #ddd2f5}
+    .goal-card h2{font-size:clamp(22px,2.1vw,36px);line-height:1.15;margin:0 0 .6em}
+    .checkline{display:grid;grid-template-columns:31px 1fr;align-items:center;gap:12px;margin:.68em 0;font-size:clamp(14px,1.17vw,20px);font-weight:700}
+    .checkline i{display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:var(--teal);box-shadow:0 4px 0 #0f7772;color:#fff;font-style:normal;font-weight:900}
+    .checkline:nth-child(even) i{background:var(--gold);box-shadow:0 4px 0 #ba7710;color:var(--deep)}
+
+    /* Structure */
+    .process{display:grid;grid-template-columns:36% 9% 55%;align-items:center;height:65%;margin-top:1.5%}
+    .report-page{height:89%;padding:7% 8%;border-radius:23px;background:#fff;box-shadow:0 13px 0 #d9cff2}
+    .report-page h2{font-size:clamp(22px,1.8vw,31px);margin:.1em 0 .6em}.fake-lines{height:74%;background:repeating-linear-gradient(transparent 0 8%,#6c5f8b30 8% 9.2%);border-radius:10px}
+    .process-arrow{display:grid;place-items:center;color:var(--violet);font-size:clamp(50px,5vw,84px);font-family:Fredoka}
+    .box-stack{display:grid;gap:10px}.structure-box{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:13px;min-height:66px;border-radius:16px;padding:10px 15px;background:#fff;box-shadow:0 6px 0 #d9cff2;border-left:12px solid var(--box)}
+    .structure-box:nth-child(1){--box:var(--intro)}.structure-box:nth-child(2){--box:var(--land)}.structure-box:nth-child(3){--box:var(--feast)}.structure-box:nth-child(4){--box:var(--wild)}.structure-box:nth-child(5){--box:var(--time)}
+    .structure-box b{display:grid;place-items:center;width:31px;height:31px;border-radius:9px;background:var(--box);color:#fff}.structure-box strong{font-size:clamp(15px,1.18vw,20px);color:var(--deep)}.structure-box span{font-size:clamp(11px,.85vw,15px);font-weight:900;color:var(--muted)}
+
+    /* Paragraph boundary */
+    .split-view{display:grid;grid-template-columns:1fr 1fr;gap:25px;margin-top:2.5%;height:63%}
+    .split-card{padding:24px 26px;border-radius:24px;background:#fff;box-shadow:0 11px 0 #d9cff2;overflow:hidden}
+    .split-card h2{font-size:clamp(22px,1.7vw,30px);margin:.05em 0 .55em}.split-card p{font-size:clamp(16px,1.22vw,21px);line-height:1.5;color:var(--muted);font-weight:800}
+    .sentence{display:block;border-radius:11px;padding:.25em .45em;margin:.35em 0;background:color-mix(in srgb,var(--box) 24%,white);border-left:8px solid var(--box)}
+    .sentence.intro{--box:var(--intro)}.sentence.land{--box:var(--land)}
+    .notice{display:flex;align-items:center;gap:13px;margin-top:2%;font-size:clamp(13px,1.01vw,18px);font-weight:900;color:var(--muted)}
+    .notice:before{content:"!";display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--gold);box-shadow:0 4px 0 #b87310;color:var(--deep);font-family:Fredoka;font-size:25px;flex:none}
+
+    /* Sorter */
+    .sort-layout{display:grid;grid-template-columns:42% 1fr;gap:23px;margin-top:2.2%;align-items:start}
+    .sort-panel,.order-panel{padding:17px;border-radius:22px;background:#ffffffad;border:3px dashed #bba9e7}.order-panel{border-color:#77d7ce}
+    .sort-panel h2,.order-panel h2{text-align:center;margin:.05em 0 .55em;font-size:clamp(18px,1.45vw,25px)}
+    .sort-list{display:grid;gap:9px}.sort-card{display:grid;grid-template-columns:36px 1fr;gap:10px;align-items:center;min-height:60px;padding:9px 12px;border:3px solid transparent;border-radius:13px;background:#fff;color:var(--ink);font-size:clamp(12px,.94vw,16px);line-height:1.19;font-weight:900;cursor:pointer;box-shadow:0 5px 0 #d9cff2}
+    .sort-card b{display:grid;place-items:center;width:33px;height:33px;border-radius:9px;background:#eee8fa;color:var(--purple)}.sort-card.selected{border-color:var(--gold);transform:translateY(-2px)}.sort-card.correct{background:#e0f7ea;border-color:var(--green)}.sort-card.wrong{background:#fff0f3;border-color:var(--red)}
+    .slot-list{display:grid;gap:9px}.order-slot{display:grid;grid-template-columns:35px 1fr;align-items:center;gap:10px;min-height:55px;padding:9px 12px;border-radius:13px;background:#fff;border-left:10px solid var(--box);box-shadow:0 5px 0 #d9cff2;cursor:pointer}
+    .order-slot:nth-child(1){--box:var(--intro)}.order-slot:nth-child(2){--box:var(--land)}.order-slot:nth-child(3){--box:var(--feast)}.order-slot:nth-child(4){--box:var(--wild)}.order-slot:nth-child(5){--box:var(--time)}
+    .order-slot b{font-family:Fredoka;font-size:22px;color:var(--box)}.order-slot span{font-size:clamp(12px,.94vw,16px);font-weight:900;color:#9a8bae}.order-slot.filled span{color:var(--ink)}
+    .order-slot.correct{background:#e0f7ea;box-shadow:0 5px 0 #8dd6ad}.order-slot.wrong{background:#fff0f3;box-shadow:0 5px 0 #f0a8b7}
+    .sort-actions{display:flex;justify-content:center;gap:11px;margin-top:13px}.sort-actions button{border:0;border-radius:11px;padding:9px 16px;background:var(--purple);color:#fff;font-weight:900;cursor:pointer}.sort-actions button:last-child{background:#8c7aa8}.sort-status{text-align:center;margin-top:9px;min-height:23px;color:var(--purple);font-weight:900;font-size:clamp(11px,.9vw,15px)}
+
+    /* Guided boxing */
+    .boxing-grid{display:grid;grid-template-columns:54% 1fr;gap:24px;margin-top:2.3%;height:63%}
+    .source-card,.notes-card{border-radius:24px;background:#fff;box-shadow:0 11px 0 #d9cff2;padding:22px 25px;overflow:hidden}.notes-card{box-shadow:0 11px 0 #9de5dc}
+    .source-card h2,.notes-card h2{font-size:clamp(21px,1.6vw,28px);margin:.05em 0 .5em}.source-card p{font-size:clamp(14px,1.08vw,19px);line-height:1.45;color:var(--muted);font-weight:800;margin:.25em 0}.source-card.dense p{font-size:clamp(12px,.9vw,16px);line-height:1.36}
+    .notes-card ul{margin:.2em 0 0;padding-left:1.25em}.notes-card li{font-size:clamp(15px,1.14vw,20px);line-height:1.35;margin:.48em 0;color:var(--ink);font-weight:900}.answer-content{opacity:0;transform:translateY(7px);transition:.18s}.answers-on .answer-content{opacity:1;transform:none}
+    .section-chip{display:inline-flex;padding:.4em .75em;border-radius:999px;background:var(--box);color:#fff;font-size:clamp(10px,.77vw,13px);font-weight:900;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 4px 0 #2b20513b}
+    .boxing-slide.intro{--box:var(--intro)}.boxing-slide.land{--box:var(--land)}.boxing-slide.feast{--box:var(--feast)}.boxing-slide.wild{--box:var(--wild)}.boxing-slide.time{--box:var(--time)}
+    .boxing-tip{text-align:center;margin-top:1.6%;color:var(--muted);font-size:clamp(12px,.96vw,16px);font-weight:900}.boxing-tip strong{color:var(--purple)}
+
+    /* Whole table and tasks */
+    .boxing-table{width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:1.8%;table-layout:fixed}.boxing-table td{background:#fff;padding:10px 14px;vertical-align:middle;box-shadow:0 5px 0 #d9cff2;font-size:clamp(12px,.9vw,16px);line-height:1.2;font-weight:800}.boxing-table td:first-child{width:20%;border-radius:13px 0 0 13px;border-left:11px solid var(--box);font-family:Fredoka;font-size:clamp(15px,1.12vw,19px);color:var(--deep)}.boxing-table td:nth-child(2){width:26%;color:var(--purple);font-weight:900}.boxing-table td:last-child{border-radius:0 13px 13px 0;color:var(--muted)}
+    .boxing-table tr:nth-child(1){--box:var(--intro)}.boxing-table tr:nth-child(2){--box:var(--land)}.boxing-table tr:nth-child(3){--box:var(--feast)}.boxing-table tr:nth-child(4){--box:var(--wild)}.boxing-table tr:nth-child(5){--box:var(--time)}
+    .boxing-table .reveal{opacity:0;transition:.18s}.answers-on .boxing-table .reveal{opacity:1}
+    .task-board{display:grid;grid-template-columns:1fr 37%;gap:4%;align-items:stretch;margin-top:2.5%;height:61%}.task-main{padding:25px 28px;border-radius:25px;background:#fff;box-shadow:0 12px 0 #d9cff2}.task-main h2{font-size:clamp(24px,2vw,35px);margin:.05em 0 .55em}.task-main ol{margin:.2em 0 0;padding-left:1.35em}.task-main li{margin:.65em 0;font-size:clamp(16px,1.24vw,21px);line-height:1.32;font-weight:800;color:var(--muted)}.task-side{padding:23px;border-radius:25px;background:var(--deep);box-shadow:0 12px 0 #12092f;color:#fff}.task-side h2{color:#ffe58c;font-size:clamp(21px,1.7vw,30px);margin:.05em 0 .6em}.task-side p{font-size:clamp(14px,1.06vw,18px);line-height:1.4;font-weight:800}.task-side strong{color:#73eadf}
+    .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:3%}.check-card{display:grid;grid-template-columns:58px 1fr;gap:15px;align-items:center;min-height:119px;padding:18px 22px;border-radius:20px;background:#fff;box-shadow:0 8px 0 #d9cff2;font-size:clamp(15px,1.18vw,20px)}.check-card:nth-child(2){box-shadow:0 8px 0 #f2adbb}.check-card:nth-child(3){box-shadow:0 8px 0 #ffd77a}.check-card:nth-child(4){box-shadow:0 8px 0 #98e3d8}.box{width:48px;height:48px;border:4px solid var(--violet);border-radius:12px;background:#faf7ff}.check-card strong{display:block;color:var(--purple);font-size:1.08em}.check-card span{color:var(--muted);font-size:.9em}
+    .exit-board{display:grid;grid-template-columns:41% 1fr;gap:4%;align-items:center;height:70%}.exit-prompt{padding:25px;border-radius:24px;background:var(--deep);box-shadow:0 12px 0 #12092f;color:#fff}.exit-prompt h2{color:#ffe58c;font-size:clamp(23px,1.9vw,34px);margin:.1em 0 .5em}.exit-prompt p{font-size:clamp(15px,1.17vw,20px);line-height:1.42;font-weight:800}.write-area{height:86%;border:5px dashed #9f8ad5;border-radius:26px;background:#fff;padding:24px;font-size:clamp(18px,1.5vw,26px);color:#9889b7;font-weight:800}
+
+    /* Controls and ink */
+    .controls{display:flex;align-items:center;gap:9px;padding:0 10px;border-radius:16px;background:#26164d;box-shadow:0 10px 30px #0005}.controls button{height:43px;padding:0 15px;border:0;border-radius:11px;background:#47307c;color:#fff;font-weight:900;cursor:pointer;white-space:nowrap}.controls button:hover{background:#5f43a1}.controls button.primary{background:var(--teal);box-shadow:0 4px 0 #0e716c}.controls button.active{background:var(--gold);color:var(--deep);box-shadow:0 4px 0 #b6740f}.controls button:disabled{opacity:.35;cursor:default}.progress{height:9px;flex:1;min-width:70px;border-radius:9px;background:#4b3676;overflow:hidden}.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--pink),var(--gold),var(--teal));transition:.18s width}.count{min-width:58px;color:#e9e2ff;font-weight:900;text-align:center}.answer-status{color:#ffdf7f;font-size:11px;font-weight:900;letter-spacing:.08em;min-width:66px;text-align:center}
+    #ink{position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;touch-action:none}.ink-on #ink{pointer-events:auto;cursor:crosshair}.ink-on .screen{box-shadow:0 0 0 5px var(--pink),0 28px 90px #000b}.ink-tool{display:none}.ink-on .ink-tool{display:block}.ink-status{display:none;color:#ff9bb1;font-size:11px;font-weight:900}.ink-on .ink-status{display:block}
+    @media(max-width:900px){#deck{grid-template-rows:minmax(0,1fr) 58px;padding:8px}.controls{gap:5px;padding:0 6px}.controls button{padding:0 9px;font-size:11px}.structure-box{min-height:57px;padding:7px 10px}.split-view{gap:13px}.split-card{padding:17px}.sort-layout{gap:13px}.sort-card,.order-slot{min-height:48px;padding:6px 8px}.boxing-grid{gap:13px}.source-card,.notes-card{padding:16px}.boxing-table td{padding:7px 9px}.check-grid{gap:10px}.check-card{min-height:104px;padding:13px}}
+  </style>
+</head>
+<body>
+<main id="deck">
+  <div class="screen" id="screen" aria-live="polite">
+
+    <section class="slide hero active">
+      <div class="hero-copy">
+        <div class="eyebrow gold">Lesson 10 · Boxing Up</div>
+        <h1>Map the<br>Narnia report.</h1>
+        <p>Strip the model text back to its structure and essential facts.</p>
+        <div class="tool">five sections · five jobs · brief notes</div>
+      </div>
+      <div class="map-stack" aria-hidden="true"><div class="map-sheet"><div class="map-boxes"><i></i><i></i><i></i><i></i><i></i></div></div><div class="map-quill"></div></div>
+      <div class="folio" style="color:#d9ceff">Narnia · 01</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Today's mission</div>
+      <div class="content">
+        <div class="eyebrow">Learning intention</div><h1>I will use the boxing-up structure and dot point the main features of each section.</h1>
+        <div class="rule"></div>
+        <div class="goal">
+          <div class="lesson-number">10</div>
+          <div class="goal-card">
+            <h2>Success criteria</h2>
+            <div class="checkline"><i>✓</i><span>Put the five sections in the correct order.</span></div>
+            <div class="checkline"><i>✓</i><span>Name the job of each section.</span></div>
+            <div class="checkline"><i>✓</i><span>Reduce each section to short dot points.</span></div>
+            <div class="checkline"><i>✓</i><span>Keep enough detail to retell the report.</span></div>
+          </div>
+        </div>
+      </div><div class="folio">Narnia · 02</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">What is boxing up?</div>
+      <div class="content">
+        <div class="eyebrow">Structure beneath the sentences</div><h1>A long report becomes a useful map.</h1>
+        <div class="process">
+          <div class="report-page"><h2>The full model text</h2><div class="fake-lines"></div></div>
+          <div class="process-arrow">›</div>
+          <div class="box-stack">
+            <div class="structure-box"><b>1</b><strong>Introduction</strong><span>Introduce Narnia</span></div>
+            <div class="structure-box"><b>2</b><strong>Body 1 · Landscape</strong><span>Describe the land</span></div>
+            <div class="structure-box"><b>3</b><strong>Body 2 · Celebrations</strong><span>Explain traditions</span></div>
+            <div class="structure-box"><b>4</b><strong>Body 3 · Wildlife / fauna</strong><span>Describe creatures</span></div>
+            <div class="structure-box"><b>5</b><strong>Conclusion · Narnian time</strong><span>Finish with an interesting fact</span></div>
+          </div>
+        </div>
+      </div><div class="folio">Narnia · 03</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">A hidden boundary</div>
+      <div class="content">
+        <div class="eyebrow">The first paragraph does two jobs</div><h1>Sections and paragraphs do not always match.</h1>
+        <div class="split-view">
+          <div class="split-card"><h2>Box 1 · Introduction</h2><p><span class="sentence intro">The Kingdom of Narnia is a fantasy world home to lions, witches and wardrobes.</span></p><p>This sentence introduces the subject.</p></div>
+          <div class="split-card"><h2>Box 2 · Landscape</h2><p><span class="sentence land">Narnia's landscape is a mix of rolling rugged hills and low mountains...</span></p><p>The rest of the paragraph describes the land and its position.</p></div>
+        </div>
+        <div class="notice">Box by the job each part performs, even when two boxes sit inside one paragraph.</div>
+      </div><div class="folio">Narnia · 04</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Order the report</div>
+      <div class="content">
+        <div class="eyebrow">Tap a card, then tap its position</div><h1>Where does each section belong?</h1>
+        <div class="sort-layout" id="sorter">
+          <div class="sort-panel"><h2>Scrambled sections</h2><div class="sort-list">
+            <button class="sort-card" data-part="wild"><b>A</b><span>Badgers, gryphons and a rare phoenix</span></button>
+            <button class="sort-card" data-part="intro"><b>B</b><span>A fantasy world of lions, witches and wardrobes</span></button>
+            <button class="sort-card" data-part="time"><b>C</b><span>Time passes differently from Earth</span></button>
+            <button class="sort-card" data-part="feast"><b>D</b><span>Feasts, food and Hunt the Slipper</span></button>
+            <button class="sort-card" data-part="land"><b>E</b><span>Hills, forests, rivers and neighbouring lands</span></button>
+          </div></div>
+          <div class="order-panel"><h2>The five boxes</h2><div class="slot-list">
+            <button class="order-slot" data-answer="intro"><b>1</b><span>Tap to place a section</span></button>
+            <button class="order-slot" data-answer="land"><b>2</b><span>Tap to place a section</span></button>
+            <button class="order-slot" data-answer="feast"><b>3</b><span>Tap to place a section</span></button>
+            <button class="order-slot" data-answer="wild"><b>4</b><span>Tap to place a section</span></button>
+            <button class="order-slot" data-answer="time"><b>5</b><span>Tap to place a section</span></button>
+          </div><div class="sort-actions"><button id="checkSort">Check</button><button id="resetSort">Reset</button></div><div class="sort-status" id="sortStatus">Select a section card to begin.</div></div>
+        </div>
+      </div><div class="folio">Narnia · 05</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Correct sequence</div>
+      <div class="content">
+        <div class="eyebrow">The report's structure</div><h1>Each section has a clear job.</h1>
+        <div class="box-stack" style="margin-top:3%">
+          <div class="structure-box"><b>1</b><strong>Introduction</strong><span>Name the subject and establish the fantasy world</span></div>
+          <div class="structure-box"><b>2</b><strong>Landscape</strong><span>Help the reader picture and locate the country</span></div>
+          <div class="structure-box"><b>3</b><strong>Celebrations</strong><span>Explain a Narnian tradition</span></div>
+          <div class="structure-box"><b>4</b><strong>Wildlife / fauna</strong><span>Describe familiar and mythical creatures</span></div>
+          <div class="structure-box"><b>5</b><strong>Narnian time</strong><span>End with a memorable fact</span></div>
+        </div>
+        <div class="notice">The boxing-up notes record what the writer includes, not the exact sentences.</div>
+      </div><div class="folio">Narnia · 06</div>
+    </section>
+
+    <section class="slide boxing-slide intro">
+      <div class="content">
+        <div class="section-chip">Box 1 · Introduction</div><h1>From sentence to dot points</h1>
+        <div class="boxing-grid">
+          <div class="source-card"><h2>Model text</h2><p>The Kingdom of Narnia is a fantasy world home to lions, witches and wardrobes.</p></div>
+          <div class="notes-card"><h2>Boxed-up notes</h2><div class="answer-content"><ul><li>Fantasy world</li><li>Lions, witches and wardrobes</li></ul></div></div>
+        </div>
+        <div class="boxing-tip"><strong>Notice:</strong> no complete sentences. Press A to reveal the notes.</div>
+      </div><div class="folio">Narnia · 07</div>
+    </section>
+
+    <section class="slide boxing-slide land">
+      <div class="content">
+        <div class="section-chip">Box 2 · Body 1</div><h1>Landscape</h1>
+        <div class="boxing-grid">
+          <div class="source-card dense"><h2>Model text</h2><p>Narnia's landscape is a mix of rolling rugged hills and low mountains. It is formed from predominantly dense forest with the exception of the flooded wetlands to the north.</p><p>Geographically, the country centres around the Great River of Narnia and bordered on the west by an uninhabited mountain range known as The Western Wild and the River Shribble, with the country of Archenland to the south.</p></div>
+          <div class="notes-card"><h2>Boxed-up notes</h2><div class="answer-content"><ul><li>Rolling hills and low mountains</li><li>Dense forest</li><li>Wetlands north</li><li>Great River through centre</li><li>Western Wild and River Shribble west</li><li>Archenland south</li></ul></div></div>
+        </div>
+        <div class="boxing-tip">Keep the <strong>direction words</strong>. They hold the geography together.</div>
+      </div><div class="folio">Narnia · 08</div>
+    </section>
+
+    <section class="slide boxing-slide feast">
+      <div class="content">
+        <div class="section-chip">Box 3 · Body 2</div><h1>Celebrations</h1>
+        <div class="boxing-grid">
+          <div class="source-card dense"><h2>Model text</h2><p>Narnians take pride in hosting lavish, celebratory feasts. The one true king of Narnia, Aslan, hosts such banquets to celebrate the arrival of human visitors. Interestingly, the celebration at Cair Paravel, saw the dining hall ceremoniously decorated with candelabras, garlands and nature-inspired décor.</p><p>Furthermore, the foods served included soups, venison, pies, toffees, Turkish Delight, and many kinds of tea. Following dinner, attendees could partake in a traditional game called ‘Hunt the Slipper’.</p></div>
+          <div class="notes-card"><h2>Boxed-up notes</h2><div class="answer-content"><ul><li>Lavish feasts</li><li>Aslan welcomes human visitors</li><li>Cair Paravel decorated</li><li>Soups, venison, pies, sweets and tea</li><li>Hunt the Slipper after dinner</li></ul></div></div>
+        </div>
+        <div class="boxing-tip">Group long lists when the individual items are not all needed for the plan.</div>
+      </div><div class="folio">Narnia · 09</div>
+    </section>
+
+    <section class="slide boxing-slide wild">
+      <div class="content">
+        <div class="section-chip">Box 4 · Body 3</div><h1>Wildlife</h1>
+        <div class="boxing-grid">
+          <div class="source-card dense"><h2>Model text</h2><p>Narnia is well known for its abundant wildlife. A vast majority of animals commonly found in England are also located in Narnia, such as badgers, beavers and foxes.</p><p>Additionally, you may be lucky enough to spot a gryphon or even a minotaur in the snow-covered forests. Furthermore, there is nothing quite like experiencing the wonder of watching a rare phoenix fly across a moonlit sky.</p></div>
+          <div class="notes-card"><h2>Boxed-up notes</h2><div class="answer-content"><ul><li>Abundant wildlife</li><li>Badgers, beavers and foxes</li><li>Gryphons and minotaurs in forest</li><li>Rare phoenix</li></ul></div></div>
+        </div>
+        <div class="boxing-tip">The notes preserve the paragraph's main pattern: <strong>familiar animals and mythical creatures</strong>.</div>
+      </div><div class="folio">Narnia · 10</div>
+    </section>
+
+    <section class="slide boxing-slide time">
+      <div class="content">
+        <div class="section-chip">Box 5 · Conclusion</div><h1>Narnian time</h1>
+        <div class="boxing-grid">
+          <div class="source-card"><h2>Model text</h2><p>A trip to Narnia typically lasts longer than the corresponding period of their absence from Earth, and visitors to Narnia will experience this incredible phenomenon.</p><p>As a result, your Earth friends and family may not even notice that you have disappeared into a wardrobe!</p></div>
+          <div class="notes-card"><h2>Boxed-up notes</h2><div class="answer-content"><ul><li>Narnian visit feels longer</li><li>Very little time passes on Earth</li><li>Family may not notice</li></ul></div></div>
+        </div>
+        <div class="boxing-tip">A conclusion can finish with a memorable fact rather than repeat every section.</div>
+      </div><div class="folio">Narnia · 11</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Complete boxing-up table</div>
+      <div class="content">
+        <div class="eyebrow">Press A to reveal the model notes</div><h1>The whole report at a glance</h1>
+        <table class="boxing-table">
+          <tr><td>Introduction</td><td>Introduce the subject</td><td class="reveal">Fantasy world. Lions, witches and wardrobes.</td></tr>
+          <tr><td>Body 1 · Landscape</td><td>Describe the country</td><td class="reveal">Hills, mountains, forest, wetlands, rivers and neighbouring lands.</td></tr>
+          <tr><td>Body 2 · Celebrations</td><td>Explain traditions</td><td class="reveal">Aslan's feasts, Cair Paravel, food and Hunt the Slipper.</td></tr>
+          <tr><td>Body 3 · Wildlife / fauna</td><td>Describe creatures</td><td class="reveal">English animals, gryphons, minotaurs and a rare phoenix.</td></tr>
+          <tr><td>Conclusion · Time</td><td>Finish with an interesting fact</td><td class="reveal">A long Narnian visit may take almost no Earth time.</td></tr>
+        </table>
+        <div class="notice">A strong boxing-up grid gives enough information to retell the report without copying it.</div>
+      </div><div class="folio">Narnia · 12</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Independent task</div>
+      <div class="content">
+        <div class="eyebrow">Box up the model</div><h1>Your Narnia report map</h1>
+        <div class="task-board">
+          <div class="task-main"><h2>Complete the five boxes</h2><ol>
+            <li>Write the section name and its job.</li>
+            <li>Add the essential facts as short dot points.</li>
+            <li>Use the model text to check that nothing important is missing.</li>
+          </ol></div>
+          <div class="task-side"><h2>Keep it brief</h2><p>Use <strong>words and phrases</strong>, not copied sentences.</p><p>Your notes should help you say the report aloud in your own words.</p><p><strong>Challenge:</strong> write no more than six dot points in any box.</p></div>
+        </div>
+      </div><div class="folio">Narnia · 13</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Review</div>
+      <div class="content">
+        <div class="eyebrow">The boxing-up test</div><h1>Does your report map work?</h1>
+        <div class="check-grid">
+          <div class="check-card"><span class="box"></span><div><strong>Five boxes</strong><span>Every section appears in the correct order.</span></div></div>
+          <div class="check-card"><span class="box"></span><div><strong>Clear jobs</strong><span>Each box explains the section's purpose.</span></div></div>
+          <div class="check-card"><span class="box"></span><div><strong>Brief notes</strong><span>Dot points replace copied sentences.</span></div></div>
+          <div class="check-card"><span class="box"></span><div><strong>Enough information</strong><span>A partner can retell the report from the map.</span></div></div>
+        </div>
+        <div class="notice">Partner test: cover the model text and orally retell one section from the boxed-up notes.</div>
+      </div><div class="folio">Narnia · 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="chapter">Exit ticket</div>
+      <div class="content">
+        <div class="eyebrow">Write with your finger or discuss</div><h1>The purpose of boxing up</h1>
+        <div class="exit-board">
+          <div class="exit-prompt"><h2>Why do writers box up a model text?</h2><p>Explain how the boxes help us understand and reuse the structure without copying the original.</p><p><strong>Sentence stem:</strong><br>Boxing up helps a writer to...</p></div>
+          <div class="write-area">Write or annotate here...</div>
+        </div>
+      </div><div class="folio">Narnia · 15</div>
+    </section>
+
+    <canvas id="ink" aria-label="Finger and stylus drawing layer"></canvas>
+  </div>
+  <nav class="controls" aria-label="Slide controls">
+    <button id="prev">← Back</button>
+    <div class="progress"><span id="bar"></span></div>
+    <span class="count"><span id="now">1</span> / 15</span>
+    <button id="next" class="primary">Next →</button>
+    <button id="answers">A · Answers</button><span class="answer-status" id="answerStatus">HIDDEN</span>
+    <button id="draw">✏ Write</button><button id="erase" class="ink-tool">Eraser</button><button id="clearInk" class="ink-tool">Clear ink</button><span class="ink-status" id="inkStatus">PEN</span>
+    <button id="full">⛶ Full screen</button>
+  </nav>
+</main>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const deck=document.getElementById('deck'),screen=document.getElementById('screen');
+  const now=document.getElementById('now'),bar=document.getElementById('bar');
+  const prev=document.getElementById('prev'),next=document.getElementById('next'),full=document.getElementById('full');
+  let index=0,answerMode=false;
+  function basicShow(n){index=Math.max(0,Math.min(slides.length-1,n));slides.forEach((slide,i)=>slide.classList.toggle('active',i===index));now.textContent=index+1;bar.style.width=((index+1)/slides.length*100)+'%';prev.disabled=index===0;next.disabled=index===slides.length-1}
+  function show(n){saveInk();if(n!==index&&answerMode)toggleAnswers(false);basicShow(n);loadInk()}
+  prev.onclick=()=>show(index-1);next.onclick=()=>show(index+1);
+  full.onclick=async()=>{if(!document.fullscreenElement){const target=document.documentElement;if(target.requestFullscreen)await target.requestFullscreen();else if(target.webkitRequestFullscreen)target.webkitRequestFullscreen()}else if(document.exitFullscreen){await document.exitFullscreen()}};
+  const answers=document.getElementById('answers'),answerStatus=document.getElementById('answerStatus');
+  function toggleAnswers(force){answerMode=typeof force==='boolean'?force:!answerMode;deck.classList.toggle('answers-on',answerMode);answers.classList.toggle('active',answerMode);answerStatus.textContent=answerMode?'SHOWING':'HIDDEN'}
+  answers.onclick=()=>toggleAnswers();
+  document.addEventListener('keydown',e=>{if(e.repeat)return;if(e.target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;const forward=['ArrowRight','ArrowDown','PageDown',' ','Enter','MediaTrackNext'];const back=['ArrowLeft','ArrowUp','PageUp','Backspace','MediaTrackPrevious'];if(forward.includes(e.key)){e.preventDefault();show(index+1);return}if(back.includes(e.key)){e.preventDefault();show(index-1);return}if(e.key==='Home'){e.preventDefault();show(0)}if(e.key==='End'){e.preventDefault();show(slides.length-1)}if(e.key.toLowerCase()==='a'){e.preventDefault();toggleAnswers()}if(e.key.toLowerCase()==='f'){e.preventDefault();full.click()}});
+
+  /* Tap-to-place sorter. Write mode stays separate so the canvas never steals sorter touches. */
+  const sorter=document.getElementById('sorter'),sortStatus=document.getElementById('sortStatus');
+  let selectedCard=null;
+  sorter.querySelectorAll('.sort-card').forEach(card=>card.onclick=()=>{if(selectedCard)selectedCard.classList.remove('selected');selectedCard=card;card.classList.add('selected');sortStatus.textContent='Now tap the box where this section belongs.'});
+  sorter.querySelectorAll('.order-slot').forEach(slot=>slot.onclick=()=>{if(!selectedCard){sortStatus.textContent='Choose a section card first.';return}const oldPart=slot.dataset.part;if(oldPart){const oldCard=sorter.querySelector(`.sort-card[data-part="${oldPart}"]`);oldCard.disabled=false}slot.dataset.part=selectedCard.dataset.part;slot.querySelector('span').textContent=selectedCard.querySelector('span').textContent;slot.classList.add('filled');selectedCard.disabled=true;selectedCard.classList.remove('selected');selectedCard=null;slot.classList.remove('correct','wrong');sortStatus.textContent='Placed. Choose the next section.'});
+  document.getElementById('checkSort').onclick=()=>{let right=0,filled=0;sorter.querySelectorAll('.order-slot').forEach(slot=>{slot.classList.remove('correct','wrong');if(slot.dataset.part){filled++;const ok=slot.dataset.part===slot.dataset.answer;slot.classList.add(ok?'correct':'wrong');if(ok)right++}});sortStatus.textContent=filled<5?'Fill every box, then check again.':right===5?'✓ The report is in the correct order.':right+' of 5 boxes are correct. Reconsider the red boxes.'};
+  document.getElementById('resetSort').onclick=()=>{sorter.querySelectorAll('.sort-card').forEach(card=>{card.disabled=false;card.classList.remove('selected')});sorter.querySelectorAll('.order-slot').forEach(slot=>{delete slot.dataset.part;slot.classList.remove('filled','correct','wrong');slot.querySelector('span').textContent='Tap to place a section'});selectedCard=null;sortStatus.textContent='Select a section card to begin.'};
+
+  /* Finger and stylus writing */
+  const ink=document.getElementById('ink'),ctx=ink.getContext('2d');const drawButton=document.getElementById('draw'),eraseButton=document.getElementById('erase'),clearButton=document.getElementById('clearInk'),inkStatus=document.getElementById('inkStatus');let drawing=false,inkMode=false,erasing=false,lastX=0,lastY=0,inkPages=Array(slides.length).fill(null);
+  function saveInk(){if(ink.width&&ink.height)inkPages[index]=ink.toDataURL('image/png')}
+  function clearCanvas(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,ink.width,ink.height);ctx.restore()}
+  function loadInk(){clearCanvas();const src=inkPages[index];if(src){const im=new Image();im.onload=()=>{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(im,0,0,ink.width,ink.height);ctx.restore()};im.src=src}}
+  function sizeInk(){const r=screen.getBoundingClientRect(),d=Math.max(1,devicePixelRatio||1);ink.width=Math.round(r.width*d);ink.height=Math.round(r.height*d);ink.style.width=r.width+'px';ink.style.height=r.height+'px';ctx.setTransform(d,0,0,d,0,0);ctx.lineCap='round';ctx.lineJoin='round'}
+  function point(e){const r=ink.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+  ink.onpointerdown=e=>{if(!inkMode)return;e.preventDefault();ink.setPointerCapture(e.pointerId);drawing=true;const p=point(e);lastX=p.x;lastY=p.y};ink.onpointermove=e=>{if(!drawing)return;e.preventDefault();const p=point(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.globalCompositeOperation=erasing?'destination-out':'source-over';ctx.strokeStyle='#ff3f78';ctx.lineWidth=erasing?34:6;ctx.stroke();lastX=p.x;lastY=p.y};function stop(){if(!drawing)return;drawing=false;ctx.globalCompositeOperation='source-over';saveInk()}ink.onpointerup=stop;ink.onpointercancel=stop;
+  drawButton.onclick=()=>{inkMode=!inkMode;deck.classList.toggle('ink-on',inkMode);drawButton.classList.toggle('active',inkMode);drawButton.textContent=inkMode?'✓ Finish writing':'✏ Write';if(!inkMode){erasing=false;eraseButton.classList.remove('active');inkStatus.textContent='PEN'}};eraseButton.onclick=()=>{erasing=!erasing;eraseButton.classList.toggle('active',erasing);inkStatus.textContent=erasing?'ERASER':'PEN'};clearButton.onclick=()=>{clearCanvas();inkPages[index]=null};
+  document.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>setTimeout(()=>button.blur(),0)));window.addEventListener('resize',()=>{saveInk();sizeInk();loadInk()});sizeInk();basicShow(0);
+</script>
+</body>
+</html>
