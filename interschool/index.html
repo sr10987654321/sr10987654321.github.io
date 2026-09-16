@@ -360,7 +360,7 @@
       <div class="board">
         <div class="col">
           <div class="col-head"><h2>To finish</h2><span class="count" id="poolCount">0</span></div>
-          <p class="hint">Listed by lane · tap each as they cross the line</p>
+          <p class="hint" id="poolHint">Tap each as they finish</p>
           <div class="list" id="poolList"></div>
           <div class="empty" id="poolEmpty" hidden>🏁 Everyone has finished.</div>
         </div>
@@ -389,17 +389,6 @@
           <div class="list" id="teamOrder"></div>
           <div class="empty" id="teamOrderEmpty">Nothing placed yet — the first tap is 1st.</div>
         </div>
-      </div>
-    </div>
-
-    <div id="fieldWrap" hidden>
-      <p class="hint" id="fieldHint">—</p>
-      <div class="list" id="fieldList"></div>
-      <div class="card" style="margin-top:14px">
-        <h2>Standing</h2>
-        <p>Best distance first — this is what scores.</p>
-        <table class="rank"><thead><tr><th class="p">#</th><th>Name</th><th>School</th><th>Distance</th><th>Points</th></tr></thead>
-          <tbody id="fieldRank"></tbody></table>
       </div>
     </div>
 
@@ -638,13 +627,13 @@ function uid(){ return 'a'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
 // SCHEDULE — the whole day's 68 events, fixed and numbered, exactly matching
 // the FDPSSA programme. Entries fill these in; they don't create them.
 // =====================================================
-const SCHEDULE=[{"no":1,"t":585,"year":3,"gender":"Girls","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e001","key":"3|Girls|Throws"},{"no":2,"t":585,"year":3,"gender":"Boys","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e002","key":"3|Boys|Throws"},{"no":3,"t":555,"year":4,"gender":"Girls","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e003","key":"4|Girls|Throws"},{"no":4,"t":555,"year":4,"gender":"Boys","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e004","key":"4|Boys|Throws"},{"no":5,"t":615,"year":5,"gender":"Girls","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e005","key":"5|Girls|Throws"},{"no":6,"t":615,"year":5,"gender":"Boys","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e006","key":"5|Boys|Throws"},{"no":7,"t":555,"year":6,"gender":"Girls","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e007","key":"6|Girls|Throws"},{"no":8,"t":555,"year":6,"gender":"Boys","event":"Throws","division":null,"mode":"measure","unit":"m","id":"e008","key":"6|Boys|Throws"},{"no":9,"t":555,"year":3,"gender":"Girls","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e009","key":"3|Girls|Jumps"},{"no":10,"t":555,"year":3,"gender":"Boys","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e010","key":"3|Boys|Jumps"},{"no":11,"t":615,"year":4,"gender":"Girls","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e011","key":"4|Girls|Jumps"},{"no":12,"t":615,"year":4,"gender":"Boys","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e012","key":"4|Boys|Jumps"},{"no":13,"t":585,"year":5,"gender":"Girls","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e013","key":"5|Girls|Jumps"},{"no":14,"t":585,"year":5,"gender":"Boys","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e014","key":"5|Boys|Jumps"},{"no":15,"t":615,"year":6,"gender":"Girls","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e015","key":"6|Girls|Jumps"},{"no":16,"t":585,"year":6,"gender":"Boys","event":"Jumps","division":null,"mode":"measure","unit":"m","id":"e016","key":"6|Boys|Jumps"},{"no":17,"t":665,"year":3,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e017","key":"3|Girls|200m|A"},{"no":18,"t":665,"year":3,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e018","key":"3|Girls|200m|B"},{"no":19,"t":665,"year":3,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e019","key":"3|Boys|200m|A"},{"no":20,"t":665,"year":3,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e020","key":"3|Boys|200m|B"},{"no":21,"t":665,"year":4,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e021","key":"4|Girls|200m|A"},{"no":22,"t":665,"year":4,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e022","key":"4|Girls|200m|B"},{"no":23,"t":665,"year":4,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e023","key":"4|Boys|200m|A"},{"no":24,"t":665,"year":4,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e024","key":"4|Boys|200m|B"},{"no":25,"t":665,"year":5,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e025","key":"5|Girls|200m|A"},{"no":26,"t":665,"year":5,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e026","key":"5|Girls|200m|B"},{"no":27,"t":665,"year":5,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e027","key":"5|Boys|200m|A"},{"no":28,"t":665,"year":5,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e028","key":"5|Boys|200m|B"},{"no":29,"t":665,"year":6,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e029","key":"6|Girls|200m|A"},{"no":30,"t":665,"year":6,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e030","key":"6|Girls|200m|B"},{"no":31,"t":665,"year":6,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e031","key":"6|Boys|200m|A"},{"no":32,"t":665,"year":6,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e032","key":"6|Boys|200m|B"},{"no":33,"t":665,"year":3,"gender":"Girls","event":"75m","division":"A","mode":"order","unit":null,"id":"e033","key":"3|Girls|75m|A"},{"no":34,"t":665,"year":3,"gender":"Girls","event":"75m","division":"B","mode":"order","unit":null,"id":"e034","key":"3|Girls|75m|B"},{"no":35,"t":665,"year":3,"gender":"Boys","event":"75m","division":"A","mode":"order","unit":null,"id":"e035","key":"3|Boys|75m|A"},{"no":36,"t":665,"year":3,"gender":"Boys","event":"75m","division":"B","mode":"order","unit":null,"id":"e036","key":"3|Boys|75m|B"},{"no":37,"t":665,"year":4,"gender":"Girls","event":"75m","division":"A","mode":"order","unit":null,"id":"e037","key":"4|Girls|75m|A"},{"no":38,"t":665,"year":4,"gender":"Girls","event":"75m","division":"B","mode":"order","unit":null,"id":"e038","key":"4|Girls|75m|B"},{"no":39,"t":665,"year":4,"gender":"Boys","event":"75m","division":"A","mode":"order","unit":null,"id":"e039","key":"4|Boys|75m|A"},{"no":40,"t":665,"year":4,"gender":"Boys","event":"75m","division":"B","mode":"order","unit":null,"id":"e040","key":"4|Boys|75m|B"},{"no":41,"t":665,"year":5,"gender":"Girls","event":"100m","division":"A","mode":"order","unit":null,"id":"e041","key":"5|Girls|100m|A"},{"no":42,"t":665,"year":5,"gender":"Girls","event":"100m","division":"B","mode":"order","unit":null,"id":"e042","key":"5|Girls|100m|B"},{"no":43,"t":665,"year":5,"gender":"Boys","event":"100m","division":"A","mode":"order","unit":null,"id":"e043","key":"5|Boys|100m|A"},{"no":44,"t":665,"year":5,"gender":"Boys","event":"100m","division":"B","mode":"order","unit":null,"id":"e044","key":"5|Boys|100m|B"},{"no":45,"t":665,"year":6,"gender":"Girls","event":"100m","division":"A","mode":"order","unit":null,"id":"e045","key":"6|Girls|100m|A"},{"no":46,"t":665,"year":6,"gender":"Girls","event":"100m","division":"B","mode":"order","unit":null,"id":"e046","key":"6|Girls|100m|B"},{"no":47,"t":665,"year":6,"gender":"Boys","event":"100m","division":"A","mode":"order","unit":null,"id":"e047","key":"6|Boys|100m|A"},{"no":48,"t":665,"year":6,"gender":"Boys","event":"100m","division":"B","mode":"order","unit":null,"id":"e048","key":"6|Boys|100m|B"},{"no":49,"t":760,"year":3,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e049","key":"3|Mixed|Passball"},{"no":50,"t":760,"year":4,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e050","key":"4|Mixed|Passball"},{"no":51,"t":760,"year":5,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e051","key":"5|Mixed|Passball"},{"no":52,"t":760,"year":6,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e052","key":"6|Mixed|Passball"},{"no":53,"t":760,"year":3,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e053","key":"3|Mixed|Tunnel Ball"},{"no":54,"t":760,"year":4,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e054","key":"4|Mixed|Tunnel Ball"},{"no":55,"t":760,"year":5,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e055","key":"5|Mixed|Tunnel Ball"},{"no":56,"t":760,"year":6,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e056","key":"6|Mixed|Tunnel Ball"},{"no":57,"t":760,"year":3,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e057","key":"3|Mixed|Leaderball"},{"no":58,"t":760,"year":4,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e058","key":"4|Mixed|Leaderball"},{"no":59,"t":760,"year":5,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e059","key":"5|Mixed|Leaderball"},{"no":60,"t":760,"year":6,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e060","key":"6|Mixed|Leaderball"},{"no":61,"t":760,"year":3,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e061","key":"3|Boys|Relay"},{"no":62,"t":760,"year":3,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e062","key":"3|Girls|Relay"},{"no":63,"t":760,"year":4,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e063","key":"4|Boys|Relay"},{"no":64,"t":760,"year":4,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e064","key":"4|Girls|Relay"},{"no":65,"t":760,"year":5,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e065","key":"5|Boys|Relay"},{"no":66,"t":760,"year":5,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e066","key":"5|Girls|Relay"},{"no":67,"t":760,"year":6,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e067","key":"6|Boys|Relay"},{"no":68,"t":760,"year":6,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e068","key":"6|Girls|Relay"}];
+const SCHEDULE=[{"no":1,"t":585,"year":3,"gender":"Girls","event":"Throws","division":null,"mode":"places","unit":null,"id":"e001","key":"3|Girls|Throws"},{"no":2,"t":585,"year":3,"gender":"Boys","event":"Throws","division":null,"mode":"places","unit":null,"id":"e002","key":"3|Boys|Throws"},{"no":3,"t":555,"year":4,"gender":"Girls","event":"Throws","division":null,"mode":"places","unit":null,"id":"e003","key":"4|Girls|Throws"},{"no":4,"t":555,"year":4,"gender":"Boys","event":"Throws","division":null,"mode":"places","unit":null,"id":"e004","key":"4|Boys|Throws"},{"no":5,"t":615,"year":5,"gender":"Girls","event":"Throws","division":null,"mode":"places","unit":null,"id":"e005","key":"5|Girls|Throws"},{"no":6,"t":615,"year":5,"gender":"Boys","event":"Throws","division":null,"mode":"places","unit":null,"id":"e006","key":"5|Boys|Throws"},{"no":7,"t":555,"year":6,"gender":"Girls","event":"Throws","division":null,"mode":"places","unit":null,"id":"e007","key":"6|Girls|Throws"},{"no":8,"t":555,"year":6,"gender":"Boys","event":"Throws","division":null,"mode":"places","unit":null,"id":"e008","key":"6|Boys|Throws"},{"no":9,"t":555,"year":3,"gender":"Girls","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e009","key":"3|Girls|Jumps"},{"no":10,"t":555,"year":3,"gender":"Boys","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e010","key":"3|Boys|Jumps"},{"no":11,"t":615,"year":4,"gender":"Girls","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e011","key":"4|Girls|Jumps"},{"no":12,"t":615,"year":4,"gender":"Boys","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e012","key":"4|Boys|Jumps"},{"no":13,"t":585,"year":5,"gender":"Girls","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e013","key":"5|Girls|Jumps"},{"no":14,"t":585,"year":5,"gender":"Boys","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e014","key":"5|Boys|Jumps"},{"no":15,"t":615,"year":6,"gender":"Girls","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e015","key":"6|Girls|Jumps"},{"no":16,"t":585,"year":6,"gender":"Boys","event":"Jumps","division":null,"mode":"places","unit":null,"id":"e016","key":"6|Boys|Jumps"},{"no":17,"t":665,"year":3,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e017","key":"3|Girls|200m|A"},{"no":18,"t":665,"year":3,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e018","key":"3|Girls|200m|B"},{"no":19,"t":665,"year":3,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e019","key":"3|Boys|200m|A"},{"no":20,"t":665,"year":3,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e020","key":"3|Boys|200m|B"},{"no":21,"t":665,"year":4,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e021","key":"4|Girls|200m|A"},{"no":22,"t":665,"year":4,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e022","key":"4|Girls|200m|B"},{"no":23,"t":665,"year":4,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e023","key":"4|Boys|200m|A"},{"no":24,"t":665,"year":4,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e024","key":"4|Boys|200m|B"},{"no":25,"t":665,"year":5,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e025","key":"5|Girls|200m|A"},{"no":26,"t":665,"year":5,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e026","key":"5|Girls|200m|B"},{"no":27,"t":665,"year":5,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e027","key":"5|Boys|200m|A"},{"no":28,"t":665,"year":5,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e028","key":"5|Boys|200m|B"},{"no":29,"t":665,"year":6,"gender":"Girls","event":"200m","division":"A","mode":"order","unit":null,"id":"e029","key":"6|Girls|200m|A"},{"no":30,"t":665,"year":6,"gender":"Girls","event":"200m","division":"B","mode":"order","unit":null,"id":"e030","key":"6|Girls|200m|B"},{"no":31,"t":665,"year":6,"gender":"Boys","event":"200m","division":"A","mode":"order","unit":null,"id":"e031","key":"6|Boys|200m|A"},{"no":32,"t":665,"year":6,"gender":"Boys","event":"200m","division":"B","mode":"order","unit":null,"id":"e032","key":"6|Boys|200m|B"},{"no":33,"t":665,"year":3,"gender":"Girls","event":"75m","division":"A","mode":"order","unit":null,"id":"e033","key":"3|Girls|75m|A"},{"no":34,"t":665,"year":3,"gender":"Girls","event":"75m","division":"B","mode":"order","unit":null,"id":"e034","key":"3|Girls|75m|B"},{"no":35,"t":665,"year":3,"gender":"Boys","event":"75m","division":"A","mode":"order","unit":null,"id":"e035","key":"3|Boys|75m|A"},{"no":36,"t":665,"year":3,"gender":"Boys","event":"75m","division":"B","mode":"order","unit":null,"id":"e036","key":"3|Boys|75m|B"},{"no":37,"t":665,"year":4,"gender":"Girls","event":"75m","division":"A","mode":"order","unit":null,"id":"e037","key":"4|Girls|75m|A"},{"no":38,"t":665,"year":4,"gender":"Girls","event":"75m","division":"B","mode":"order","unit":null,"id":"e038","key":"4|Girls|75m|B"},{"no":39,"t":665,"year":4,"gender":"Boys","event":"75m","division":"A","mode":"order","unit":null,"id":"e039","key":"4|Boys|75m|A"},{"no":40,"t":665,"year":4,"gender":"Boys","event":"75m","division":"B","mode":"order","unit":null,"id":"e040","key":"4|Boys|75m|B"},{"no":41,"t":665,"year":5,"gender":"Girls","event":"100m","division":"A","mode":"order","unit":null,"id":"e041","key":"5|Girls|100m|A"},{"no":42,"t":665,"year":5,"gender":"Girls","event":"100m","division":"B","mode":"order","unit":null,"id":"e042","key":"5|Girls|100m|B"},{"no":43,"t":665,"year":5,"gender":"Boys","event":"100m","division":"A","mode":"order","unit":null,"id":"e043","key":"5|Boys|100m|A"},{"no":44,"t":665,"year":5,"gender":"Boys","event":"100m","division":"B","mode":"order","unit":null,"id":"e044","key":"5|Boys|100m|B"},{"no":45,"t":665,"year":6,"gender":"Girls","event":"100m","division":"A","mode":"order","unit":null,"id":"e045","key":"6|Girls|100m|A"},{"no":46,"t":665,"year":6,"gender":"Girls","event":"100m","division":"B","mode":"order","unit":null,"id":"e046","key":"6|Girls|100m|B"},{"no":47,"t":665,"year":6,"gender":"Boys","event":"100m","division":"A","mode":"order","unit":null,"id":"e047","key":"6|Boys|100m|A"},{"no":48,"t":665,"year":6,"gender":"Boys","event":"100m","division":"B","mode":"order","unit":null,"id":"e048","key":"6|Boys|100m|B"},{"no":49,"t":760,"year":3,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e049","key":"3|Mixed|Passball"},{"no":50,"t":760,"year":4,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e050","key":"4|Mixed|Passball"},{"no":51,"t":760,"year":5,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e051","key":"5|Mixed|Passball"},{"no":52,"t":760,"year":6,"gender":"Mixed","event":"Passball","division":null,"mode":"team","unit":null,"id":"e052","key":"6|Mixed|Passball"},{"no":53,"t":760,"year":3,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e053","key":"3|Mixed|Tunnel Ball"},{"no":54,"t":760,"year":4,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e054","key":"4|Mixed|Tunnel Ball"},{"no":55,"t":760,"year":5,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e055","key":"5|Mixed|Tunnel Ball"},{"no":56,"t":760,"year":6,"gender":"Mixed","event":"Tunnel Ball","division":null,"mode":"team","unit":null,"id":"e056","key":"6|Mixed|Tunnel Ball"},{"no":57,"t":760,"year":3,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e057","key":"3|Mixed|Leaderball"},{"no":58,"t":760,"year":4,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e058","key":"4|Mixed|Leaderball"},{"no":59,"t":760,"year":5,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e059","key":"5|Mixed|Leaderball"},{"no":60,"t":760,"year":6,"gender":"Mixed","event":"Leaderball","division":null,"mode":"team","unit":null,"id":"e060","key":"6|Mixed|Leaderball"},{"no":61,"t":760,"year":3,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e061","key":"3|Boys|Relay"},{"no":62,"t":760,"year":3,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e062","key":"3|Girls|Relay"},{"no":63,"t":760,"year":4,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e063","key":"4|Boys|Relay"},{"no":64,"t":760,"year":4,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e064","key":"4|Girls|Relay"},{"no":65,"t":760,"year":5,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e065","key":"5|Boys|Relay"},{"no":66,"t":760,"year":5,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e066","key":"5|Girls|Relay"},{"no":67,"t":760,"year":6,"gender":"Boys","event":"Relay","division":null,"mode":"team","unit":null,"id":"e067","key":"6|Boys|Relay"},{"no":68,"t":760,"year":6,"gender":"Girls","event":"Relay","division":null,"mode":"team","unit":null,"id":"e068","key":"6|Girls|Relay"}];
 const RACE_BY_KEY={}; SCHEDULE.forEach(r=>RACE_BY_KEY[r.key]=r);
 function raceKey(year,gender,event,division){
   return year+'|'+gender+'|'+event+(division?'|'+division:'');
 }
 function isTrack(r){ return r.mode==='order'; }
-function isField(r){ return r.mode==='measure'; }
+function isField(r){ return r.mode==='places'; }
 function isTeam(r){ return r.mode==='team'; }
 function isRelay(r){ return r.mode==='team'&&r.event==='Relay'; }
 function isTabloid(r){ return r.mode==='team'&&r.event!=='Relay'; }
@@ -657,7 +646,6 @@ function timeLabel(t){
   const h=Math.floor(t/60), m=t%60, ap=h>=12?'pm':'am', h12=h%12===0?12:h%12;
   return h12+':'+String(m).padStart(2,'0')+ap;
 }
-function unitFor(r){ return r.unit||'m'; }
 
 // =====================================================
 // STATE — synced across devices via the action log. Names are never part of
@@ -666,7 +654,6 @@ function unitFor(r){ return r.unit||'m'; }
 let entries=[];      // {id,school,year,gender,event,division,leg}
 let results={};      // raceId -> [entryId or school]
 let ties={};         // raceId -> [bool] — true = dead heat with the row above
-let marks={};        // raceId -> {entryId: number}
 let scheme=[10,8,6,5,4,3,2,1];
 let evOverrides={};  // event name -> {scheme:[...]}
 let tabScheme=[12,10,8,6,4,2];
@@ -690,17 +677,8 @@ function placeNumbers(r){
   return out;
 }
 function expected(r){ return isTeam(r) ? SCHOOLS.length : fieldFor(r).length; }
-function counted(r){
-  if(isField(r)) return Object.keys(marks[r.id]||{}).length;
-  return (results[r.id]||[]).length;
-}
+function counted(r){ return (results[r.id]||[]).length; }
 function raceDone(r){ const e=expected(r); return e>0 && counted(r)>=e; }
-function fieldRanking(r){
-  const mk=marks[r.id]||{};
-  return fieldFor(r).filter(e=>mk[e.id]!=null&&!isNaN(mk[e.id]))
-    .map(e=>({entry:e,value:Number(mk[e.id])}))
-    .sort((a,b)=>b.value-a.value||nameOf(a.entry.id).localeCompare(nameOf(b.entry.id)));
-}
 // lanes/positions spread schools out rather than clumping them together
 function spreadOrder(list,schoolOf){
   const bySchool={};
@@ -731,14 +709,13 @@ function tally(){
   };
   SCHEDULE.forEach(r=>{
     if(isTeam(r)) return;
-    if(isTrack(r)){
-      const pn=placeNumbers(r);
-      (results[r.id]||[]).forEach((id,i)=>{
-        const e=entries.find(x=>x.id===id); if(e) add(e,pn[i]-1,r);
-      });
-    } else if(isField(r)){
-      fieldRanking(r).forEach((row,i)=>add(row.entry,i,r));
-    }
+    // Track and Field are scored identically now — tap-in-order with ties,
+    // resolved through the same points table. They only differ in what
+    // category they're filed under and how the paper sheet is laid out.
+    const pn=placeNumbers(r);
+    (results[r.id]||[]).forEach((id,i)=>{
+      const e=entries.find(x=>x.id===id); if(e) add(e,pn[i]-1,r);
+    });
   });
   return t;
 }
@@ -775,7 +752,7 @@ function aidOf(a){
   catch(e){ return null; }
 }
 function rebuild(){
-  entries=[]; results={}; ties={}; marks={};
+  entries=[]; results={}; ties={};
   scheme=[10,8,6,5,4,3,2,1]; evOverrides={}; tabScheme=[12,10,8,6,4,2]; relayScheme=[20,16,12,8,4,2];
   const buf={};
   LOG.concat(pending).forEach(a=>{
@@ -797,13 +774,6 @@ function rebuild(){
           ties[p.raceId]=(p.ties||[]).slice();
         }
         break;
-      case 'is_mark':
-        if(p.raceId&&p.entryId){
-          marks[p.raceId]=marks[p.raceId]||{};
-          if(p.value==null||p.value==='') delete marks[p.raceId][p.entryId];
-          else marks[p.raceId][p.entryId]=Number(p.value);
-        }
-        break;
       case 'is_settings':
         if(Array.isArray(p.scheme)) scheme=p.scheme.slice();
         if(p.evOverrides) evOverrides=p.evOverrides;
@@ -811,7 +781,7 @@ function rebuild(){
         if(Array.isArray(p.relayScheme)) relayScheme=p.relayScheme.slice();
         break;
       case 'is_clear':
-        entries=[]; results={}; ties={}; marks={};
+        entries=[]; results={}; ties={};
         break;
     }
   });
@@ -859,7 +829,7 @@ async function poll(){
     }
   }catch(e){ if(n===seq) setSync('offline'); }
 }
-function stateHash(){ return JSON.stringify([entries.length,results,ties,marks,scheme,evOverrides,tabScheme,relayScheme]); }
+function stateHash(){ return JSON.stringify([entries.length,results,ties,scheme,evOverrides,tabScheme,relayScheme]); }
 let lastHash='';
 function renderIfChanged(){ const h=stateHash(); if(h===lastHash) return; lastHash=h; render(); }
 function setSync(st){
@@ -1159,8 +1129,9 @@ function raceById(id){ return SCHEDULE.find(r=>r.id===id); }
 function renderEvent(){
   const r=raceById(curRace); if(!r){ view='prog'; return render(); }
   const track=isTrack(r), field=isField(r), team=isTeam(r), relay=isRelay(r);
-  $('trackWrap').hidden=!track;
-  $('fieldWrap').hidden=!field;
+  // Field events (Jumps/Throws) are recorded exactly like Track now — tap the
+  // finishing order, ties supported. Distances are on the paper sheet only.
+  $('trackWrap').hidden=!(track||field);
   $('teamWrap').hidden=!team;
   $('relayRoster').hidden=!relay;
   $('evNo').textContent='EVENT '+String(r.no).padStart(2,'0')+' · '+raceKind(r).toUpperCase()+
@@ -1168,11 +1139,10 @@ function renderEvent(){
   $('evTitle').textContent=raceName(r);
   $('evSub').textContent = team
     ? (relay ? 'Relay · school teams, nominated ahead of time' : r.event+' · schools compete as teams')
-    : field ? fieldFor(r).length+' entries · distances in '+unitFor(r)
+    : field ? fieldFor(r).length+' entries · tap the placings, measured on the paper sheet'
     : fieldFor(r).length+' entries';
   if(relay) renderRelayRoster(r);
-  if(track) renderTrack(r);
-  else if(field) renderFieldEvent(r);
+  if(track||field) renderTrack(r);
   else if(team) renderTeamEvent(r);
 }
 function renderRelayRoster(r){
@@ -1253,36 +1223,6 @@ function renderTrack(r){
   });
   $('undoBtn').disabled=order.length===0;
 }
-function renderFieldEvent(r){
-  const mk=marks[r.id]||{};
-  const roll=fieldFor(r).slice().sort((a,b)=>a.school.localeCompare(b.school)||nameOf(a.id).localeCompare(nameOf(b.id)));
-  $('fieldHint').textContent=Object.keys(mk).length+' of '+roll.length+' entered · grouped by school · best distance wins';
-  const l=$('fieldList'); l.innerHTML='';
-  roll.forEach(e=>{
-    const d=document.createElement('div');
-    d.className='mrow'; d.style.setProperty('--sc',schoolColor(e.school));
-    d.innerHTML='<span class="who"><span class="n">'+esc(nameOf(e.id))+'</span>'+
-      '<span class="m">'+esc(e.school)+'</span></span>'+
-      '<input type="number" inputmode="decimal" step="0.01" min="0" placeholder="—" value="'+
-      (mk[e.id]==null?'':mk[e.id])+'"><span class="unit">'+unitFor(r)+'</span>';
-    const inp=d.querySelector('input');
-    inp.addEventListener('change',()=>{
-      send('is_mark',{raceId:r.id,entryId:e.id,value:inp.value===''?null:inp.value});
-    });
-    l.appendChild(d);
-  });
-  const rank=fieldRanking(r);
-  const tb=$('fieldRank'); tb.innerHTML='';
-  if(!rank.length){ tb.innerHTML='<tr><td colspan="5" style="color:var(--faint);padding:14px 6px">Nothing entered yet.</td></tr>'; return; }
-  rank.forEach((row,i)=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML='<td class="p '+(i<3?'m'+(i+1):'')+'">'+(i+1)+'</td><td>'+esc(nameOf(row.entry.id))+'</td>'+
-      '<td style="color:var(--dim)">'+esc(row.entry.school)+'</td>'+
-      '<td class="mono">'+row.value.toFixed(2)+unitFor(r)+'</td>'+
-      '<td style="font-weight:800">'+pointsFor(r,i)+'</td>';
-    tb.appendChild(tr);
-  });
-}
 function renderTeamEvent(r){
   const order=results[r.id]||[];
   const pool=SCHOOLS.filter(s=>!order.includes(s));
@@ -1349,7 +1289,6 @@ $('resetBtn').addEventListener('click',()=>{
   const r=raceById(curRace); if(!r) return;
   if(!confirm('Clear everything recorded for this event?')) return;
   send('is_result',{raceId:r.id,order:[],ties:[]});
-  Object.keys(marks[r.id]||{}).forEach(id=>send('is_mark',{raceId:r.id,entryId:id,value:null}));
 });
 
 
@@ -1551,13 +1490,11 @@ function renderFinder(){
     (t?' · '+t.pts+' point'+(t.pts===1?'':'s'):'')+'</div>';
   a.rows.forEach(({r,entry})=>{
     let status='not run', col='var(--faint)';
-    if(isTrack(r)){
+    // Track and Field are both tap-in-order now, so they read the same way
+    if(isTrack(r)||isField(r)){
       const pn=placeNumbers(r);
       const i=(results[r.id]||[]).indexOf(entry.id);
       if(i>-1){ status=(pn[i])+ord(pn[i])+' · '+pointsFor(r,pn[i]-1)+' pts'; col='var(--green)'; }
-    } else {
-      const rank=fieldRanking(r), i=rank.findIndex(x=>x.entry.id===entry.id);
-      if(i>-1){ status=rank[i].value.toFixed(2)+unitFor(r)+' · '+(i+1)+ord(i+1)+' · '+pointsFor(r,i)+' pts'; col='var(--green)'; }
     }
     const row=document.createElement('button');
     row.className='fr';
@@ -1665,16 +1602,12 @@ $('exportBtn').addEventListener('click',()=>{
       const pn=placeNumbers(r);
       (results[r.id]||[]).forEach((s,i)=>
         lines.push([r.no,r.t!=null?timeLabel(r.t):'',div,raceKind(r),pn[i],'—',s,'',teamPointsFor(r,pn[i]-1)].map(q).join(',')));
-    } else if(isTrack(r)){
+    } else {
       const pn=placeNumbers(r);
       (results[r.id]||[]).forEach((id,i)=>{
         const e=fieldFor(r).find(x=>x.id===id)||entries.find(x=>x.id===id); if(!e) return;
         lines.push([r.no,r.t!=null?timeLabel(r.t):'',div,raceKind(r),pn[i],nameOf(e.id),e.school,'',pointsFor(r,pn[i]-1)].map(q).join(','));
       });
-    } else {
-      fieldRanking(r).forEach((row,i)=>
-        lines.push([r.no,r.t!=null?timeLabel(r.t):'',div,raceKind(r),i+1,nameOf(row.entry.id),row.entry.school,
-          row.value.toFixed(2),pointsFor(r,i)].map(q).join(',')));
     }
   });
   lines.push(''); lines.push('School,Points');
@@ -1695,16 +1628,12 @@ function resultRows(){
       const pn=placeNumbers(r);
       (results[r.id]||[]).forEach((s,i)=>
         out.push([r.no,r.t!=null?timeLabel(r.t):'',raceKind(r),div,pn[i],s,s,'',teamPointsFor(r,pn[i]-1)]));
-    } else if(isTrack(r)){
+    } else {
       const pn=placeNumbers(r);
       (results[r.id]||[]).forEach((id,i)=>{
         const e=fieldFor(r).find(x=>x.id===id)||entries.find(x=>x.id===id); if(!e) return;
         out.push([r.no,r.t!=null?timeLabel(r.t):'',raceKind(r),div,pn[i],nameOf(e.id),e.school,'',pointsFor(r,pn[i]-1)]);
       });
-    } else {
-      fieldRanking(r).forEach((row,i)=>
-        out.push([r.no,r.t!=null?timeLabel(r.t):'',raceKind(r),div,i+1,nameOf(row.entry.id),row.entry.school,
-          row.value.toFixed(2),pointsFor(r,i)]));
     }
   });
   return out;
@@ -2045,16 +1974,12 @@ function eventReceipt(r){
     const pn=placeNumbers(r);
     (results[r.id]||[]).forEach((s,i)=>
       rows.push({left:pn[i]+'.',mid:s,right:teamPointsFor(r,pn[i]-1)+'pt'}));
-  } else if(isTrack(r)){
+  } else {
     const pn=placeNumbers(r);
     (results[r.id]||[]).forEach((id,i)=>{
       const e=fieldFor(r).find(x=>x.id===id)||entries.find(x=>x.id===id); if(!e) return;
       rows.push({left:pn[i]+'.',mid:nameOf(e.id),sub:e.school,right:pointsFor(r,pn[i]-1)+'pt'});
     });
-  } else {
-    fieldRanking(r).forEach((row,i)=>
-      rows.push({left:(i+1)+'.',mid:nameOf(row.entry.id),sub:row.entry.school,
-                 right:row.value.toFixed(2)+unitFor(r)}));
   }
   if(!rows.length) rows.push({left:'',mid:'No result recorded yet.',right:''});
   return {title:raceName(r),subtitle:'Event '+r.no+' · '+raceKind(r),rows,
