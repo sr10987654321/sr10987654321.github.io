@@ -234,6 +234,10 @@
   .print-sheet h1{font-size:21px;margin:0}
   .print-sheet h2{font-size:15px;font-weight:600;color:#333;margin:3px 0 14px}
   .print-sheet h3{font-size:20px;margin:18px 0 8px}
+  .print-sheet .pk{font-size:13px;font-weight:800;letter-spacing:.14em;color:#555;margin:16px 0 2px}
+  .print-sheet .pb:first-child .pk{margin-top:0}
+  .print-sheet th.att,.print-sheet th.pl{width:11%;text-align:center}
+  .print-sheet td.att,.print-sheet td.pl{text-align:center}
   .print-sheet table{width:100%;border-collapse:collapse;font-size:16px;page-break-inside:avoid}
   .print-sheet th,.print-sheet td{border:1px solid #777;padding:7px 10px;text-align:left}
   .print-sheet th{background:#e8e8e8;font-size:12px;text-transform:uppercase}
@@ -1563,19 +1567,31 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.finder')) $('sugge
 // =====================================================
 function today(){ return new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}); }
 function head(sub){ return '<h1>FDPSSA Interschool Carnival</h1><h2>'+sub+' · '+today()+'</h2>'; }
+// The label printed at the top of each scoresheet — specific enough to use as
+// a section divider when these are handed out and collected on the day.
+function printKind(r){
+  if(isTrack(r)) return 'Track';
+  if(isField(r)) return r.event;          // "Jumps" or "Throws"
+  if(isRelay(r)) return 'Relay';
+  return r.event;                          // Passball / Tunnel Ball / Leaderball
+}
 function fieldBlock(r){
-  const track=isTrack(r), team=isTeam(r);
+  const track=isTrack(r), team=isTeam(r), field=isField(r);
   const list=team?SCHOOLS.slice()
     : track?spreadOrder(fieldFor(r),e=>e.school)
     : fieldFor(r).slice().sort((a,b)=>a.school.localeCompare(b.school)||nameOf(a.id).localeCompare(nameOf(b.id)));
-  return '<div class="pb"><h3>Event '+r.no+' · '+esc(raceName(r))+'</h3>'+
-    '<table><thead><tr>'+(team?'<th>School</th>':track?'<th>Lane</th><th>Name</th><th>School</th>':'<th>Name</th><th>School</th>')+
-    '<th>'+(team||track?'Place':'Distance ('+unitFor(r)+')')+'</th></tr></thead><tbody>'+
-    (team
-      ? list.map(s=>'<tr><td>'+esc(s)+'</td><td class="blank"></td></tr>').join('')
-      : list.map((e,i)=>'<tr>'+(track?'<td>'+(i+1)+'</td>':'')+'<td>'+esc(nameOf(e.id))+'</td><td>'+
-          esc(e.school)+'</td><td class="blank"></td></tr>').join(''))+
-    '</tbody></table></div>';
+  const cols = team ? '<th>School</th><th>Place</th>'
+    : track ? '<th>Lane</th><th>Name</th><th>School</th><th>Place</th>'
+    : '<th>Name</th><th>School</th><th class="att">Att. 1</th><th class="att">Att. 2</th><th class="att">Att. 3</th><th class="pl">Place</th>';
+  const rows = team
+    ? list.map(s=>'<tr><td>'+esc(s)+'</td><td class="blank"></td></tr>').join('')
+    : list.map((e,i)=>'<tr>'+(track?'<td>'+(i+1)+'</td>':'')+'<td>'+esc(nameOf(e.id))+'</td><td>'+esc(e.school)+'</td>'+
+        (field ? '<td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank pl"></td>'
+               : '<td class="blank"></td>')+
+        '</tr>').join('');
+  return '<div class="pb"><div class="pk">'+esc(printKind(r)).toUpperCase()+'</div>'+
+    '<h3>Event '+r.no+' · '+esc(raceName(r))+'</h3>'+
+    '<table><thead><tr>'+cols+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 $('printFieldBtn').addEventListener('click',()=>{
   const r=raceById(curRace); if(!r) return;
