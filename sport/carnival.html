@@ -672,6 +672,7 @@
       <h2>Interschool qualifiers</h2>
       <p>Years 3&ndash;6 &middot; Jumps &amp; Throws top 2, 200m top 2, sprint Division 1 top 4 &mdash;
       plus one reserve each, clearly marked as next in line.</p>
+      <div class="chips" id="qualView"></div>
       <div id="qualifiersList"></div>
       <div class="row"><button class="btn" id="printQualifiersBtn">🖨 Print qualifiers</button></div>
     </div>
@@ -1029,7 +1030,7 @@ let roster={};         // raceId -> [student]  (resolved locally for the rest of
 let marks={};          // eventId -> {studentId: number}  (jumps)
 let ties={};           // eventId -> [bool]  true = shares the place above (throws)
 let curPage='races';
-let view='prog', curRace=null, yearFilter='all', stuQuery='', champView='divis';
+let view='prog', curRace=null, yearFilter='all', stuQuery='', champView='divis', qualView='event';
 let syncState='idle', lastSynced=null, everSynced=false;
 
 const $=id=>document.getElementById(id);
@@ -1383,6 +1384,24 @@ function interschoolQualifiers(){
     return yearOf(a.r.division)-yearOf(b.r.division) || a.r.division.localeCompare(b.r.division);
   });
   return groups;
+}
+// Same qualifiers, reorganised around each student instead of each event —
+// "which events is this kid actually in", rather than "who's in this event".
+function qualifiersByStudent(){
+  const byStudent={};
+  interschoolQualifiers().forEach(({r,qualifiers,reserves})=>{
+    const add=(q,reserve)=>{
+      const key=q.student.id;
+      const rec=byStudent[key]=byStudent[key]||{student:q.student,year:yearOf(r.division),entries:[]};
+      rec.entries.push({r,place:q.place,reserve});
+    };
+    qualifiers.forEach(q=>add(q,false));
+    reserves.forEach(q=>add(q,true));
+  });
+  const surname=n=>n.trim().split(/\s+/).slice(-1)[0].toLowerCase();
+  return Object.values(byStudent).sort((a,b)=>
+    a.year-b.year || surname(a.student.name).localeCompare(surname(b.student.name)) ||
+    a.student.name.localeCompare(b.student.name));
 }
 const CHAMP_DEFAULT=[8,5,3,1];
 function champSchemeFor(ev){ return champPoints[ev] || CHAMP_DEFAULT; }
@@ -2582,8 +2601,38 @@ function renderTodo(){
 }
 
 function renderQualifiers(){
-  const groups=interschoolQualifiers();
+  const vc=$('qualView'); vc.innerHTML='';
+  [['event','By event'],['student','By student']].forEach(([v,l])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(qualView===v?' on':'');
+    b.textContent=l;
+    b.addEventListener('click',()=>{ qualView=v; renderStand(); });
+    vc.appendChild(b);
+  });
+
   const box=$('qualifiersList'); box.innerHTML='';
+  if(qualView==='student'){
+    const rows=qualifiersByStudent();
+    if(!rows.length){
+      box.innerHTML='<div style="color:var(--faint);font-size:13.5px;padding:8px 0">'+
+        'Nothing to show yet — this fills in as Years 3&ndash;6 jumps, throws, 200m and Division 1 sprints are recorded.</div>';
+      return;
+    }
+    rows.forEach(({student,entries})=>{
+      const sec=document.createElement('div');
+      sec.className='qual-sec';
+      sec.innerHTML='<div class="qual-h" style="color:'+(HOUSE_COLORS[student.house]||'var(--accent)')+'">'+
+          esc(student.name)+' <span style="color:var(--faint);font-weight:600;font-size:12px">'+
+          esc(student.house)+' &middot; Room '+esc(student.room)+'</span></div>'+
+        entries.map(e=>'<div class="qual-row'+(e.reserve?' res':'')+'"><span class="pl">'+e.place+ord(e.place)+'</span>'+
+          '<span class="nm">'+esc(e.r.division)+' &middot; '+esc(e.r.event)+
+          (e.reserve?'<span class="tag">Next in line</span>':'')+'</span></div>').join('');
+      box.appendChild(sec);
+    });
+    return;
+  }
+
+  const groups=interschoolQualifiers();
   if(!groups.length){
     box.innerHTML='<div style="color:var(--faint);font-size:13.5px;padding:8px 0">'+
       'Nothing to show yet — this fills in as Years 3&ndash;6 jumps, throws, 200m and Division 1 sprints are recorded.</div>';
@@ -2603,18 +2652,35 @@ function renderQualifiers(){
   });
 }
 $('printQualifiersBtn').addEventListener('click',()=>{
-  const groups=interschoolQualifiers();
   let h='<h1>Hilton Primary School</h1><h2>Interschool Qualifiers &middot; '+today()+'</h2>';
-  if(!groups.length){
-    h+='<p>Nothing recorded yet.</p>';
+  if(qualView==='student'){
+    const rows=qualifiersByStudent();
+    if(!rows.length){
+      h+='<p>Nothing recorded yet.</p>';
+    } else {
+      let curYear=null;
+      rows.forEach(({student,year,entries})=>{
+        if(year!==curYear){ h+='<h3>Year '+year+'</h3>'; curYear=year; }
+        h+='<table style="margin-bottom:14px"><thead><tr><th colspan="2">'+esc(student.name)+
+            ' &middot; '+esc(student.house)+' &middot; Room '+esc(student.room)+'</th></tr></thead><tbody>'+
+          entries.map(e=>'<tr><td>'+esc(e.r.division)+' &middot; '+esc(e.r.event)+'</td>'+
+            '<td>'+e.place+ord(e.place)+(e.reserve?' (next in line)':'')+'</td></tr>').join('')+
+          '</tbody></table>';
+      });
+    }
   } else {
-    groups.forEach(({r,qualifiers,reserves})=>{
-      h+='<h3>'+esc(r.division)+' &middot; '+esc(r.event)+'</h3>'+
-        '<table><thead><tr><th>Place</th><th>Name</th><th>House</th></tr></thead><tbody>'+
-        qualifiers.map(q=>'<tr><td>'+q.place+ord(q.place)+'</td><td>'+esc(q.student.name)+'</td><td>'+esc(q.student.house)+'</td></tr>').join('')+
-        reserves.map(q=>'<tr><td>'+q.place+ord(q.place)+'</td><td>'+esc(q.student.name)+' (next in line)</td><td>'+esc(q.student.house)+'</td></tr>').join('')+
-        '</tbody></table>';
-    });
+    const groups=interschoolQualifiers();
+    if(!groups.length){
+      h+='<p>Nothing recorded yet.</p>';
+    } else {
+      groups.forEach(({r,qualifiers,reserves})=>{
+        h+='<h3>'+esc(r.division)+' &middot; '+esc(r.event)+'</h3>'+
+          '<table><thead><tr><th>Place</th><th>Name</th><th>House</th></tr></thead><tbody>'+
+          qualifiers.map(q=>'<tr><td>'+q.place+ord(q.place)+'</td><td>'+esc(q.student.name)+'</td><td>'+esc(q.student.house)+'</td></tr>').join('')+
+          reserves.map(q=>'<tr><td>'+q.place+ord(q.place)+'</td><td>'+esc(q.student.name)+' (next in line)</td><td>'+esc(q.student.house)+'</td></tr>').join('')+
+          '</tbody></table>';
+      });
+    }
   }
   $('printSheet').innerHTML=h; window.print();
 });
