@@ -1784,7 +1784,7 @@ function receiptCanvas(doc){
     if(l.rule){
       ctx.fillRect(pad,y,W-pad*2,2); y+=2+(l.gap||6); return;
     }
-    ctx.font=(l.bold?'bold ':'')+(l.size||22)+'px "Helvetica Neue", Arial, sans-serif';
+    ctx.font=(l.bold?'bold ':'')+(l.size||22)+'px "Helvetica Neue", Arial, sans-serif'; 
     if(l.row){
       // place | name | value, with the school on a quieter second line —
       // 58mm paper is too narrow to fit "Name · Long School" on one line
