@@ -236,9 +236,10 @@
     body *{visibility:hidden}
     .print-sheet,.print-sheet *{visibility:visible}
     .print-sheet{display:block;position:absolute;top:0;left:0;width:100%;background:#fff}
-    @page{margin:1.4cm}
+    @page{margin:0}
   }
   .print-sheet,.print-sheet *{color:#000;background:#fff;font-family:-apple-system,Arial,sans-serif}
+  .print-sheet{padding:1.4cm}
   .print-sheet h1{font-size:21px;margin:0}
   .print-sheet h2{font-size:15px;font-weight:600;color:#333;margin:3px 0 14px}
   .print-sheet h3{font-size:20px;margin:18px 0 8px}
@@ -257,7 +258,10 @@
   .print-sheet th,.print-sheet td{border:1px solid #777;padding:7px 10px;text-align:left}
   .print-sheet th{background:#e8e8e8;font-size:12px;text-transform:uppercase}
   .print-sheet td.blank{height:30px}
-  .print-sheet .pb{page-break-after:always}
+  /* the whole event block travels together — if it doesn't fit what's left of
+  the current page, the WHOLE thing (banner included) starts the next page,
+  rather than the banner and its table landing on different pages */
+  .print-sheet .pb{page-break-after:always;page-break-inside:avoid}
   .print-sheet .pb:last-child{page-break-after:auto}
 
   @media (max-width:900px){
