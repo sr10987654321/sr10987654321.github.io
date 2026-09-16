@@ -239,22 +239,27 @@
     @page{margin:0}
   }
   .print-sheet,.print-sheet *{color:#000;background:#fff;font-family:-apple-system,Arial,sans-serif}
-  .print-sheet{padding:1.4cm}
-  .print-sheet h1{font-size:21px;margin:0}
-  .print-sheet h2{font-size:15px;font-weight:600;color:#333;margin:3px 0 14px}
-  .print-sheet h3{font-size:20px;margin:18px 0 8px}
+  /* No padding on the container, and no negative margins anywhere below — a
+  negative margin sitting across a forced page break is exactly what caused
+  the banner to render twice (bleeding into the bottom of the previous page,
+  then again at the top of the correct one). The banner is the first thing on
+  each page and has no ambient padding to escape, so it reaches the edges on
+  its own; everything else insets itself individually instead. */
+  .print-sheet h1{font-size:21px;margin:0 1.4cm}
+  .print-sheet h2{font-size:15px;font-weight:600;color:#333;margin:3px 1.4cm 14px}
+  .print-sheet h3{font-size:20px;margin:18px 1.4cm 8px}
   .print-sheet .banner{
-    margin:-1.4cm -1.4cm 16px -1.4cm;padding:22px 1.4cm 24px;
+    padding:22px 1.4cm 24px;margin:0 0 16px;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
   }
   .print-sheet .banner span{
     font-family:var(--display-font);font-size:46px;line-height:1;letter-spacing:.01em;
     white-space:nowrap;display:block;color:inherit;background:none;
   }
-  .print-sheet .meta{font-size:15px;font-weight:700;margin:0 0 10px}
+  .print-sheet .meta{font-size:15px;font-weight:700;margin:0 1.4cm 10px}
   .print-sheet th.att,.print-sheet th.pl{width:11%;text-align:center}
   .print-sheet td.att,.print-sheet td.pl{text-align:center}
-  .print-sheet table{width:100%;border-collapse:collapse;font-size:16px;page-break-inside:avoid}
+  .print-sheet table{width:calc(100% - 2.8cm);border-collapse:collapse;font-size:16px;page-break-inside:avoid;margin:0 1.4cm}
   .print-sheet th,.print-sheet td{border:1px solid #777;padding:7px 10px;text-align:left}
   .print-sheet th{background:#e8e8e8;font-size:12px;text-transform:uppercase}
   .print-sheet td.blank{height:30px}
@@ -1784,7 +1789,7 @@ function receiptCanvas(doc){
     if(l.rule){
       ctx.fillRect(pad,y,W-pad*2,2); y+=2+(l.gap||6); return;
     }
-    ctx.font=(l.bold?'bold ':'')+(l.size||22)+'px "Helvetica Neue", Arial, sans-serif'; 
+    ctx.font=(l.bold?'bold ':'')+(l.size||22)+'px "Helvetica Neue", Arial, sans-serif';
     if(l.row){
       // place | name | value, with the school on a quieter second line —
       // 58mm paper is too narrow to fit "Name · Long School" on one line
