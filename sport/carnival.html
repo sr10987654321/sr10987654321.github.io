@@ -329,6 +329,16 @@
   .todo-row .nm{flex:1;font-size:14.5px;font-weight:700;min-width:0}
   .todo-row .st{font-size:12px;font-weight:800;flex:none;color:var(--tc)}
   .todo-none{padding:14px 0;font-size:14px;font-weight:700;color:var(--green)}
+  .qual-sec{border:1px solid var(--border);border-radius:11px;padding:11px 13px;
+    margin-bottom:10px;background:var(--panel-2)}
+  .qual-h{font-size:13.5px;font-weight:800;color:var(--accent);margin-bottom:6px}
+  .qual-row{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:13.5px}
+  .qual-row .pl{font-weight:800;width:36px;flex:none;color:var(--dim)}
+  .qual-row .nm{flex:1}
+  .qual-row .hs{font-weight:700;font-size:12.5px;flex:none}
+  .qual-row.res{opacity:.75}
+  .qual-row .tag{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    background:var(--accent-dim);color:var(--accent);padding:2px 7px;border-radius:100px;margin-left:8px}
   .house-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
   .house-name{width:92px;font-weight:800;font-size:15px;color:var(--hc)}
   .bar-wrap{flex:1;height:30px;background:var(--panel-2);border-radius:8px;overflow:hidden;
@@ -656,6 +666,14 @@
     <div class="card">
       <h2>Houses</h2>
       <div id="houseBars" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Interschool qualifiers</h2>
+      <p>Years 3&ndash;6 &middot; Jumps &amp; Throws top 2, 200m top 2, sprint Division 1 top 4 &mdash;
+      plus one reserve each, clearly marked as next in line.</p>
+      <div id="qualifiersList"></div>
+      <div class="row"><button class="btn" id="printQualifiersBtn">🖨 Print qualifiers</button></div>
     </div>
 
     <div class="card" id="todoCard">
@@ -1329,6 +1347,42 @@ function champEligible(r){
 }
 function champTypes(){
   return [...new Set(RACES.filter(champEligible).map(r=>r.event))];
+}
+// How many places go through per category, plus one reserve slot below that —
+// walked in finish order so a tie right at the cutoff still shows correctly
+// (a tie for the last qualifying spot means everyone in that tie goes through,
+// and the reserve is whoever the tie pushed down, not a fixed place number).
+const QUALIFY_CUTOFF={'Jumps':2,'Throws':2,'200m':2};   // sprint (races) handled separately below
+function topWithReserve(r,cutoff){
+  const order=results[r.id]||[];
+  const pn=placeNumbers(r);
+  const qualifiers=[], reserves=[];
+  let reservePlace=null;
+  order.forEach((sid,i)=>{
+    const p=pn[i], student=studentIn(r,sid);
+    if(p<=cutoff) qualifiers.push({student,place:p});
+    else if(reservePlace===null||p===reservePlace){ reservePlace=p; reserves.push({student,place:p}); }
+  });
+  return {qualifiers,reserves};
+}
+function interschoolQualifiers(){
+  const groups=[];
+  RACES.filter(champEligible).forEach(r=>{
+    if(!(results[r.id]||[]).length) return;   // not run yet — nothing to report
+    const cutoff = r.event==='200m' ? 2 : (r.page==='jumps'||r.page==='throws') ? 2 : 4;
+    const {qualifiers,reserves}=topWithReserve(r,cutoff);
+    if(!qualifiers.length) return;
+    groups.push({r,cutoff,qualifiers,reserves});
+  });
+  // Jumps, then Throws, then 200m, then the sprint — matches how the
+  // interschool nomination sheet itself is grouped
+  const catOrder={'Jumps':0,'Throws':1,'200m':2};
+  groups.sort((a,b)=>{
+    const ca=catOrder[a.r.event]??3, cb=catOrder[b.r.event]??3;
+    if(ca!==cb) return ca-cb;
+    return yearOf(a.r.division)-yearOf(b.r.division) || a.r.division.localeCompare(b.r.division);
+  });
+  return groups;
 }
 const CHAMP_DEFAULT=[8,5,3,1];
 function champSchemeFor(ev){ return champPoints[ev] || CHAMP_DEFAULT; }
@@ -2527,6 +2581,43 @@ function renderTodo(){
   });
 }
 
+function renderQualifiers(){
+  const groups=interschoolQualifiers();
+  const box=$('qualifiersList'); box.innerHTML='';
+  if(!groups.length){
+    box.innerHTML='<div style="color:var(--faint);font-size:13.5px;padding:8px 0">'+
+      'Nothing to show yet — this fills in as Years 3&ndash;6 jumps, throws, 200m and Division 1 sprints are recorded.</div>';
+    return;
+  }
+  groups.forEach(({r,qualifiers,reserves})=>{
+    const sec=document.createElement('div');
+    sec.className='qual-sec';
+    sec.innerHTML='<div class="qual-h">'+esc(r.division)+' &middot; '+esc(r.event)+'</div>'+
+      qualifiers.map(q=>'<div class="qual-row"><span class="pl">'+q.place+ord(q.place)+'</span>'+
+        '<span class="nm">'+esc(q.student.name)+'</span>'+
+        '<span class="hs" style="color:'+(HOUSE_COLORS[q.student.house]||'var(--faint)')+'">'+esc(q.student.house)+'</span></div>').join('')+
+      reserves.map(q=>'<div class="qual-row res"><span class="pl">'+q.place+ord(q.place)+'</span>'+
+        '<span class="nm">'+esc(q.student.name)+'<span class="tag">Next in line</span></span>'+
+        '<span class="hs" style="color:'+(HOUSE_COLORS[q.student.house]||'var(--faint)')+'">'+esc(q.student.house)+'</span></div>').join('');
+    box.appendChild(sec);
+  });
+}
+$('printQualifiersBtn').addEventListener('click',()=>{
+  const groups=interschoolQualifiers();
+  let h='<h1>Hilton Primary School</h1><h2>Interschool Qualifiers &middot; '+today()+'</h2>';
+  if(!groups.length){
+    h+='<p>Nothing recorded yet.</p>';
+  } else {
+    groups.forEach(({r,qualifiers,reserves})=>{
+      h+='<h3>'+esc(r.division)+' &middot; '+esc(r.event)+'</h3>'+
+        '<table><thead><tr><th>Place</th><th>Name</th><th>House</th></tr></thead><tbody>'+
+        qualifiers.map(q=>'<tr><td>'+q.place+ord(q.place)+'</td><td>'+esc(q.student.name)+'</td><td>'+esc(q.student.house)+'</td></tr>').join('')+
+        reserves.map(q=>'<tr><td>'+q.place+ord(q.place)+'</td><td>'+esc(q.student.name)+' (next in line)</td><td>'+esc(q.student.house)+'</td></tr>').join('')+
+        '</tbody></table>';
+    });
+  }
+  $('printSheet').innerHTML=h; window.print();
+});
 function renderStand(){
   const t=tally(), ht=houseTotals();
   const scored=Object.keys(t).length;
@@ -2545,8 +2636,7 @@ function renderStand(){
   });
 
   renderTodo();
-
-  // --- championship, viewable overall or split by year and gender ---
+  renderQualifiers();
   const ct=champTally();
   const vc=$('champView'); vc.innerHTML='';
   [['divis','By year & gender'],['overall','Overall']].forEach(([v,l])=>{
