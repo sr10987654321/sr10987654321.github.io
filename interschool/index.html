@@ -70,6 +70,10 @@
     font-family:var(--display-font)}
   .sub{margin:0 0 16px;color:var(--dim);font-size:14.5px;font-weight:600}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+  .ev-banner{border-radius:var(--radius);padding:16px 20px 18px;margin:2px 0 14px;overflow:hidden;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+  .ev-banner span{font-family:var(--display-font);font-size:clamp(28px,7vw,40px);line-height:1;
+    letter-spacing:.01em;white-space:nowrap;display:block;color:inherit;background:none}
   .card h2{margin:0 0 4px;font-size:15px;font-weight:800}
   .card p{margin:0 0 12px;font-size:13px;color:var(--dim);line-height:1.5}
   .row{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
@@ -359,6 +363,7 @@
   <!-- ============ EVENT ============ -->
   <section class="screen" id="scrEvent" hidden>
     <button class="back" data-goto="prog">← Programme</button>
+    <div class="ev-banner" id="evBanner"><span id="evBannerText">—</span></div>
     <div class="eyebrow" id="evNo">—</div>
     <h1 id="evTitle">—</h1>
     <p class="sub" id="evSub">—</p>
@@ -1185,6 +1190,11 @@ function raceById(id){ return SCHEDULE.find(r=>r.id===id); }
 function renderEvent(){
   const r=raceById(curRace); if(!r){ view='prog'; return render(); }
   const track=isTrack(r), field=isField(r), team=isTeam(r), relay=isRelay(r);
+  // Same banner as the printed sheet, same colour lookup — so the screen
+  // someone's holding always matches the paper they're standing next to.
+  const kind=printKind(r);
+  $('evBanner').style.cssText='background:'+typeColor(r.event)+';color:'+bannerTextColor(r.event);
+  $('evBannerText').textContent=kind.toUpperCase();
   // Field events (Jumps/Throws) are recorded exactly like Track now — tap the
   // finishing order, ties supported. Distances are on the paper sheet only.
   $('trackWrap').hidden=!(track||field);
