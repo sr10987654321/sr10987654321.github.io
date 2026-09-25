@@ -334,6 +334,20 @@
   .win-row .ev{font-size:10.5px;font-weight:800;color:var(--faint);flex:none;width:44px}
   .win-row .nm{flex:1;color:var(--dim)}
   .win-row .who{font-weight:700;text-align:right}
+
+  .champ-year{margin-bottom:14px}
+  .champ-year>h3{margin:0 0 8px;font-size:15px;font-weight:800}
+  .champ-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:520px){ .champ-cols{grid-template-columns:1fr} }
+  .champ-box{border:1px solid var(--border);border-radius:11px;padding:11px 13px;background:var(--panel)}
+  .champ-box h4{margin:0 0 7px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim)}
+  .champ-row{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:13.5px}
+  .champ-row .tier{font-weight:800;flex:none;width:20px}
+  .champ-row .tier.win{color:var(--gold)}
+  .champ-row .tier.run{color:var(--silver)}
+  .champ-row .nm{flex:1;font-weight:700}
+  .champ-row .meta{color:var(--faint);font-size:12px;text-align:right}
+  .champ-empty{color:var(--faint);font-size:13px;padding:2px 0}
 </style>
 </head>
 <body>
@@ -444,6 +458,15 @@
       <div class="chips" id="winnersView"></div>
       <div id="winnersBySchool"></div>
       <div class="row"><button class="btn" id="printWinnersBtn">🖨 Print winners by school</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Year champions</h2>
+      <p>Winner and runner-up for each year level, boys and girls separately — added up across every
+      individual event that athlete scored in (Track, Jumps, Throws). Relay and tabloids don't count here
+      since those points go to the school, not one athlete.</p>
+      <div id="yearChamps"></div>
+      <div class="row"><button class="btn" id="printChampsBtn">🖨 Print year champions</button></div>
     </div>
 
     <div class="card" id="todoCard">
@@ -590,7 +613,7 @@ function bannerTextColor(event){
 
 const STORE='fdpssa-2026-v1';
 const NAMES_KEY='fdpssa-2026-names';
-const API_URL='https://script.google.com/macros/s/AKfycbwlJfWWZ62ZKLIDVjazdU7aBR2cJg3c6Q75v9JdUBmvA_bQ4P2TkluFe1JjTgG82a_C/exec';   // paste the Apps Script /exec URL here once deployed
+const API_URL='';   // paste the Apps Script /exec URL here once deployed
 const POLL_MS=4000;
 const SYNC_ON=!!API_URL;
 
@@ -815,6 +838,34 @@ function winnersBySchool(onlyFirst=true){
   // schools with the most rows lead — "most firsts" or "most scoring places",
   // whichever list this actually is
   return Object.entries(by).sort((a,b)=>b[1].length-a[1].length);
+}
+
+// Year champions: winner + runner-up per (year, gender), added up across every
+// individual event that athlete scored in — the same total tally() already
+// keeps, since one athlete keeps one id across every event they enter. Ties
+// are handled as score TIERS, not places: if two athletes tie for the top
+// score they're both "Winner" and whoever has the next-highest score (even
+// a distant third place) is "Runner-up" — there's no empty runner-up slot
+// just because the top spot was shared.
+function yearChampions(){
+  const t=tally();
+  const groups={};
+  Object.values(t).forEach(a=>{
+    if(a.pts<=0) return;
+    const key=a.year+'|'+a.gender;
+    (groups[key]=groups[key]||[]).push(a);
+  });
+  const out=[];
+  [3,4,5,6].forEach(year=>{
+    ['Girls','Boys'].forEach(gender=>{
+      const list=(groups[year+'|'+gender]||[]).slice().sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name));
+      const tiers=[...new Set(list.map(a=>a.pts))].sort((a,b)=>b-a).slice(0,2);
+      const winners=list.filter(a=>a.pts===tiers[0]);
+      const runnersUp=tiers.length>1?list.filter(a=>a.pts===tiers[1]):[];
+      out.push({year,gender,winners,runnersUp,hasAny:list.length>0});
+    });
+  });
+  return out;
 }
 
 
