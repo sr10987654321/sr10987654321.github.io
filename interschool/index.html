@@ -613,7 +613,7 @@ function bannerTextColor(event){
 
 const STORE='fdpssa-2026-v1';
 const NAMES_KEY='fdpssa-2026-names';
-const API_URL='https://script.google.com/macros/s/AKfycbwlJfWWZ62ZKLIDVjazdU7aBR2cJg3c6Q75v9JdUBmvA_bQ4P2TkluFe1JjTgG82a_C/exec';   // paste the Apps Script /exec URL here once deployed
+const API_URL='';   // paste the Apps Script /exec URL here once deployed
 const POLL_MS=4000;
 const SYNC_ON=!!API_URL;
 
@@ -1507,6 +1507,7 @@ function renderStand(){
   renderTodo();
   renderPoints();
   renderWinners();
+  renderChampions();
 
   const q=stuQuery.trim().toLowerCase();
   const rows=Object.values(t)
@@ -1815,6 +1816,65 @@ function renderWinners(){
     box.appendChild(sec);
   });
 }
+// ---- year champions ----
+function champRow(a,tier){
+  return '<div class="champ-row"><span class="tier '+(tier==='win'?'win':'run')+'">'+(tier==='win'?'1st':'2nd')+'</span>'+
+    '<span class="nm">'+esc(a.name)+'</span>'+
+    '<span class="meta">'+esc(a.school)+' · '+a.pts+' pts · '+a.events+' event'+(a.events===1?'':'s')+'</span></div>';
+}
+function champBox(list,tier,emptyMsg){
+  if(!list.length) return '<div class="champ-empty">'+emptyMsg+'</div>';
+  return list.map(a=>champRow(a,tier)).join('');
+}
+function renderChampions(){
+  const box=$('yearChamps'); box.innerHTML='';
+  const groups=yearChampions();
+  if(!groups.some(g=>g.hasAny)){
+    box.innerHTML='<div style="color:var(--faint);font-size:13.5px;padding:8px 0">Nothing has scored in an individual event yet.</div>';
+    return;
+  }
+  [3,4,5,6].forEach(year=>{
+    const girls=groups.find(g=>g.year===year&&g.gender==='Girls');
+    const boys=groups.find(g=>g.year===year&&g.gender==='Boys');
+    if(!girls.hasAny && !boys.hasAny) return;
+    const sec=document.createElement('div');
+    sec.className='champ-year';
+    sec.innerHTML='<h3>Year '+year+'</h3><div class="champ-cols">'+
+      [['Girls',girls],['Boys',boys]].map(([label,g])=>
+        '<div class="champ-box"><h4>'+label+'</h4>'+
+        (g.hasAny
+          ? champBox(g.winners,'win','')+champBox(g.runnersUp,'run','No runner-up — everyone who scored tied for 1st.')
+          : '<div class="champ-empty">Nothing scored yet.</div>')+
+        '</div>'
+      ).join('')+
+      '</div>';
+    box.appendChild(sec);
+  });
+}
+$('printChampsBtn').addEventListener('click',()=>{
+  const groups=yearChampions();
+  let h=head('Year Champions')+
+    '<p style="margin:0 0 16px;font-size:13px;color:#555">Winner and runner-up per year level and gender, '+
+    'added up across every individual event (Track, Jumps, Throws). Relay and tabloids score the school, not one athlete.</p>';
+  const rowHtml=(a,tierLabel)=>'<tr><td>'+tierLabel+'</td><td>'+esc(a.name)+'</td><td>'+esc(a.school)+'</td>'+
+    '<td>'+a.pts+'</td><td>'+a.events+'</td></tr>';
+  [3,4,5,6].forEach(year=>{
+    const girls=groups.find(g=>g.year===year&&g.gender==='Girls');
+    const boys=groups.find(g=>g.year===year&&g.gender==='Boys');
+    if(!girls.hasAny && !boys.hasAny) return;
+    h+='<h3>Year '+year+'</h3>';
+    [['Girls',girls],['Boys',boys]].forEach(([label,g])=>{
+      h+='<h4 style="margin:8px 0 4px">'+label+'</h4>';
+      if(!g.hasAny){ h+='<p>Nothing scored yet.</p>'; return; }
+      h+='<table><thead><tr><th></th><th>Name</th><th>School</th><th>Points</th><th>Events</th></tr></thead><tbody>'+
+        g.winners.map(a=>rowHtml(a,'Winner')).join('')+
+        (g.runnersUp.length?g.runnersUp.map(a=>rowHtml(a,'Runner-up')).join(''):
+          '<tr><td colspan="5" style="color:#888">No runner-up — everyone who scored tied for 1st.</td></tr>')+
+        '</tbody></table>';
+    });
+  });
+  $('printSheet').innerHTML=h; window.print();
+});
 $('printWinnersBtn').addEventListener('click',()=>{
   const onlyFirst=winnersView==='top';
   const groups=winnersBySchool(onlyFirst).filter(([,rows])=>rows.length);
