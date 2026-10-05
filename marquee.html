@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en-AU">
 <head>
@@ -321,7 +320,7 @@ let NAMES=load(LS_NAMES)||{};
 let CFG=load(LS_CFG)||{url:'',key:'',auto:true,privacy:false,classId:null,view:'dash'};
 let UI={view:CFG.view||'dash',student:null,area:null,assess:null,syncMsg:'',busy:false};
 function load(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
-function save(){D.updated=Date.now();localStorage.setItem(LS_DATA,JSON.stringify(D));if(CFG.auto&&CFG.url)schedulePush()}
+function save(){D.updated=Date.now();localStorage.setItem(LS_DATA,JSON.stringify(D));if(CFG.auto&&CFG.url&&!D.demoOnly)schedulePush()}
 function saveNames(){localStorage.setItem(LS_NAMES,JSON.stringify(NAMES))}
 function saveCfg(){localStorage.setItem(LS_CFG,JSON.stringify(CFG))}
 const cls=()=>D.classes.find(c=>c.id===CFG.classId)||D.classes[0]||null;
@@ -398,22 +397,22 @@ function renderNav(){const c=cls();document.getElementById('nav').innerHTML=`<di
   <div class="classpick"><select style="width:100%" onchange="CFG.classId=this.value;saveCfg();render()">${D.classes.length?D.classes.map(k=>`<option value="${k.id}" ${c&&c.id===k.id?'selected':''}>${esc(k.name)} · Y${k.yearLevel} · ${k.year}</option>`).join(''):'<option>No class yet</option>'}</select></div>
   ${VIEWS.map(([k,i,n])=>`<button class="navbtn ${UI.view===k?'on':''}" onclick="go('${k}')"><span class="k">${i}</span>${n}</button>`).join('')}
   <div class="navsp"></div>
-  <div class="sync">${CFG.url?`<b>●</b> Sheet linked${CFG.auto?' · auto-sync':''}<br>`:'<span>○ Sheet not linked</span><br>'}${esc(UI.syncMsg)}${CFG.privacy?'<br><span style="color:var(--coral)">Privacy mode: names hidden</span>':''}</div>`}
+  <div class="sync">${CFG.url?`<b>●</b> Sheet linked${CFG.auto?' · auto-sync':''}<br>`:'<span>○ Sheet not linked</span><br>'}${D.demoOnly?'<span style="color:var(--gold)">Demo data · not syncing</span><br>':''}${esc(UI.syncMsg)}${CFG.privacy?'<br><span style="color:var(--coral)">Privacy mode: names hidden</span>':''}</div>`}
 function welcome(){return`<div class="report"><div class="card hero glow" style="margin-top:40px"><div class="tiny">Welcome</div><h1 style="font-size:44px">Set up your first class</h1><p class="sub">Create a class, add students, then add assessments. Names stay on this device; everything else is de-identified and can sync to your Google Sheet.</p>
-  <button class="gold" onclick="newClass()">+ Create a class</button> <button onclick="go('settings')">Settings</button></div></div>`}
+  <button class="gold" onclick="newClass()">+ Create a class</button> <button onclick="seedDemo();go('dash');toast('Demo class loaded')">Load demo class</button> <button onclick="go('settings')">Settings</button></div></div>`}
 
 // ---------- Dashboard ----------
 function dash(){const c=cls(),S=stds(),r=roster(),as=classAssess();
   if(!S)return`<h1>${esc(c.name)}</h1><div class="card">No standards loaded for Year ${c.yearLevel}. Import a standards file under <b>Standards</b>.</div>`;
-  const areaCards=S.areas.map(A=>{const avg=classAreaAvg(A.id),cov=covData(A.id);return`<div class="card" style="cursor:pointer" onclick="go('coverage',{area:'${A.id}'})"><div class="row" style="justify-content:space-between"><div><div class="tiny" style="color:${A.colour}">${esc(A.short)}</div><div style="font-family:var(--serif);font-size:20px">${esc(A.id==='hass'?'HASS':A.name)}</div></div>${arc(avg,A.colour,70,avg==null?'—':Math.round(avg))}</div>
-    <div style="margin:10px 0 6px" class="small dim">Class average · ${as.filter(a=>a.area===A.id).length} assessments · ${cov.pct}% of descriptors covered</div>${dist(A.id)}</div>`}).join('');
+  const areaCards=S.areas.map(A=>{const avg=classAreaAvg(A.id),cov=covData(A.id);return`<div class="card" style="cursor:pointer" onclick="go('coverage',{area:'${A.id}'})"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><div class="tiny" style="color:${A.colour}">Class average</div><div style="font-family:var(--serif);font-size:22px">${esc(({mat:'Maths',hass:'HASS',tec:'Tech'})[A.id]||A.name)}</div></div>${arc(avg,A.colour,70,avg==null?'—':Math.round(avg))}</div>
+    <div style="margin:10px 0 6px" class="small dim">${as.filter(a=>a.area===A.id).length} assessments · ${cov.pct}% covered</div>${dist(A.id)}</div>`}).join('');
   const heat=`<div class="scroll"><table><tr><th>Student</th>${S.areas.map(A=>`<th style="text-align:center;color:${A.colour}">${esc(A.short)}</th>`).join('')}<th>Evidence</th></tr>
     ${r.map(s=>{const ests=S.areas.map(A=>areaEst(s.id,A.id));return`<tr class="srow" onclick="go('report',{student:'${s.id}'})"><td><b>${esc(nameOf(s.id))}</b> <span class="muted small">${esc(s.code)}</span></td>${ests.map(e=>`<td style="text-align:center"><span class="heat" style="background:${e.grade?`var(--${e.grade})`:'rgba(255,255,255,.07)'};${e.grade?'':'color:#767269'}">${e.grade||'·'}</span></td>`).join('')}<td class="dim small">${ests.reduce((a,e)=>a+e.n,0)} results</td></tr>`}).join('')}
     ${r.length?'':'<tr><td colspan="9" class="muted">No students yet — add them under Students.</td></tr>'}</table></div>`;
   const recent=as.slice(-5).reverse();
   return`<div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:18px"><div><div class="tiny">${esc(c.year)} · Year ${c.yearLevel}</div><h1>${esc(c.name)}</h1><p class="sub" style="margin:0">${r.length} students · ${as.length} assessments · ${Object.values(D.results).reduce((a,o)=>a+Object.keys(o).length,0)} results recorded</p></div>
    <div class="row noprint"><button onclick="newAssess()">+ Assessment</button><button class="gold" onclick="go('students')">Manage students</button></div></div>
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-bottom:18px">${areaCards}</div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:18px">${areaCards}</div>
   <div class="grid" style="grid-template-columns:2fr 1fr"><div class="card"><h3>Grade matrix</h3>${heat}</div>
   <div class="card"><h3>Latest assessments</h3>${recent.length?recent.map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="go('assess',{assess:'${a.id}'})"><div><b>${esc(a.title)}</b></div><div class="small dim">${esc(area(a.area)?.name||'')} · ${a.date} · ${Object.keys(D.results[a.id]||{}).length}/${r.length} entered</div></div>`).join(''):'<div class="muted small">Nothing yet.</div>'}</div></div>`}
 
@@ -514,7 +513,7 @@ function setOverride(sid,aid,v){D.overrides[sid]=D.overrides[sid]||{};if(v)D.ove
 
 // ---------- Settings ----------
 function settings(){return`<h1>Settings</h1><p class="sub">Classes, grade cut-offs, Google Sheet sync and backups.</p><div class="grid g2">
-  <div class="card"><h3>Classes</h3>${D.classes.map(k=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(k.name)}</b> <span class="dim small">· Year ${k.yearLevel} · ${esc(k.year)} · ${Object.values(D.students).filter(s=>s.classId===k.id&&!s.gone).length} students</span></div><div class="row"><button class="sm" onclick="editClass('${k.id}')">Edit</button><button class="sm danger" onclick="delClass('${k.id}')">Delete</button></div></div>`).join('')}<div style="margin-top:12px"><button class="gold" onclick="newClass()">+ New class</button></div></div>
+  <div class="card"><h3>Classes</h3>${D.classes.map(k=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(k.name)}</b> <span class="dim small">· Year ${k.yearLevel} · ${esc(k.year)} · ${Object.values(D.students).filter(s=>s.classId===k.id&&!s.gone).length} students</span></div><div class="row"><button class="sm" onclick="editClass('${k.id}')">Edit</button><button class="sm danger" onclick="delClass('${k.id}')">Delete</button></div></div>`).join('')}<div class="row" style="margin-top:12px"><button class="gold" onclick="newClass()">+ New class</button><button onclick="seedDemo();go('dash');toast('Demo class loaded')">Load demo class</button></div><p class="small muted">The demo class is 20 fictional students with a year of results. Delete it from this list when you're done.</p></div>
   <div class="card"><h3>Grade cut-offs (% of evidence)</h3><div class="row">${['A','B','C','D'].map(g=>`<label class="f"><span style="color:var(--${g})">${g} from</span><input type="number" style="width:80px" value="${D.cuts[g]}" onchange="D.cuts['${g}']=+this.value;save();render()"></label>`).join('')}</div><p class="small muted">E is anything below the D cut-off. Letter grades you enter directly map to A ${GRADE_PCT.A}% · B ${GRADE_PCT.B}% · C ${GRADE_PCT.C}% · D ${GRADE_PCT.D}% · E ${GRADE_PCT.E}%.</p></div>
   <div class="card"><h3>Google Sheet sync</h3><label class="f"><span>Apps Script web app URL</span><input id="s_url" value="${esc(CFG.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label><label class="f" style="margin-top:8px"><span>Shared key</span><input id="s_key" value="${esc(CFG.key)}" placeholder="the SECRET you set in the script"></label>
    <div class="row" style="margin-top:10px"><label class="row small" style="gap:6px"><input type="checkbox" ${CFG.auto?'checked':''} onchange="CFG.auto=this.checked;saveCfg()"> auto-push after changes</label></div>
@@ -526,15 +525,58 @@ function settings(){return`<h1>Settings</h1><p class="sub">Classes, grade cut-of
 function classForm(k){return`<h2>${k.id?'Edit':'New'} class</h2><div class="grid g2" style="margin-top:10px"><label class="f"><span>Class name</span><input id="c_name" value="${esc(k.name||'')}" placeholder="e.g. Room 12"></label><label class="f"><span>School year</span><input id="c_year" value="${esc(k.year||new Date().getFullYear())}"></label><label class="f"><span>Year level</span><select id="c_lvl">${[1,2,3,4,5,6].map(y=>`<option value="${y}" ${y==(k.yearLevel||4)?'selected':''}>Year ${y}${D.standards[y]?'':' (no standards loaded)'}</option>`).join('')}</select></label></div>
   <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="saveClass('${k.id||''}')">Save</button></div>`}
 function newClass(){modal(classForm({}))}function editClass(id){modal(classForm(D.classes.find(c=>c.id===id)))}
-function saveClass(id){const k=id?D.classes.find(c=>c.id===id):{id:uid('CL')};k.name=document.getElementById('c_name').value.trim()||'Class';k.year=document.getElementById('c_year').value.trim();k.yearLevel=+document.getElementById('c_lvl').value;if(!id)D.classes.push(k);CFG.classId=k.id;save();saveCfg();closeModal();go('dash')}
-function delClass(id){if(!confirm('Delete this class, its students and assessments?'))return;D.classes=D.classes.filter(c=>c.id!==id);for(const s of Object.values(D.students))if(s.classId===id)delete D.students[s.id];D.assessments=D.assessments.filter(a=>{if(a.classId===id){delete D.results[a.id];return false}return true});if(CFG.classId===id)CFG.classId=D.classes[0]?.id||null;save();saveCfg();render()}
+function saveClass(id){const k=id?D.classes.find(c=>c.id===id):{id:uid('CL')};k.name=document.getElementById('c_name').value.trim()||'Class';k.year=document.getElementById('c_year').value.trim();k.yearLevel=+document.getElementById('c_lvl').value;if(!id){D.classes.push(k);delete D.demoOnly}CFG.classId=k.id;save();saveCfg();closeModal();go('dash')}
+function delClass(id){if(!confirm('Delete this class, its students and assessments?'))return;D.classes=D.classes.filter(c=>c.id!==id);for(const s of Object.values(D.students))if(s.classId===id)delete D.students[s.id];D.assessments=D.assessments.filter(a=>{if(a.classId===id){delete D.results[a.id];return false}return true});if(CFG.classId===id)CFG.classId=D.classes[0]?.id||null;if(!D.classes.some(c=>c.demo))delete D.demoOnly;save();saveCfg();render()}
+
+
+// ======================= DEMO DATA =======================
+function seedDemo(){
+  const wasEmpty=!D.classes.length;const c={id:uid('CL'),name:'Room 12 (demo)',year:String(new Date().getFullYear()),yearLevel:4,demo:true};D.classes.push(c);CFG.classId=c.id;if(wasEmpty)D.demoOnly=true;
+  // [name, ability 0-100, trajectory per month, profile tweaks per area]
+  const kids=[['Ava',82,1.5,{eng:6}],['Benji',58,2.5,{mat:8}],['Chloe',66,0.5,{}],['Dev',44,3,{tec:12}],['Ella',91,0,{}],['Finn',52,-1,{hea:10}],['Grace',73,1,{eng:-6,mat:8}],['Hugo',38,2,{hass:10}],['Isla',77,1,{}],['Jack',61,-2,{eng:-10}],['Kai',88,0.5,{tec:6}],['Lola',69,1.5,{eng:8,mat:-6}],['Mia',47,4,{}],['Noah',55,1,{mat:-8,hass:6}],['Olive',80,0,{hea:6}],['Patrick',33,1.5,{}],['Quinn',72,2,{tec:-8}],['Ruby',64,0,{eng:5}],['Sam',50,3,{mat:10}],['Tahlia',86,-0.5,{hass:8}]];
+  const rnd=(()=>{let x=20261004;return()=>{x=(x*1103515245+12345)&0x7fffffff;return x/0x7fffffff}})();
+  const ids=kids.map(k=>{let code;do{code='ST-'+uid()}while(D.students[code]);D.students[code]={id:code,code,classId:c.id,added:c.year+'-02-02'};NAMES[code]=k[0];return code});
+  const plan=[
+    ['eng','rv','Reading comprehension — Term 1','-02-20','score',30,['AC9E4LY05','AC9E4LY04']],
+    ['mat','na','Place value & number test','-02-27','score',25,['ACMNA072','ACMNA073','ACMNA071']],
+    ['eng','wc','Suspense narrative — The Creek','-03-14','rubric',5,['AC9E4LY06','AC9E4LA05','AC9E4LA10','AC9E4LE05']],
+    ['hea','bh','Personal strengths reflection','-03-20','grade',0,['ACPPS033','ACPPS034']],
+    ['mat','na','Multiplication & division facts','-03-27','score',50,['ACMNA074','ACMNA075']],
+    ['eng','wc','Morpheme spelling test 1','-04-03','score',40,['AC9E4LA09']],
+    ['hass','his','First Fleet inquiry','-04-10','rubric',5,['ACHASSK085','WAHASS-Q4','WAHASS-C4']],
+    ['tec','dik','Digital systems quiz','-05-01','score',20,['ACTDIK007','ACTDIK008']],
+    ['mat','mg','Time & measurement','-05-15','score',20,['ACMMG085','ACMMG086','ACMMG084']],
+    ['eng','sl','Oral presentation — explorers','-05-22','grade',0,['AC9E4LY03','AC9E4LY02']],
+    ['hea','ci','Emotions & relationships','-05-29','grade',0,['ACPPS037','ACPPS038']],
+    ['mat','na','Fractions & decimals','-06-05','score',30,['ACMNA077','ACMNA078','ACMNA079']],
+    ['eng','wc','Personal recount — Swan River Colony','-06-12','rubric',5,['AC9E4LY06','AC9E4LA03','AC9E4LA07']],
+    ['hass','geo','Africa & South America mapping','-06-19','score',20,['ACHASSK087','WAHASS-A4']],
+    ['mat','sp','Data displays project','-06-26','rubric',4,['ACMSP096','ACMSP097','ACMSP095']],
+    ['eng','rv','Reading comprehension — Term 2','-07-24','score',30,['AC9E4LY05','AC9E4LE03']],
+    ['tec','dip','Scratch branching program','-08-07','rubric',4,['ACTDIP011','ACTDIP012','ACTDIP010']],
+    ['hass','civ','Local government presentation','-08-21','rubric',5,['ACHASSK091','WAHASS-C4']],
+    ['mat','na','Number patterns & equations','-08-28','score',25,['ACMNA081','ACMNA083']],
+    ['eng','wc','Morpheme spelling test 2','-09-04','score',40,['AC9E4LA09']],
+    ['tec','dtp','Design challenge — bridge build','-09-11','rubric',5,['ACTDEP014','ACTDEP015','ACTDEP016','ACTDEP017']],
+    ['mat','mg','Shape, angles & symmetry','-09-18','score',20,['ACMMG087','ACMMG089','ACMMG091']],
+    ['eng','sl','Class discussion contribution','-09-25','grade',0,['AC9E4LY02','AC9E4LA01']],
+    ['hea','cc','Community wellbeing poster','-09-25','rubric',4,['ACPPS040','ACPPS042']]
+  ];
+  for(const[areaId,rs,title,md,type,max,codes]of plan){const date=c.year+md;const month=+md.slice(1,3);const a={id:uid('AS'),classId:c.id,title,date,area:areaId,rs,type,max,weight:1,codes};D.assessments.push(a);D.results[a.id]={};
+    kids.forEach((k,i)=>{let p=k[1]+(k[3][areaId]||0)+k[2]*(month-2)+(rnd()-0.5)*16;p=Math.max(5,Math.min(99,p));let v;
+      if(type==='score')v=Math.round(p/100*max);else if(type==='rubric')v=Math.max(1,Math.min(max,Math.round(1+p/100*(max-1))));else v=letter(p);
+      if(rnd()<0.04)return; D.results[a.id][ids[i]]=v})}
+  const taught=['AC9E4LA02','AC9E4LA04','AC9E4LA06','AC9E4LA08','AC9E4LE01','AC9E4LE02','AC9E4LE04','AC9E4LY01','AC9E4LY07','ACMNA076','ACMNA080','ACMMG088','ACMMG290','ACMSP092','ACHASSK083','ACHASSK084','ACHASSK086','ACHASSK088','ACHASSK089','ACTDEK010','ACTDEK011','ACTDIP009','ACTDIP013','ACPPS035','ACPPS036','ACPPS039'];
+  D.coverage[c.id]={};for(const t of taught)D.coverage[c.id][t]=c.year+'-06-30';
+  D.comments[ids[2]]='Chloe has settled well this year and is writing with growing confidence. Her suspense narrative showed real control of sentence structure. Our next focus is reading stamina and inferring meaning in longer texts.';
+  save();saveNames();saveCfg()}
 
 // ======================= SYNC =======================
 let pushT=null;function schedulePush(){clearTimeout(pushT);pushT=setTimeout(pushNow,2500)}
 async function api(body){const res=await fetch(CFG.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({key:CFG.key,...body})});const j=await res.json();if(j.error)throw new Error(j.error);return j}
-async function pushNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}try{UI.syncMsg='Pushing…';renderNav();await api({action:'save',data:D});UI.syncMsg='Synced '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});renderNav()}catch(e){UI.syncMsg='Push failed';renderNav();toast('Push failed: '+e.message,'err')}}
+async function pushNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}if(D.demoOnly&&!confirm('This device only holds the demo class. Pushing will replace whatever is in the Sheet with demo data. Continue?'))return;try{UI.syncMsg='Pushing…';renderNav();await api({action:'save',data:D});UI.syncMsg='Synced '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});renderNav()}catch(e){UI.syncMsg='Push failed';renderNav();toast('Push failed: '+e.message,'err')}}
 async function pullNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}try{UI.syncMsg='Pulling…';renderNav();const j=await api({action:'load'});if(!j.data){toast('Sheet is empty — push first');UI.syncMsg='';renderNav();return}
-  if(j.data.updated<D.updated&&!confirm('The Sheet copy is older than this device. Overwrite local data with it?')){UI.syncMsg='';renderNav();return}
+  if(!D.demoOnly&&j.data.updated<D.updated&&!confirm('The Sheet copy is older than this device. Overwrite local data with it?')){UI.syncMsg='';renderNav();return}
   D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));if(!D.classes.find(c=>c.id===CFG.classId))CFG.classId=D.classes[0]?.id||null;saveCfg();UI.syncMsg='Pulled '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});toast('Loaded from Sheet');render()}catch(e){UI.syncMsg='Pull failed';renderNav();toast('Pull failed: '+e.message,'err')}}
 
 // ======================= UTIL =======================
@@ -543,8 +585,9 @@ function closeModal(){document.getElementById('modal').innerHTML=''}
 let toastT;function toast(m,k=''){const t=document.getElementById('toast');t.innerHTML=`<div class="toast ${k}">${esc(m)}</div>`;clearTimeout(toastT);toastT=setTimeout(()=>t.innerHTML='',3200)}
 function download(name,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;a.click()}
 function pickFile(cb){const i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=()=>{const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>cb(r.result);r.readAsText(f)};i.click()}
+if(!D.classes.length&&!localStorage.getItem(LS_DATA)){seedDemo();UI.view='dash';CFG.view='dash'}
 render();
-if(CFG.url&&CFG.key&&navigator.onLine){api({action:'load'}).then(j=>{if(j.data&&j.data.updated>D.updated){D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));UI.syncMsg='Pulled newer data from Sheet';render()}else{UI.syncMsg='Up to date';renderNav()}}).catch(()=>{UI.syncMsg='Offline';renderNav()})}
+if(CFG.url&&CFG.key&&navigator.onLine){api({action:'load'}).then(j=>{if(j.data&&(D.demoOnly||j.data.updated>D.updated)){D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));UI.syncMsg='Pulled newer data from Sheet';render()}else{UI.syncMsg='Up to date';renderNav()}}).catch(()=>{UI.syncMsg='Offline';renderNav()})}
 </script>
 </body>
 </html>
