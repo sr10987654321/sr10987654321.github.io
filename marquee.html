@@ -1,0 +1,550 @@
+
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marquee — Gradebook</title>
+<style>
+:root{
+  --bg:#07080d; --bg2:#0d0f17; --panel:rgba(255,255,255,.035); --panel2:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+  --ink:#f3efe6; --ink2:#b9b4a8; --ink3:#767269;
+  --gold:#e8c36a; --gold2:#f7dd98; --teal:#5ad1c4; --coral:#ff7e67; --violet:#a78bfa; --green:#7ee787;
+  --A:#f0cf78; --B:#79d3c6; --C:#8fb4ff; --D:#ff9f6b; --E:#ff6b7a;
+  --r:18px; --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(1200px 600px at 15% -10%,rgba(232,195,106,.14),transparent 60%),
+  radial-gradient(900px 500px at 95% 10%,rgba(90,209,196,.10),transparent 60%),
+  radial-gradient(900px 700px at 50% 110%,rgba(167,139,250,.10),transparent 60%)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.app{position:relative;z-index:1;display:flex;min-height:100vh}
+nav{width:232px;flex:none;padding:26px 18px;border-right:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{font-family:var(--serif);font-size:26px;letter-spacing:.02em;margin:0 0 2px 8px;background:linear-gradient(90deg,var(--gold2),var(--gold) 60%,#b4883a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand small{display:block;font-family:var(--sans);font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink3);margin-top:2px}
+.navbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:var(--ink2);padding:11px 12px;border-radius:12px;font-size:14px;cursor:pointer;letter-spacing:.01em;margin-top:2px}
+.navbtn:hover{background:var(--panel2);color:var(--ink)}
+.navbtn.on{background:linear-gradient(90deg,rgba(232,195,106,.18),rgba(232,195,106,.04));color:var(--gold2);box-shadow:inset 0 0 0 1px rgba(232,195,106,.25)}
+.navbtn .k{width:22px;text-align:center;opacity:.8}
+.navsp{flex:1}
+.classpick{margin:18px 0 10px}
+main{flex:1;min-width:0;padding:30px 36px 80px}
+h1{font-family:var(--serif);font-weight:400;font-size:34px;letter-spacing:-.01em;margin:0 0 4px}
+h2{font-family:var(--serif);font-weight:400;font-size:22px;margin:0 0 10px}
+h3{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink3);margin:0 0 12px;font-weight:600}
+.sub{color:var(--ink2);margin:0 0 22px;font-size:14px}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;position:relative;overflow:hidden;backdrop-filter:blur(10px)}
+.card::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);opacity:.5}
+.card.glow{box-shadow:0 30px 80px -40px rgba(232,195,106,.35)}
+.hero{padding:30px 32px;background:linear-gradient(135deg,rgba(232,195,106,.12),rgba(255,255,255,.02) 50%,rgba(90,209,196,.08));border-color:rgba(232,195,106,.25)}
+.big{font-family:var(--serif);font-size:56px;line-height:1;letter-spacing:-.02em}
+.kpi{font-family:var(--serif);font-size:40px;line-height:1}
+.muted{color:var(--ink3)} .dim{color:var(--ink2)} .small{font-size:12px} .tiny{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3)}
+button,.btn{font:inherit;background:var(--panel2);border:1px solid var(--line2);color:var(--ink);padding:9px 14px;border-radius:11px;cursor:pointer;transition:.15s}
+button:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3)}
+button.gold{background:linear-gradient(135deg,var(--gold2),var(--gold) 55%,#c2963f);color:#1a1409;border:0;font-weight:600;box-shadow:0 10px 30px -12px rgba(232,195,106,.7)}
+button.gold:hover{filter:brightness(1.06)}
+button.ghost{background:transparent}
+button.danger{border-color:rgba(255,107,122,.4);color:#ffb3bb}
+button.sm{padding:5px 10px;font-size:12px;border-radius:9px}
+input,select,textarea{font:inherit;background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--ink);padding:9px 12px;border-radius:11px;outline:none;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,195,106,.15)}
+select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23b9b4a8' stroke-width='1.6'/></svg>");background-repeat:no-repeat;background-position:right 11px center}
+select option{background:#14161f;color:var(--ink)}
+textarea{width:100%;min-height:90px;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink2)}
+label.f>span{letter-spacing:.14em;text-transform:uppercase;font-size:10px;color:var(--ink3)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.025)}
+.gr{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;font-family:var(--serif);font-size:19px;font-weight:600;color:#0c0d12;background:var(--ink3)}
+.gr.A{background:var(--A)} .gr.B{background:var(--B)} .gr.C{background:var(--C)} .gr.D{background:var(--D)} .gr.E{background:var(--E)} .gr.n{background:rgba(255,255,255,.08);color:var(--ink3);font-size:13px}
+.gr.lg{width:72px;height:72px;font-size:42px;border-radius:20px;box-shadow:0 18px 40px -16px rgba(0,0,0,.8)}
+.tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;letter-spacing:.06em;border:1px solid var(--line2);color:var(--ink2);background:rgba(0,0,0,.25)}
+.chip{display:inline-block;padding:2px 8px;border-radius:7px;font-size:11px;font-weight:600;letter-spacing:.04em}
+.bar{height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.heat{display:inline-block;width:38px;height:28px;border-radius:7px;text-align:center;line-height:28px;font-size:12px;font-weight:600;color:#0c0d12}
+.pill{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#101219;border:1px solid var(--line2);border-radius:22px;padding:26px;width:min(720px,100%);max-height:92vh;overflow:auto;box-shadow:0 40px 100px rgba(0,0,0,.7)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#15171f;border:1px solid var(--line2);padding:10px 16px;border-radius:12px;z-index:60;font-size:13px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.toast.err{border-color:var(--E)}
+.sync{font-size:11px;color:var(--ink3);padding:8px 12px;border-top:1px solid var(--line);margin-top:8px}
+.sync b{color:var(--teal);font-weight:600}
+.scroll{overflow:auto;max-width:100%}
+.cell{width:70px;padding:6px 8px;text-align:center;border-radius:8px}
+.cell.gradeSel{width:64px}
+.srow{cursor:pointer}
+.areaHead{display:flex;align-items:center;gap:12px;margin:26px 0 12px}
+.dot{width:10px;height:10px;border-radius:50%;box-shadow:0 0 14px currentColor}
+.desc{display:grid;grid-template-columns:120px 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.desc code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--ink2)}
+.cov0{color:var(--ink3)} .cov1{color:var(--gold2)}
+.tgl{width:40px;height:22px;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid var(--line2);position:relative;cursor:pointer;flex:none}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ink2);transition:.15s}
+.tgl.on{background:rgba(232,195,106,.35);border-color:var(--gold)} .tgl.on::after{left:20px;background:var(--gold2)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+svg text{font-family:var(--sans)}
+.ticker{font-family:var(--serif);font-style:italic;color:var(--ink2)}
+.rule{height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:14px 0;opacity:.6}
+.print-only{display:none}
+/* report */
+.report{max-width:1080px;margin:0 auto}
+.report .hero{padding:40px 44px;border-radius:26px}
+.report .hero h1{font-size:46px}
+.rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.areacard{padding:18px 20px;border-radius:18px;background:var(--panel);border:1px solid var(--line);display:flex;gap:18px;align-items:flex-start}
+.areacard .gr.lg{flex:none;margin-top:4px}
+.areacard .strands{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 22px}
+.areacard .nm{font-family:var(--serif);font-size:19px}
+@media print{
+  body{background:#fff;color:#111}
+  body::before,body::after,nav,.noprint{display:none!important}
+  main{padding:0}
+  .card,.areacard,.report .hero{background:#fff;border:1px solid #ddd;box-shadow:none;backdrop-filter:none;color:#111;break-inside:avoid}
+  .report .hero{background:linear-gradient(135deg,#fff7e3,#fff)}
+  :root{--ink:#111;--ink2:#444;--ink3:#777;--line:#e4e4e4;--panel:#fff;--panel2:#f4f4f4}
+  .brand{color:#9a7a2a}
+  .print-only{display:block}
+  svg text{fill:#333}
+  .gr{color:#fff}
+  @page{margin:14mm}
+}
+@media (max-width:900px){
+  .app{flex-direction:column} nav{width:100%;height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line);flex-direction:row;flex-wrap:wrap;gap:4px;padding:14px}
+  .brand{width:100%;margin-bottom:6px} .navbtn{width:auto;padding:8px 10px} .navsp,.sync{display:none} .classpick{margin:0;width:100%}
+  main{padding:18px 16px 60px} h1{font-size:28px} .rep-grid{grid-template-columns:1fr} .desc{grid-template-columns:1fr auto;gap:6px} .desc code{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script>
+// SCSA Western Australian Curriculum — Year 4 structure for the gradebook.
+// Reporting strands (rs) are what grades are estimated against.
+// Descriptors are grouped by content strand / sub-strand for coverage tracking.
+// Codes follow the WA Curriculum (AC v8.1 for Maths/HASS/Tech/Health, AC v9-adapted for English).
+// Verify against the K–10 Outline and paste Judging Standards pointers (extranet) into the A–E fields in the app.
+const STANDARDS_Y4 = {
+  year: 4,
+  gradeScale: {
+    A: "Excellent achievement — the student demonstrates excellent achievement of what is expected for this year level.",
+    B: "High achievement — the student demonstrates high achievement of what is expected for this year level.",
+    C: "Satisfactory achievement — the student demonstrates satisfactory achievement of what is expected for this year level.",
+    D: "Limited achievement — the student demonstrates limited achievement of what is expected for this year level.",
+    E: "Very low achievement — the student demonstrates very low achievement of what is expected for this year level."
+  },
+  areas: [
+    {
+      id: "eng", name: "English", short: "ENG", colour: "#e8c36a",
+      achievement: "By the end of Year 4 students interact with others, listen to and create spoken and multimodal texts, share and extend ideas with relevant detail, and vary language for context. They read, view and comprehend texts created to entertain, persuade and inform, integrating phonic, morphemic and grammatical knowledge to read fluently and self-correct. They create written and multimodal texts for a range of purposes, organising ideas with paragraphs and text structures, using varied sentence structures, topic-specific vocabulary, literary devices, accurate spelling of multisyllabic and multimorphemic words, and punctuation including quotation marks and apostrophes.",
+      rs: [
+        { id: "sl", name: "Speaking and Listening" },
+        { id: "rv", name: "Reading and Viewing" },
+        { id: "wc", name: "Writing and Creating" }
+      ],
+      pointers: { A: "", B: "", C: "", D: "", E: "" },
+      descriptors: [
+        { code: "AC9E4LA01", group: "Language · Language for interacting with others", rs: "sl", label: "Explore how language is used to interact, build relationships and collaborate" },
+        { code: "AC9E4LA02", group: "Language · Text structure and organisation", rs: "rv", label: "Identify how text structures suit purpose and audience" },
+        { code: "AC9E4LA03", group: "Language · Text structure and organisation", rs: "wc", label: "Paragraphs and cohesive devices to organise and link ideas" },
+        { code: "AC9E4LA04", group: "Language · Text structure and organisation", rs: "rv", label: "Visual and typographical features in print and digital texts" },
+        { code: "AC9E4LA05", group: "Language · Language for expressing and developing ideas", rs: "wc", label: "Compound and complex sentences; coordinating and subordinating conjunctions" },
+        { code: "AC9E4LA06", group: "Language · Language for expressing and developing ideas", rs: "wc", label: "Quoted (direct) and reported (indirect) speech" },
+        { code: "AC9E4LA07", group: "Language · Language for expressing and developing ideas", rs: "wc", label: "Noun groups, verb groups, adverbials and prepositional phrases" },
+        { code: "AC9E4LA08", group: "Language · Language for expressing and developing ideas", rs: "wc", label: "Vocabulary choices: synonyms, antonyms, idioms, topic vocabulary" },
+        { code: "AC9E4LA09", group: "Language · Language for expressing and developing ideas", rs: "wc", label: "Spelling: morphemes, letter patterns, homophones, multisyllabic words" },
+        { code: "AC9E4LA10", group: "Language · Language for expressing and developing ideas", rs: "wc", label: "Punctuation: quotation marks for dialogue, apostrophes, commas" },
+        { code: "AC9E4LE01", group: "Literature · Literature and contexts", rs: "rv", label: "Literature from different cultures, times and places" },
+        { code: "AC9E4LE02", group: "Literature · Engaging with and responding to literature", rs: "rv", label: "Share responses and make connections between texts and experiences" },
+        { code: "AC9E4LE03", group: "Literature · Examining literature", rs: "rv", label: "Characters, settings, events and point of view in narratives" },
+        { code: "AC9E4LE04", group: "Literature · Examining literature", rs: "rv", label: "Literary devices and sound patterns (rhythm, rhyme, imagery, figurative language)" },
+        { code: "AC9E4LE05", group: "Literature · Creating literature", rs: "wc", label: "Create and edit literary texts, experimenting with language features" },
+        { code: "AC9E4LY01", group: "Literacy · Texts in context", rs: "rv", label: "Identify how texts vary across cultures, contexts and purposes" },
+        { code: "AC9E4LY02", group: "Literacy · Interacting with others", rs: "sl", label: "Listen, contribute to discussions, build on others' ideas" },
+        { code: "AC9E4LY03", group: "Literacy · Interacting with others", rs: "sl", label: "Plan and deliver oral and multimodal presentations" },
+        { code: "AC9E4LY04", group: "Literacy · Analysing, interpreting and evaluating", rs: "rv", label: "Read fluently using phonic, morphemic and grammatical knowledge" },
+        { code: "AC9E4LY05", group: "Literacy · Analysing, interpreting and evaluating", rs: "rv", label: "Comprehension: literal and inferred meaning, evaluating texts" },
+        { code: "AC9E4LY06", group: "Literacy · Creating texts", rs: "wc", label: "Plan, create, edit and publish imaginative, informative and persuasive texts" },
+        { code: "AC9E4LY07", group: "Literacy · Creating texts", rs: "wc", label: "Fluent, legible handwriting and keyboarding" }
+      ]
+    },
+    {
+      id: "mat", name: "Mathematics", short: "MATHS", colour: "#5ad1c4",
+      achievement: "By the end of Year 4 students choose appropriate strategies for calculations involving multiplication and division, recognise common equivalent fractions, make connections between fractions and decimal notation, and solve simple purchasing problems. They identify unknown quantities in number sentences, describe number patterns from multiplication, compare areas, convert between units of time, use am/pm notation, identify shape symmetry, describe angles as measures of turn, interpret information in simple maps, and construct, evaluate and interpret data displays. They describe chance and identify dependent and independent events.",
+      rs: [
+        { id: "na", name: "Number and Algebra" },
+        { id: "mg", name: "Measurement and Geometry" },
+        { id: "sp", name: "Statistics and Probability" }
+      ],
+      pointers: { A: "", B: "", C: "", D: "", E: "" },
+      descriptors: [
+        { code: "ACMNA071", group: "Number and Algebra · Number and place value", rs: "na", label: "Odd and even numbers and their properties" },
+        { code: "ACMNA072", group: "Number and Algebra · Number and place value", rs: "na", label: "Recognise, represent and order numbers to at least tens of thousands" },
+        { code: "ACMNA073", group: "Number and Algebra · Number and place value", rs: "na", label: "Place value: partition, rearrange and regroup to tens of thousands" },
+        { code: "ACMNA074", group: "Number and Algebra · Number and place value", rs: "na", label: "Multiplication facts to 10 × 10 and related division facts" },
+        { code: "ACMNA075", group: "Number and Algebra · Number and place value", rs: "na", label: "Multiplication and division strategies with remainders" },
+        { code: "ACMNA076", group: "Number and Algebra · Number and place value", rs: "na", label: "Efficient mental and written addition and subtraction strategies" },
+        { code: "ACMNA077", group: "Number and Algebra · Fractions and decimals", rs: "na", label: "Equivalent fractions" },
+        { code: "ACMNA078", group: "Number and Algebra · Fractions and decimals", rs: "na", label: "Count by quarters, halves and thirds; fractions on a number line" },
+        { code: "ACMNA079", group: "Number and Algebra · Fractions and decimals", rs: "na", label: "Tenths and hundredths; decimal notation" },
+        { code: "ACMNA080", group: "Number and Algebra · Money and financial mathematics", rs: "na", label: "Purchases and change to the nearest five cents" },
+        { code: "ACMNA081", group: "Number and Algebra · Patterns and algebra", rs: "na", label: "Number patterns resulting from multiplication" },
+        { code: "ACMNA083", group: "Number and Algebra · Patterns and algebra", rs: "na", label: "Equivalent number sentences to find unknown quantities" },
+        { code: "ACMMG084", group: "Measurement and Geometry · Using units of measurement", rs: "mg", label: "Scaled instruments for length, mass, capacity and temperature" },
+        { code: "ACMMG290", group: "Measurement and Geometry · Using units of measurement", rs: "mg", label: "Compare areas using informal and metric units" },
+        { code: "ACMMG085", group: "Measurement and Geometry · Using units of measurement", rs: "mg", label: "Convert between units of time" },
+        { code: "ACMMG086", group: "Measurement and Geometry · Using units of measurement", rs: "mg", label: "am and pm notation; simple time problems" },
+        { code: "ACMMG087", group: "Measurement and Geometry · Shape", rs: "mg", label: "Compare and describe two-dimensional shapes; combine and split" },
+        { code: "ACMMG088", group: "Measurement and Geometry · Shape", rs: "mg", label: "Compare three-dimensional objects with their two-dimensional representations" },
+        { code: "ACMMG090", group: "Measurement and Geometry · Location and transformation", rs: "mg", label: "Simple scales, legends and directions on basic maps" },
+        { code: "ACMMG091", group: "Measurement and Geometry · Location and transformation", rs: "mg", label: "Create symmetrical patterns, pictures and shapes" },
+        { code: "ACMMG089", group: "Measurement and Geometry · Geometric reasoning", rs: "mg", label: "Angles as measures of turn; compare angle sizes" },
+        { code: "ACMSP092", group: "Statistics and Probability · Chance", rs: "sp", label: "Describe possible everyday events and order their chances" },
+        { code: "ACMSP093", group: "Statistics and Probability · Chance", rs: "sp", label: "Events where one cannot happen if the other happens" },
+        { code: "ACMSP094", group: "Statistics and Probability · Chance", rs: "sp", label: "Events where the chance of one is not affected by the other" },
+        { code: "ACMSP095", group: "Statistics and Probability · Data representation and interpretation", rs: "sp", label: "Select and trial data collection methods" },
+        { code: "ACMSP096", group: "Statistics and Probability · Data representation and interpretation", rs: "sp", label: "Construct data displays: picture graphs, column graphs, tables" },
+        { code: "ACMSP097", group: "Statistics and Probability · Data representation and interpretation", rs: "sp", label: "Evaluate the effectiveness of data displays" }
+      ]
+    },
+    {
+      id: "hass", name: "Humanities and Social Sciences", short: "HASS", colour: "#ff7e67",
+      achievement: "By the end of Year 4 students recognise the significance of events, people and places, describe the diversity of Australia's first peoples and the impact of contact, explain how environments sustain life and how people use and value resources sustainably, and describe the role of local government and the diversity of groups in their community. They develop questions, locate and record information from sources, sequence events, interpret data and maps, draw conclusions, and present findings using relevant terms.",
+      rs: [
+        { id: "his", name: "History" },
+        { id: "geo", name: "Geography" },
+        { id: "civ", name: "Civics and Citizenship" },
+        { id: "skl", name: "HASS Skills" }
+      ],
+      pointers: { A: "", B: "", C: "", D: "", E: "" },
+      descriptors: [
+        { code: "ACHASSK083", group: "Knowledge and Understanding · History: First contacts", rs: "his", label: "Diversity and longevity of Australia's first peoples and their connection to Country" },
+        { code: "ACHASSK084", group: "Knowledge and Understanding · History: First contacts", rs: "his", label: "Journey of a world navigator, explorer or trader before the late 18th century" },
+        { code: "ACHASSK085", group: "Knowledge and Understanding · History: First contacts", rs: "his", label: "Stories of the First Fleet: reasons, experiences and impact" },
+        { code: "ACHASSK086", group: "Knowledge and Understanding · History: First contacts", rs: "his", label: "Nature of contact between Aboriginal Peoples and others, and its effects" },
+        { code: "ACHASSK087", group: "Knowledge and Understanding · Geography: The Earth's environment sustains all life", rs: "geo", label: "Location and characteristics of major countries of Africa and South America" },
+        { code: "ACHASSK088", group: "Knowledge and Understanding · Geography: The Earth's environment sustains all life", rs: "geo", label: "Types of natural vegetation and the importance of environments to animals and people" },
+        { code: "ACHASSK089", group: "Knowledge and Understanding · Geography: The Earth's environment sustains all life", rs: "geo", label: "Custodial responsibility of Aboriginal Peoples for Country and Place" },
+        { code: "ACHASSK090", group: "Knowledge and Understanding · Geography: The Earth's environment sustains all life", rs: "geo", label: "Sustainable use and management of natural resources and waste" },
+        { code: "ACHASSK091", group: "Knowledge and Understanding · Civics and Citizenship", rs: "civ", label: "Role of local government and the decisions it makes on behalf of the community" },
+        { code: "ACHASSK092", group: "Knowledge and Understanding · Civics and Citizenship", rs: "civ", label: "Belonging to groups; diversity of identity within the community" },
+        { code: "WAHASS-Q4", group: "Skills · Questioning and researching", rs: "skl", label: "Develop questions; locate, collect and record information from sources" },
+        { code: "WAHASS-A4", group: "Skills · Analysing", rs: "skl", label: "Sequence events; identify points of view; interpret data, maps and sources" },
+        { code: "WAHASS-E4", group: "Skills · Evaluating", rs: "skl", label: "Draw conclusions and propose explanations based on evidence" },
+        { code: "WAHASS-C4", group: "Skills · Communicating and reflecting", rs: "skl", label: "Present findings using subject terms, text types and digital tools; reflect on learning" }
+      ]
+    },
+    {
+      id: "tec", name: "Technologies", short: "TECH", colour: "#a78bfa",
+      achievement: "By the end of Year 4 students explain how products, services and environments are designed to meet community needs, describe how forces and material properties affect design, and outline how technologies are used in food and fibre production. They define problems, generate and communicate design ideas, produce solutions, evaluate against criteria and work collaboratively. In Digital Technologies they describe how digital systems and peripherals work, represent data in different ways, collect and present data, define simple problems, design algorithms with branching and user input, and implement them as visual programs while applying safe online practices.",
+      rs: [
+        { id: "dtk", name: "Design & Technologies: Knowledge and Understanding" },
+        { id: "dtp", name: "Design & Technologies: Processes and Production Skills" },
+        { id: "dik", name: "Digital Technologies: Knowledge and Understanding" },
+        { id: "dip", name: "Digital Technologies: Processes and Production Skills" }
+      ],
+      pointers: { A: "", B: "", C: "", D: "", E: "" },
+      descriptors: [
+        { code: "ACTDEK010", group: "Design and Technologies · Technologies and society", rs: "dtk", label: "Products, services and environments designed to meet community needs" },
+        { code: "ACTDEK011", group: "Design and Technologies · Engineering principles and systems", rs: "dtk", label: "Forces and properties of materials affect how a product works" },
+        { code: "ACTDEK012", group: "Design and Technologies · Food and fibre production / Food specialisations", rs: "dtk", label: "Technologies used in food and fibre production; principles of healthy food preparation" },
+        { code: "ACTDEK013", group: "Design and Technologies · Materials and technologies specialisations", rs: "dtk", label: "Suitability of materials, systems, components, tools and equipment for a purpose" },
+        { code: "ACTDEP014", group: "Design and Technologies · Investigating and defining", rs: "dtp", label: "Define a problem and identify design needs and opportunities" },
+        { code: "ACTDEP015", group: "Design and Technologies · Designing", rs: "dtp", label: "Generate, develop and communicate design ideas (sketches, models, digital)" },
+        { code: "ACTDEP016", group: "Design and Technologies · Producing and implementing", rs: "dtp", label: "Select and safely use tools, materials and techniques to produce solutions" },
+        { code: "ACTDEP017", group: "Design and Technologies · Evaluating", rs: "dtp", label: "Evaluate design ideas, processes and solutions against criteria" },
+        { code: "ACTDEP018", group: "Design and Technologies · Collaborating and managing", rs: "dtp", label: "Plan, sequence and manage steps; work collaboratively" },
+        { code: "ACTDIK007", group: "Digital Technologies · Digital systems", rs: "dik", label: "Digital systems and peripheral devices perform different functions" },
+        { code: "ACTDIK008", group: "Digital Technologies · Representation of data", rs: "dik", label: "Different types of data can be represented in different ways" },
+        { code: "ACTDIP009", group: "Digital Technologies · Collecting, managing and analysing data", rs: "dip", label: "Collect, access and present data using software" },
+        { code: "ACTDIP010", group: "Digital Technologies · Digital implementation", rs: "dip", label: "Define simple problems and describe inputs and outputs" },
+        { code: "ACTDIP011", group: "Digital Technologies · Digital implementation", rs: "dip", label: "Algorithms with branching and user input" },
+        { code: "ACTDIP012", group: "Digital Technologies · Digital implementation", rs: "dip", label: "Implement algorithms as visual programs" },
+        { code: "ACTDIP013", group: "Digital Technologies · Digital implementation", rs: "dip", label: "Create and communicate ideas safely online; agreed protocols" }
+      ]
+    },
+    {
+      id: "hea", name: "Health", short: "HEALTH", colour: "#7ee787",
+      achievement: "By the end of Year 4 students recognise strategies for managing change, identify influences on health and wellbeing, describe how emotions and personal strengths affect identity and relationships, identify safe and unsafe situations and strategies to seek help, demonstrate skills to interact positively with others, and describe how communities and cultural connections support health and wellbeing.",
+      rs: [
+        { id: "bh", name: "Being healthy, safe and active" },
+        { id: "ci", name: "Communicating and interacting for health and wellbeing" },
+        { id: "cc", name: "Contributing to healthy and active communities" }
+      ],
+      pointers: { A: "", B: "", C: "", D: "", E: "" },
+      descriptors: [
+        { code: "ACPPS033", group: "Personal, social and community health · Being healthy, safe and active", rs: "bh", label: "Personal strengths and achievements shape identity" },
+        { code: "ACPPS034", group: "Personal, social and community health · Being healthy, safe and active", rs: "bh", label: "Changes that occur as students grow older; strategies to manage them" },
+        { code: "ACPPS035", group: "Personal, social and community health · Being healthy, safe and active", rs: "bh", label: "Strategies to keep safe and seek help in unsafe situations" },
+        { code: "ACPPS036", group: "Personal, social and community health · Being healthy, safe and active", rs: "bh", label: "Strategies and resources for health, safety and wellbeing (sun safety, nutrition, hygiene)" },
+        { code: "ACPPS037", group: "Personal, social and community health · Communicating and interacting", rs: "ci", label: "Behaviours that show empathy, respect and inclusion in relationships" },
+        { code: "ACPPS038", group: "Personal, social and community health · Communicating and interacting", rs: "ci", label: "Strategies to recognise and manage emotions" },
+        { code: "ACPPS039", group: "Personal, social and community health · Communicating and interacting", rs: "ci", label: "Health messages and reliable sources of health information" },
+        { code: "ACPPS040", group: "Personal, social and community health · Contributing to healthy and active communities", rs: "cc", label: "Participating in community activities that promote health and wellbeing" },
+        { code: "ACPPS041", group: "Personal, social and community health · Contributing to healthy and active communities", rs: "cc", label: "Opportunities to be healthy, safe and active in natural and built environments" },
+        { code: "ACPPS042", group: "Personal, social and community health · Contributing to healthy and active communities", rs: "cc", label: "Heritage, cultural identity and connection to community" }
+      ]
+    }
+  ]
+};
+
+</script>
+<script>
+// ======================= STATE =======================
+const LS_DATA='mq_data_v1', LS_NAMES='mq_names_v1', LS_CFG='mq_cfg_v1';
+const DEFAULT_CUTS={A:85,B:70,C:50,D:35};
+const GRADE_PCT={A:92,B:78,C:62,D:45,E:25};
+const uid=(p='')=>p+Math.random().toString(36).slice(2,6).toUpperCase();
+const today=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function blank(){return{v:1,updated:0,standards:{4:STANDARDS_Y4},classes:[],students:{},assessments:[],results:{},coverage:{},overrides:{},comments:{},cuts:{...DEFAULT_CUTS}}}
+let D=load(LS_DATA)||blank(); if(!D.standards)D.standards={}; if(!D.standards[4])D.standards[4]=STANDARDS_Y4;
+let NAMES=load(LS_NAMES)||{};
+let CFG=load(LS_CFG)||{url:'',key:'',auto:true,privacy:false,classId:null,view:'dash'};
+let UI={view:CFG.view||'dash',student:null,area:null,assess:null,syncMsg:'',busy:false};
+function load(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function save(){D.updated=Date.now();localStorage.setItem(LS_DATA,JSON.stringify(D));if(CFG.auto&&CFG.url)schedulePush()}
+function saveNames(){localStorage.setItem(LS_NAMES,JSON.stringify(NAMES))}
+function saveCfg(){localStorage.setItem(LS_CFG,JSON.stringify(CFG))}
+const cls=()=>D.classes.find(c=>c.id===CFG.classId)||D.classes[0]||null;
+const stds=()=>{const c=cls();return c?D.standards[c.yearLevel]:null};
+const area=id=>(stds()?.areas||[]).find(a=>a.id===id);
+const nameOf=id=>{const s=D.students[id];if(!s)return id;const n=NAMES[id];return (n&&!CFG.privacy)?n:(s.code||id)};
+const roster=()=>{const c=cls();if(!c)return[];return Object.values(D.students).filter(s=>s.classId===c.id&&!s.gone).sort((a,b)=>nameOf(a.id).localeCompare(nameOf(b.id)))};
+const classAssess=()=>{const c=cls();return c?D.assessments.filter(a=>a.classId===c.id).sort((a,b)=>a.date.localeCompare(b.date)):[]};
+
+// ======================= GRADING =======================
+function pct(a,v){ if(v===''||v==null)return null;
+  if(a.type==='score'){const n=parseFloat(v);return isNaN(n)?null:Math.max(0,Math.min(100,n/a.max*100))}
+  if(a.type==='rubric'){const n=parseFloat(v);return isNaN(n)?null:Math.max(0,Math.min(100,(n-1)/(a.max-1)*100))}
+  if(a.type==='grade'){return GRADE_PCT[String(v).toUpperCase()]??null} return null}
+function letter(p){if(p==null)return null;const c=D.cuts;return p>=c.A?'A':p>=c.B?'B':p>=c.C?'C':p>=c.D?'D':'E'}
+function strandEst(sid,areaId,rsId){const as=classAssess().filter(a=>a.area===areaId&&(!rsId||a.rs===rsId));let w=0,t=0,n=0;
+  for(const a of as){const p=pct(a,D.results[a.id]?.[sid]);if(p==null)continue;const wt=a.weight||1;w+=wt;t+=p*wt;n++}
+  return n?{pct:t/w,n}:{pct:null,n:0}}
+function areaEst(sid,areaId){const A=area(areaId);if(!A)return{pct:null,n:0,grade:null,strands:[]};
+  const strands=A.rs.map(r=>({...r,...strandEst(sid,areaId,r.id)}));
+  const have=strands.filter(s=>s.pct!=null);const all=strandEst(sid,areaId,null);
+  const ov=D.overrides[sid]?.[areaId];
+  return{pct:all.pct,n:all.n,grade:ov||letter(all.pct),override:!!ov,strands,covered:have.length}}
+function timeline(sid,areaId){const out=[];const as=classAssess().filter(a=>!areaId||a.area===areaId);
+  for(const a of as){const p=pct(a,D.results[a.id]?.[sid]);if(p!=null)out.push({date:a.date,pct:p,title:a.title,area:a.area})}return out}
+function classAreaAvg(areaId){const r=roster();const v=r.map(s=>areaEst(s.id,areaId).pct).filter(x=>x!=null);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null}
+function covData(areaId){const A=area(areaId),c=cls();if(!A||!c)return{list:[],pct:0};
+  const as=classAssess().filter(a=>a.area===areaId);
+  const list=A.descriptors.map(d=>{const hits=as.filter(a=>(a.codes||[]).includes(d.code));const taught=!!D.coverage[c.id]?.[d.code];return{...d,hits,taught,done:taught||hits.length>0}});
+  return{list,pct:list.length?Math.round(list.filter(x=>x.done).length/list.length*100):0}}
+
+// ======================= SVG CHARTS =======================
+function radar(vals,labels,colour,size=260){const n=vals.length,cx=size/2,cy=size/2,r=size/2-34;if(!n)return'';
+  const pt=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[cx+Math.cos(a)*r*v,cy+Math.sin(a)*r*v]};
+  let s=`<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:${size+40}px;display:block;margin:auto">`;
+  for(const g of[.25,.5,.75,1]){s+=`<polygon points="${[...Array(n)].map((_,i)=>pt(i,g).join(',')).join(' ')}" fill="none" stroke="rgba(255,255,255,.1)"/>`}
+  for(let i=0;i<n;i++){const[x,y]=pt(i,1);s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
+    const[lx,ly]=pt(i,1.19);s+=`<text x="${lx}" y="${ly}" font-size="10.5" fill="#b9b4a8" text-anchor="middle" dominant-baseline="middle">${esc(labels[i])}</text>`}
+  const poly=vals.map((v,i)=>pt(i,(v??0)/100).join(',')).join(' ');
+  s+=`<polygon points="${poly}" fill="${colour}" fill-opacity=".18" stroke="${colour}" stroke-width="2" style="filter:drop-shadow(0 0 8px ${colour})"/>`;
+  vals.forEach((v,i)=>{if(v==null)return;const[x,y]=pt(i,v/100);s+=`<circle cx="${x}" cy="${y}" r="4" fill="${colour}"/>`});
+  return s+'</svg>'}
+function lineChart(series,w=640,h=220){ // series: [{colour,name,pts:[{date,pct}]}]
+  const all=series.flatMap(s=>s.pts);if(!all.length)return`<div class="muted small" style="padding:30px;text-align:center">No results yet</div>`;
+  const dates=[...new Set(all.map(p=>p.date))].sort();const x0=44,x1=w-16,y0=16,y1=h-32;
+  const xs=d=>dates.length>1?x0+(dates.indexOf(d)/(dates.length-1))*(x1-x0):(x0+x1)/2;const ys=p=>y1-(p/100)*(y1-y0);
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block">`;
+  for(const g of[0,25,50,75,100]){s+=`<line x1="${x0}" x2="${x1}" y1="${ys(g)}" y2="${ys(g)}" stroke="rgba(255,255,255,.08)"/><text x="${x0-8}" y="${ys(g)+4}" font-size="10" fill="#767269" text-anchor="end">${g}</text>`}
+  const cuts=D.cuts;for(const[k,v]of Object.entries(cuts)){s+=`<line x1="${x0}" x2="${x1}" y1="${ys(v)}" y2="${ys(v)}" stroke="var(--${k})" stroke-opacity=".35" stroke-dasharray="3 5"/><text x="${x1}" y="${ys(v)-3}" font-size="9" fill="var(--${k})" text-anchor="end" opacity=".8">${k}</text>`}
+  dates.forEach((d,i)=>{if(dates.length>8&&i%Math.ceil(dates.length/8))return;s+=`<text x="${xs(d)}" y="${h-10}" font-size="10" fill="#767269" text-anchor="middle">${d.slice(5)}</text>`});
+  for(const sr of series){const byD={};for(const p of sr.pts){(byD[p.date]=byD[p.date]||[]).push(p.pct)}
+    const pts=Object.keys(byD).sort().map(d=>[xs(d),ys(byD[d].reduce((a,b)=>a+b,0)/byD[d].length)]);
+    if(pts.length>1){const path='M'+pts.map(p=>p.join(',')).join(' L');s+=`<path d="${path}" fill="none" stroke="${sr.colour}" stroke-width="2.4" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px ${sr.colour})"/>`;
+      s+=`<path d="${path} L${pts[pts.length-1][0]},${y1} L${pts[0][0]},${y1}Z" fill="${sr.colour}" fill-opacity=".06"/>`}
+    for(const p of pts)s+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${sr.colour}"/>`}
+  return s+'</svg>'}
+function arc(p,colour,size=86,label=''){const r=size/2-7,c=2*Math.PI*r,v=p==null?0:p/100;
+  return`<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>
+  <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colour}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c*v} ${c}" transform="rotate(-90 ${size/2} ${size/2})" style="filter:drop-shadow(0 0 6px ${colour})"/>
+  <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-size="${size/4.2}" font-family="var(--serif)" fill="#f3efe6">${label}</text></svg>`}
+function bars(items,w=600){ // [{label,pct,colour,sub}]
+  return items.map(it=>`<div style="margin:8px 0"><div class="row" style="justify-content:space-between;font-size:12.5px;flex-wrap:nowrap;gap:8px"><span>${esc(it.label)}${it.sub?` <span class="muted small">${esc(it.sub)}</span>`:''}</span><span class="dim">${it.pct==null?'—':Math.round(it.pct)+'%'}${it.grade?` <b style="color:var(--${it.grade})">${it.grade}</b>`:''}</span></div>
+   <div class="bar"><i style="width:${it.pct||0}%;background:linear-gradient(90deg,${it.colour},${it.colour}cc)"></i></div></div>`).join('')}
+function dist(areaId){const cnt={A:0,B:0,C:0,D:0,E:0,n:0};for(const s of roster()){const g=areaEst(s.id,areaId).grade;if(g)cnt[g]++;else cnt.n++}
+  const tot=roster().length||1;return`<div style="display:flex;height:10px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.06)">${['A','B','C','D','E'].map(g=>`<i style="width:${cnt[g]/tot*100}%;background:var(--${g})" title="${g}: ${cnt[g]}"></i>`).join('')}</div>
+  <div class="legend" style="margin-top:6px">${['A','B','C','D','E'].map(g=>`<span><i style="background:var(--${g})"></i>${g} ${cnt[g]}</span>`).join('')}${cnt.n?`<span class="muted">${cnt.n} no data</span>`:''}</div>`}
+
+// ======================= RENDER =======================
+const VIEWS=[['dash','◆','Dashboard'],['students','●','Students'],['assess','▦','Assessments'],['coverage','✓','Coverage'],['standards','§','Standards'],['report','★','Parent Report'],['settings','⚙','Settings']];
+function go(v,extra={}){UI.view=v;Object.assign(UI,extra);CFG.view=v;saveCfg();render();window.scrollTo(0,0)}
+function render(){renderNav();const m=document.getElementById('main');if(!cls()&&UI.view!=='settings'){m.innerHTML=welcome();return}
+  m.innerHTML=({dash,students,assess,coverage,standards,report,settings})[UI.view]()}
+function renderNav(){const c=cls();document.getElementById('nav').innerHTML=`<div class="brand">Marquee<small>Progress · Grades · Reports</small></div>
+  <div class="classpick"><select style="width:100%" onchange="CFG.classId=this.value;saveCfg();render()">${D.classes.length?D.classes.map(k=>`<option value="${k.id}" ${c&&c.id===k.id?'selected':''}>${esc(k.name)} · Y${k.yearLevel} · ${k.year}</option>`).join(''):'<option>No class yet</option>'}</select></div>
+  ${VIEWS.map(([k,i,n])=>`<button class="navbtn ${UI.view===k?'on':''}" onclick="go('${k}')"><span class="k">${i}</span>${n}</button>`).join('')}
+  <div class="navsp"></div>
+  <div class="sync">${CFG.url?`<b>●</b> Sheet linked${CFG.auto?' · auto-sync':''}<br>`:'<span>○ Sheet not linked</span><br>'}${esc(UI.syncMsg)}${CFG.privacy?'<br><span style="color:var(--coral)">Privacy mode: names hidden</span>':''}</div>`}
+function welcome(){return`<div class="report"><div class="card hero glow" style="margin-top:40px"><div class="tiny">Welcome</div><h1 style="font-size:44px">Set up your first class</h1><p class="sub">Create a class, add students, then add assessments. Names stay on this device; everything else is de-identified and can sync to your Google Sheet.</p>
+  <button class="gold" onclick="newClass()">+ Create a class</button> <button onclick="go('settings')">Settings</button></div></div>`}
+
+// ---------- Dashboard ----------
+function dash(){const c=cls(),S=stds(),r=roster(),as=classAssess();
+  if(!S)return`<h1>${esc(c.name)}</h1><div class="card">No standards loaded for Year ${c.yearLevel}. Import a standards file under <b>Standards</b>.</div>`;
+  const areaCards=S.areas.map(A=>{const avg=classAreaAvg(A.id),cov=covData(A.id);return`<div class="card" style="cursor:pointer" onclick="go('coverage',{area:'${A.id}'})"><div class="row" style="justify-content:space-between"><div><div class="tiny" style="color:${A.colour}">${esc(A.short)}</div><div style="font-family:var(--serif);font-size:20px">${esc(A.id==='hass'?'HASS':A.name)}</div></div>${arc(avg,A.colour,70,avg==null?'—':Math.round(avg))}</div>
+    <div style="margin:10px 0 6px" class="small dim">Class average · ${as.filter(a=>a.area===A.id).length} assessments · ${cov.pct}% of descriptors covered</div>${dist(A.id)}</div>`}).join('');
+  const heat=`<div class="scroll"><table><tr><th>Student</th>${S.areas.map(A=>`<th style="text-align:center;color:${A.colour}">${esc(A.short)}</th>`).join('')}<th>Evidence</th></tr>
+    ${r.map(s=>{const ests=S.areas.map(A=>areaEst(s.id,A.id));return`<tr class="srow" onclick="go('report',{student:'${s.id}'})"><td><b>${esc(nameOf(s.id))}</b> <span class="muted small">${esc(s.code)}</span></td>${ests.map(e=>`<td style="text-align:center"><span class="heat" style="background:${e.grade?`var(--${e.grade})`:'rgba(255,255,255,.07)'};${e.grade?'':'color:#767269'}">${e.grade||'·'}</span></td>`).join('')}<td class="dim small">${ests.reduce((a,e)=>a+e.n,0)} results</td></tr>`}).join('')}
+    ${r.length?'':'<tr><td colspan="9" class="muted">No students yet — add them under Students.</td></tr>'}</table></div>`;
+  const recent=as.slice(-5).reverse();
+  return`<div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:18px"><div><div class="tiny">${esc(c.year)} · Year ${c.yearLevel}</div><h1>${esc(c.name)}</h1><p class="sub" style="margin:0">${r.length} students · ${as.length} assessments · ${Object.values(D.results).reduce((a,o)=>a+Object.keys(o).length,0)} results recorded</p></div>
+   <div class="row noprint"><button onclick="newAssess()">+ Assessment</button><button class="gold" onclick="go('students')">Manage students</button></div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-bottom:18px">${areaCards}</div>
+  <div class="grid" style="grid-template-columns:2fr 1fr"><div class="card"><h3>Grade matrix</h3>${heat}</div>
+  <div class="card"><h3>Latest assessments</h3>${recent.length?recent.map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="go('assess',{assess:'${a.id}'})"><div><b>${esc(a.title)}</b></div><div class="small dim">${esc(area(a.area)?.name||'')} · ${a.date} · ${Object.keys(D.results[a.id]||{}).length}/${r.length} entered</div></div>`).join(''):'<div class="muted small">Nothing yet.</div>'}</div></div>`}
+
+// ---------- Students ----------
+function students(){const c=cls(),r=roster();return`<div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:18px"><div><h1>Students</h1><p class="sub" style="margin:0">IDs are random and synced; names live only in this browser.</p></div>
+  <div class="row"><button onclick="addStudents()" class="gold">+ Add students</button><button onclick="exportNames()">Export names</button><button onclick="importNames()">Import names</button><button class="ghost" onclick="CFG.privacy=!CFG.privacy;saveCfg();render()">${CFG.privacy?'Show names':'Hide names'}</button></div></div>
+  <div class="card"><table><tr><th>Name (local)</th><th>Student ID</th><th>Results</th><th></th></tr>${r.map(s=>`<tr><td><input value="${esc(NAMES[s.id]||'')}" placeholder="unnamed" style="width:220px" onchange="NAMES['${s.id}']=this.value.trim();saveNames();render()"></td><td><code>${esc(s.code)}</code></td><td class="dim">${timeline(s.id).length}</td>
+   <td style="text-align:right"><button class="sm" onclick="go('report',{student:'${s.id}'})">Report</button> <button class="sm danger" onclick="removeStudent('${s.id}')">Remove</button></td></tr>`).join('')}${r.length?'':'<tr><td colspan="4" class="muted">No students in this class.</td></tr>'}</table></div>`}
+function addStudents(){modal(`<h2>Add students</h2><p class="dim small">One name per line. Each gets a random ID; the name stays on this device only.</p><textarea id="m_names" style="min-height:180px" placeholder="Ava&#10;Benji&#10;Chloe"></textarea>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="doAdd()">Add</button></div>`)}
+function doAdd(){const c=cls();const lines=document.getElementById('m_names').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  for(const n of lines){let code;do{code='ST-'+uid()}while(D.students[code]);D.students[code]={id:code,code,classId:c.id,added:today()};NAMES[code]=n}
+  save();saveNames();closeModal();toast(`${lines.length} added`);render()}
+function removeStudent(id){if(!confirm('Remove this student from the class? Their results are kept but hidden.'))return;D.students[id].gone=true;save();render()}
+function exportNames(){const c=cls();const obj={};for(const s of roster())obj[s.id]=NAMES[s.id]||'';download(`names-${c.name}.json`,JSON.stringify(obj,null,1));toast('Names exported — move this file privately to your other device')}
+function importNames(){pickFile(txt=>{try{const o=JSON.parse(txt);Object.assign(NAMES,o);saveNames();toast('Names imported');render()}catch(e){toast('Not a names file','err')}})}
+
+// ---------- Assessments ----------
+function assess(){const c=cls(),S=stds(),as=classAssess(),r=roster();const a=as.find(x=>x.id===UI.assess);
+  const list=`<div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">All assessments</h3><button class="sm gold" onclick="newAssess()">+ New</button></div>
+   ${as.length?as.slice().reverse().map(x=>{const A=area(x.area);return`<div style="padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer;${a&&a.id===x.id?'color:var(--gold2)':''}" onclick="go('assess',{assess:'${x.id}'})"><div class="row" style="justify-content:space-between"><b>${esc(x.title)}</b><span class="chip" style="background:${A?.colour}22;color:${A?.colour}">${esc(A?.short||'?')}</span></div><div class="small dim">${x.date} · ${esc(A?.rs.find(z=>z.id===x.rs)?.name||'')} · ${x.type==='score'?'/'+x.max:x.type==='rubric'?x.max+'-level rubric':'A–E'} · w${x.weight||1}</div></div>`}).join(''):'<div class="muted small" style="margin-top:10px">None yet.</div>'}</div>`;
+  let detail='';
+  if(a){const A=area(a.area);const res=D.results[a.id]||{};const vals=r.map(s=>pct(a,res[s.id])).filter(x=>x!=null);const avg=vals.length?vals.reduce((p,q)=>p+q,0)/vals.length:null;
+    const input=s=>a.type==='grade'?`<select class="cell gradeSel" onchange="setRes('${a.id}','${s.id}',this.value)"><option value="">–</option>${['A','B','C','D','E'].map(g=>`<option ${res[s.id]===g?'selected':''}>${g}</option>`).join('')}</select>`:`<input class="cell" type="number" inputmode="decimal" min="${a.type==='rubric'?1:0}" max="${a.max}" step="any" value="${res[s.id]??''}" onchange="setRes('${a.id}','${s.id}',this.value)">`;
+    detail=`<div class="card glow"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="tiny" style="color:${A?.colour}">${esc(A?.name||'')} · ${esc(A?.rs.find(z=>z.id===a.rs)?.name||'')}</div><h2>${esc(a.title)}</h2><div class="small dim">${a.date} · ${a.type==='score'?'Score out of '+a.max:a.type==='rubric'?a.max+'-level rubric (1–'+a.max+')':'Grade A–E'} · weight ${a.weight||1}${a.codes?.length?' · '+a.codes.length+' descriptors':''}</div>${a.notes?`<div class="small dim" style="margin-top:6px">${esc(a.notes)}</div>`:''}</div>
+     <div class="row"><button class="sm" onclick="pasteResults('${a.id}')">Paste results</button><button class="sm" onclick="editAssess('${a.id}')">Edit</button><button class="sm danger" onclick="delAssess('${a.id}')">Delete</button></div></div>
+     <div class="row" style="margin:14px 0;gap:22px"><div><div class="tiny">Class mean</div><div class="kpi" style="color:${A?.colour}">${avg==null?'—':Math.round(avg)+'%'}</div></div><div><div class="tiny">Entered</div><div class="kpi">${vals.length}<span class="muted" style="font-size:18px">/${r.length}</span></div></div></div>
+     <div class="scroll"><table><tr><th>Student</th><th style="text-align:center">Result</th><th>%</th><th>Band</th></tr>${r.map(s=>{const p=pct(a,res[s.id]);const g=letter(p);return`<tr><td>${esc(nameOf(s.id))} <span class="muted small">${esc(s.code)}</span></td><td style="text-align:center">${input(s)}</td><td style="width:130px"><div class="bar"><i style="width:${p||0}%;background:${A?.colour}"></i></div></td><td>${g?`<span class="gr ${g}" style="width:28px;height:28px;font-size:15px">${g}</span>`:''}</td></tr>`}).join('')}</table></div></div>`}
+  else detail=`<div class="card"><h2>Record evidence</h2><p class="dim">Pick an assessment on the left or create one. Each assessment belongs to one learning area and one reporting strand, and can be tagged with the content descriptors it provides evidence for — that's what drives both the estimated grades and the coverage view.</p><button class="gold" onclick="newAssess()">+ New assessment</button></div>`;
+  return`<h1>Assessments</h1><p class="sub">Tests, rubrics and on-balance grades. Paste in results from any marking sheet.</p><div class="grid" style="grid-template-columns:320px 1fr">${list}<div>${detail}</div></div>`}
+function setRes(aid,sid,v){D.results[aid]=D.results[aid]||{};if(v==='')delete D.results[aid][sid];else D.results[aid][sid]=isNaN(+v)?v:+v;save()}
+function assessForm(a){const S=stds();const A=area(a.area)||S.areas[0];
+  return`<h2>${a.id?'Edit':'New'} assessment</h2><div class="grid g2" style="margin-top:10px">
+  <label class="f"><span>Title</span><input id="f_title" value="${esc(a.title||'')}" placeholder="e.g. Suspense narrative — The Creek"></label>
+  <label class="f"><span>Date</span><input id="f_date" type="date" value="${a.date||today()}"></label>
+  <label class="f"><span>Learning area</span><select id="f_area" onchange="refreshForm()">${S.areas.map(x=>`<option value="${x.id}" ${x.id===A.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+  <label class="f"><span>Reporting strand</span><select id="f_rs">${A.rs.map(x=>`<option value="${x.id}" ${x.id===a.rs?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+  <label class="f"><span>Type</span><select id="f_type" onchange="refreshForm(true)"><option value="score" ${a.type==='score'?'selected':''}>Score out of N</option><option value="rubric" ${a.type==='rubric'?'selected':''}>Rubric levels (1–N)</option><option value="grade" ${a.type==='grade'?'selected':''}>Teacher grade A–E</option></select></label>
+  <label class="f"><span id="f_maxl">${a.type==='rubric'?'Number of levels':'Maximum score'}</span><input id="f_max" type="number" value="${a.max||(a.type==='rubric'?5:20)}" ${a.type==='grade'?'disabled':''}></label>
+  <label class="f"><span>Weight</span><input id="f_w" type="number" step=".5" value="${a.weight||1}"></label>
+  <label class="f"><span>Notes</span><input id="f_notes" value="${esc(a.notes||'')}"></label></div>
+  <div class="tiny" style="margin:16px 0 8px">Content descriptors this evidences</div><div id="f_codes" style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px 12px">${codeList(A,a.codes||[])}</div>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="saveAssess('${a.id||''}')">Save</button></div>`}
+function codeList(A,sel){let g='';return A.descriptors.map(d=>{const h=d.group!==g?`<div class="tiny" style="margin:8px 0 4px;color:${A.colour}">${esc(g=d.group)}</div>`:'';return h+`<label style="display:flex;gap:8px;font-size:12.5px;padding:3px 0;cursor:pointer"><input type="checkbox" value="${d.code}" ${sel.includes(d.code)?'checked':''}><code style="color:var(--ink3);font-size:11px;flex:none">${d.code}</code>${esc(d.label)}</label>`}).join('')}
+function refreshForm(typeOnly){const A=area(document.getElementById('f_area').value);if(!typeOnly){document.getElementById('f_rs').innerHTML=A.rs.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');document.getElementById('f_codes').innerHTML=codeList(A,[])}
+  const t=document.getElementById('f_type').value;document.getElementById('f_max').disabled=t==='grade';document.getElementById('f_maxl').textContent=t==='rubric'?'Number of levels':'Maximum score';if(t==='rubric'&&+document.getElementById('f_max').value>10)document.getElementById('f_max').value=5}
+function newAssess(){modal(assessForm({area:UI.area||stds().areas[0].id,type:'score'}))}
+function editAssess(id){modal(assessForm(D.assessments.find(a=>a.id===id)))}
+function saveAssess(id){const g=k=>document.getElementById(k).value;const a=id?D.assessments.find(x=>x.id===id):{id:uid('AS'),classId:cls().id};
+  Object.assign(a,{title:g('f_title').trim()||'Untitled',date:g('f_date'),area:g('f_area'),rs:g('f_rs'),type:g('f_type'),max:+g('f_max')||1,weight:+g('f_w')||1,notes:g('f_notes'),codes:[...document.querySelectorAll('#f_codes input:checked')].map(i=>i.value)});
+  if(!id)D.assessments.push(a);save();closeModal();go('assess',{assess:a.id})}
+function delAssess(id){if(!confirm('Delete this assessment and its results?'))return;D.assessments=D.assessments.filter(a=>a.id!==id);delete D.results[id];save();go('assess',{assess:null})}
+function pasteResults(aid){modal(`<h2>Paste results</h2><p class="dim small">One per line: <code>name</code> or <code>ID</code>, then a tab/comma/space, then the result. Names match the local name list.</p><textarea id="m_paste" style="min-height:200px" placeholder="Ava, 17&#10;ST-K3PQ 14"></textarea><div class="row" style="justify-content:flex-end;margin-top:12px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="doPaste('${aid}')">Import</button></div>`)}
+function doPaste(aid){const r=roster();let n=0,miss=[];for(const line of document.getElementById('m_paste').value.split('\n')){const m=line.trim().match(/^(.+?)[\t, ]+([A-Ea-e]|[\d.]+)\s*$/);if(!m)continue;const key=m[1].trim().toLowerCase();
+  const s=r.find(x=>x.id.toLowerCase()===key||x.code.toLowerCase()===key||(NAMES[x.id]||'').toLowerCase()===key);if(!s){miss.push(m[1]);continue}setRes(aid,s.id,m[2].toUpperCase());n++}
+  closeModal();toast(`${n} results imported${miss.length?' · unmatched: '+miss.join(', '):''}`,miss.length?'err':'');render()}
+
+// ---------- Coverage ----------
+function coverage(){const S=stds(),c=cls();const A=area(UI.area)||S.areas[0];const cov=covData(A.id);let g='';
+  const tabs=S.areas.map(x=>`<button class="${x.id===A.id?'gold':''}" onclick="go('coverage',{area:'${x.id}'})">${esc(x.short)} <span class="small" style="opacity:.7">${covData(x.id).pct}%</span></button>`).join('');
+  const rows=cov.list.map(d=>{const h=d.group!==g?`<div class="tiny" style="margin:18px 0 4px;color:${A.colour}">${esc(g=d.group)}</div>`:'';return h+`<div class="desc"><code>${d.code}</code><div>${esc(d.label)}${d.hits.length?`<div class="small muted">${d.hits.map(a=>esc(a.title)).join(' · ')}</div>`:''}</div><span class="small ${d.hits.length?'cov1':'cov0'}">${d.hits.length} evidence</span><div class="row" style="gap:6px"><span class="small muted">taught</span><div class="tgl ${d.taught?'on':''}" onclick="toggleTaught('${d.code}')"></div></div></div>`}).join('');
+  const strandEv=A.rs.map(r=>({label:r.name,pct:Math.min(100,classAssess().filter(a=>a.area===A.id&&a.rs===r.id).length*25),colour:A.colour,sub:classAssess().filter(a=>a.area===A.id&&a.rs===r.id).length+' assessments'}));
+  return`<h1>Coverage</h1><p class="sub">Has every descriptor been taught and evidenced? Toggle <i>taught</i> for things you've covered without a formal assessment.</p><div class="row" style="margin-bottom:18px">${tabs}</div>
+  <div class="grid" style="grid-template-columns:1fr 300px"><div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0;color:${A.colour}">${esc(A.name)}</h2><span class="kpi">${cov.pct}%</span></div><div class="bar" style="margin:12px 0 4px"><i style="width:${cov.pct}%;background:${A.colour}"></i></div><div class="small dim">${cov.list.filter(x=>x.done).length} of ${cov.list.length} descriptors taught or evidenced</div>${rows}</div>
+  <div><div class="card"><h3>Evidence per reporting strand</h3>${bars(strandEv)}<p class="small muted">Aim for 2–4 pieces of evidence per strand per semester.</p></div><div class="card" style="margin-top:14px"><h3>Achievement standard</h3><p class="small dim" style="margin:0">${esc(A.achievement)}</p></div></div></div>`}
+function toggleTaught(code){const c=cls();D.coverage[c.id]=D.coverage[c.id]||{};if(D.coverage[c.id][code])delete D.coverage[c.id][code];else D.coverage[c.id][code]=today();save();render()}
+
+// ---------- Standards ----------
+function standards(){const S=stds(),c=cls();const A=area(UI.area)||S.areas[0];
+  const tabs=S.areas.map(x=>`<button class="${x.id===A.id?'gold':''}" onclick="go('standards',{area:'${x.id}'})">${esc(x.short)}</button>`).join('');
+  return`<div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:18px"><div><h1>Standards · Year ${c.yearLevel}</h1><p class="sub" style="margin:0">Structure follows the WA Curriculum. Paste the SCSA Judging Standards grade descriptions/pointers from the extranet into the A–E boxes — they show on reports and guide your on-balance calls.</p></div><div class="row"><button onclick="importStandards()">Import standards JSON</button><button onclick="exportStandards()">Export</button></div></div>
+  <div class="row" style="margin-bottom:18px">${tabs}</div>
+  <div class="grid" style="grid-template-columns:1fr 1fr"><div class="card"><h3 style="color:${A.colour}">${esc(A.name)}</h3><p class="dim small">${esc(A.achievement)}</p><div class="tiny" style="margin:14px 0 8px">Reporting strands</div>${A.rs.map(r=>`<div class="pill" style="margin:0 6px 6px 0">${esc(r.name)}</div>`).join('')}
+   <div class="tiny" style="margin:14px 0 8px">Content descriptors (${A.descriptors.length})</div>${A.descriptors.map(d=>`<div class="small" style="padding:4px 0;border-bottom:1px solid var(--line)"><code style="color:var(--ink3)">${d.code}</code> ${esc(d.label)} <span class="muted">· ${esc(d.group.split(' · ').pop())}</span></div>`).join('')}</div>
+  <div class="card"><h3>Judging standards · A–E</h3>${['A','B','C','D','E'].map(g=>`<label class="f" style="margin-bottom:12px"><span style="color:var(--${g})">${g} — ${esc(S.gradeScale[g].split(' — ')[0])}</span><textarea style="min-height:70px" placeholder="Paste the SCSA ${g} grade description / assessment pointers for ${esc(A.name)}…" onchange="A_pointer('${A.id}','${g}',this.value)">${esc(A.pointers?.[g]||'')}</textarea></label>`).join('')}<p class="small muted">Generic WA scale: ${esc(S.gradeScale.C)}</p></div></div>`}
+function A_pointer(aid,g,v){const A=area(aid);A.pointers=A.pointers||{};A.pointers[g]=v;save();toast('Saved')}
+function exportStandards(){const c=cls();download(`standards-year${c.yearLevel}.json`,JSON.stringify(stds(),null,1))}
+function importStandards(){pickFile(txt=>{try{const o=JSON.parse(txt);if(!o.year||!o.areas)throw 0;D.standards[o.year]=o;save();toast(`Standards for Year ${o.year} loaded`);render()}catch(e){toast('Not a standards file','err')}})}
+
+// ---------- Parent report ----------
+function report(){const c=cls(),S=stds(),r=roster();const s=D.students[UI.student]||r[0];if(!s)return`<h1>Parent Report</h1><div class="card muted">Add students first.</div>`;
+  const ests=S.areas.map(A=>({A,...areaEst(s.id,A.id)}));const have=ests.filter(e=>e.pct!=null);const overall=have.length?have.reduce((a,e)=>a+e.pct,0)/have.length:null;
+  const picker=`<div class="row noprint" style="justify-content:space-between;margin-bottom:18px"><select onchange="go('report',{student:this.value})">${r.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(nameOf(x.id))}</option>`).join('')}</select><div class="row"><button onclick="CFG.privacy=!CFG.privacy;saveCfg();render()">${CFG.privacy?'Show name':'Hide name'}</button><button class="gold" onclick="window.print()">Print / Save PDF</button></div></div>`;
+  const areaCards=ests.map(e=>`<div class="areacard"><span class="gr lg ${e.grade||'n'}">${e.grade||'–'}</span><div style="flex:1"><div class="tiny" style="color:${e.A.colour}">${esc(e.A.short)}${e.override?' · teacher judgement':''}</div><div class="nm">${esc(e.A.name)}</div><div class="small dim">${e.pct==null?'No evidence yet':Math.round(e.pct)+'% · '+e.n+' piece'+(e.n===1?'':'s')+' of evidence'}</div>
+    <div class="strands">${bars(e.strands.map(st=>({label:st.name,pct:st.pct,colour:e.A.colour,grade:letter(st.pct)})))}</div>
+    ${e.A.pointers?.[e.grade]?`<div class="small dim" style="margin-top:8px;border-left:2px solid ${e.A.colour};padding-left:8px">${esc(e.A.pointers[e.grade].slice(0,420))}</div>`:''}
+    <div class="row noprint" style="margin-top:8px"><span class="small muted">Override</span><select class="sm" style="padding:4px 26px 4px 8px" onchange="setOverride('${s.id}','${e.A.id}',this.value)"><option value="">auto</option>${['A','B','C','D','E'].map(g=>`<option ${D.overrides[s.id]?.[e.A.id]===g?'selected':''}>${g}</option>`).join('')}</select></div></div></div>`).join('');
+  const series=S.areas.map(A=>({colour:A.colour,name:A.name,pts:timeline(s.id,A.id)}));
+  const comment=D.comments[s.id]||'';
+  return`<div class="report">${picker}<div class="card hero glow"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="tiny">${esc(c.name)} · Year ${c.yearLevel} · ${esc(c.year)}</div><h1>${esc(nameOf(s.id))}</h1><div class="ticker">Progress report · ${new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+   <div style="text-align:center">${arc(overall,'#e8c36a',120,overall==null?'—':Math.round(overall))}<div class="tiny" style="margin-top:4px">Overall</div></div></div>
+   <div class="row" style="margin-top:18px;gap:10px">${ests.map(e=>`<span class="pill"><span class="dot" style="background:${e.A.colour};color:${e.A.colour}"></span>${esc(e.A.short)} <b style="color:var(--${e.grade||'C'})">${e.grade||'–'}</b></span>`).join('')}</div></div>
+  <div class="rep-grid" style="margin-top:18px"><div class="card"><h3>Strength profile</h3>${radar(ests.map(e=>e.pct),ests.map(e=>e.A.short),'#e8c36a')}</div><div class="card"><h3>Progress over time</h3>${lineChart(series,520,230)}<div class="legend" style="margin-top:8px">${S.areas.map(A=>`<span><i style="background:${A.colour}"></i>${esc(A.short)}</span>`).join('')}</div></div></div>
+  <div class="grid" style="margin-top:18px;grid-template-columns:1fr">${areaCards}</div>
+  <div class="card" style="margin-top:18px"><h3>Teacher comment</h3><textarea class="noprint" placeholder="Write a comment for the family…" onchange="D.comments['${s.id}']=this.value;save()">${esc(comment)}</textarea><div class="print-only">${esc(comment)||'<span class="muted">—</span>'}</div>
+   <p class="small muted" style="margin:10px 0 0">Grades are estimates against the Western Australian Curriculum Year ${c.yearLevel} achievement standards (A excellent · B high · C satisfactory, the expected standard · D limited · E very low). They are based on evidence collected so far and are refined as the year progresses.</p></div></div>`}
+function setOverride(sid,aid,v){D.overrides[sid]=D.overrides[sid]||{};if(v)D.overrides[sid][aid]=v;else delete D.overrides[sid][aid];save();render()}
+
+// ---------- Settings ----------
+function settings(){return`<h1>Settings</h1><p class="sub">Classes, grade cut-offs, Google Sheet sync and backups.</p><div class="grid g2">
+  <div class="card"><h3>Classes</h3>${D.classes.map(k=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(k.name)}</b> <span class="dim small">· Year ${k.yearLevel} · ${esc(k.year)} · ${Object.values(D.students).filter(s=>s.classId===k.id&&!s.gone).length} students</span></div><div class="row"><button class="sm" onclick="editClass('${k.id}')">Edit</button><button class="sm danger" onclick="delClass('${k.id}')">Delete</button></div></div>`).join('')}<div style="margin-top:12px"><button class="gold" onclick="newClass()">+ New class</button></div></div>
+  <div class="card"><h3>Grade cut-offs (% of evidence)</h3><div class="row">${['A','B','C','D'].map(g=>`<label class="f"><span style="color:var(--${g})">${g} from</span><input type="number" style="width:80px" value="${D.cuts[g]}" onchange="D.cuts['${g}']=+this.value;save();render()"></label>`).join('')}</div><p class="small muted">E is anything below the D cut-off. Letter grades you enter directly map to A ${GRADE_PCT.A}% · B ${GRADE_PCT.B}% · C ${GRADE_PCT.C}% · D ${GRADE_PCT.D}% · E ${GRADE_PCT.E}%.</p></div>
+  <div class="card"><h3>Google Sheet sync</h3><label class="f"><span>Apps Script web app URL</span><input id="s_url" value="${esc(CFG.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label><label class="f" style="margin-top:8px"><span>Shared key</span><input id="s_key" value="${esc(CFG.key)}" placeholder="the SECRET you set in the script"></label>
+   <div class="row" style="margin-top:10px"><label class="row small" style="gap:6px"><input type="checkbox" ${CFG.auto?'checked':''} onchange="CFG.auto=this.checked;saveCfg()"> auto-push after changes</label></div>
+   <div class="row" style="margin-top:12px"><button class="gold" onclick="CFG.url=document.getElementById('s_url').value.trim();CFG.key=document.getElementById('s_key').value.trim();saveCfg();render();toast('Saved')">Save</button><button onclick="pushNow()">Push to Sheet</button><button onclick="pullNow()">Pull from Sheet</button></div>
+   <p class="small muted">Only de-identified data is sent: student IDs, assessments, results, standards, comments. Names never leave this device.</p></div>
+  <div class="card"><h3>Backup &amp; privacy</h3><div class="row"><button onclick="download('marquee-backup.json',JSON.stringify(D))">Export data</button><button onclick="pickFile(t=>{try{D=JSON.parse(t);save();toast('Restored');render()}catch(e){toast('Bad file','err')}})">Import data</button><button onclick="exportNames()">Export names</button><button onclick="importNames()">Import names</button></div>
+   <div class="row" style="margin-top:12px"><label class="row small" style="gap:6px"><input type="checkbox" ${CFG.privacy?'checked':''} onchange="CFG.privacy=this.checked;saveCfg();render()"> privacy mode (show IDs instead of names)</label></div>
+   <div style="margin-top:14px"><button class="danger sm" onclick="if(confirm('Wipe ALL local data and names on this device?')){localStorage.clear();location.reload()}">Reset this device</button></div></div></div>`}
+function classForm(k){return`<h2>${k.id?'Edit':'New'} class</h2><div class="grid g2" style="margin-top:10px"><label class="f"><span>Class name</span><input id="c_name" value="${esc(k.name||'')}" placeholder="e.g. Room 12"></label><label class="f"><span>School year</span><input id="c_year" value="${esc(k.year||new Date().getFullYear())}"></label><label class="f"><span>Year level</span><select id="c_lvl">${[1,2,3,4,5,6].map(y=>`<option value="${y}" ${y==(k.yearLevel||4)?'selected':''}>Year ${y}${D.standards[y]?'':' (no standards loaded)'}</option>`).join('')}</select></label></div>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="saveClass('${k.id||''}')">Save</button></div>`}
+function newClass(){modal(classForm({}))}function editClass(id){modal(classForm(D.classes.find(c=>c.id===id)))}
+function saveClass(id){const k=id?D.classes.find(c=>c.id===id):{id:uid('CL')};k.name=document.getElementById('c_name').value.trim()||'Class';k.year=document.getElementById('c_year').value.trim();k.yearLevel=+document.getElementById('c_lvl').value;if(!id)D.classes.push(k);CFG.classId=k.id;save();saveCfg();closeModal();go('dash')}
+function delClass(id){if(!confirm('Delete this class, its students and assessments?'))return;D.classes=D.classes.filter(c=>c.id!==id);for(const s of Object.values(D.students))if(s.classId===id)delete D.students[s.id];D.assessments=D.assessments.filter(a=>{if(a.classId===id){delete D.results[a.id];return false}return true});if(CFG.classId===id)CFG.classId=D.classes[0]?.id||null;save();saveCfg();render()}
+
+// ======================= SYNC =======================
+let pushT=null;function schedulePush(){clearTimeout(pushT);pushT=setTimeout(pushNow,2500)}
+async function api(body){const res=await fetch(CFG.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({key:CFG.key,...body})});const j=await res.json();if(j.error)throw new Error(j.error);return j}
+async function pushNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}try{UI.syncMsg='Pushing…';renderNav();await api({action:'save',data:D});UI.syncMsg='Synced '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});renderNav()}catch(e){UI.syncMsg='Push failed';renderNav();toast('Push failed: '+e.message,'err')}}
+async function pullNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}try{UI.syncMsg='Pulling…';renderNav();const j=await api({action:'load'});if(!j.data){toast('Sheet is empty — push first');UI.syncMsg='';renderNav();return}
+  if(j.data.updated<D.updated&&!confirm('The Sheet copy is older than this device. Overwrite local data with it?')){UI.syncMsg='';renderNav();return}
+  D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));if(!D.classes.find(c=>c.id===CFG.classId))CFG.classId=D.classes[0]?.id||null;saveCfg();UI.syncMsg='Pulled '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});toast('Loaded from Sheet');render()}catch(e){UI.syncMsg='Pull failed';renderNav();toast('Pull failed: '+e.message,'err')}}
+
+// ======================= UTIL =======================
+function modal(html){document.getElementById('modal').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`}
+function closeModal(){document.getElementById('modal').innerHTML=''}
+let toastT;function toast(m,k=''){const t=document.getElementById('toast');t.innerHTML=`<div class="toast ${k}">${esc(m)}</div>`;clearTimeout(toastT);toastT=setTimeout(()=>t.innerHTML='',3200)}
+function download(name,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;a.click()}
+function pickFile(cb){const i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=()=>{const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>cb(r.result);r.readAsText(f)};i.click()}
+render();
+if(CFG.url&&CFG.key&&navigator.onLine){api({action:'load'}).then(j=>{if(j.data&&j.data.updated>D.updated){D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));UI.syncMsg='Pulled newer data from Sheet';render()}else{UI.syncMsg='Up to date';renderNav()}}).catch(()=>{UI.syncMsg='Offline';renderNav()})}
+</script>
+</body>
+</html>
