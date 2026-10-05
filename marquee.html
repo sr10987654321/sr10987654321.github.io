@@ -76,7 +76,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .heat{display:inline-block;width:38px;height:28px;border-radius:7px;text-align:center;line-height:28px;font-size:12px;font-weight:600;color:#0c0d12}
 .pill{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:#101219;border:1px solid var(--line2);border-radius:22px;padding:26px;width:min(720px,100%);max-height:92vh;overflow:auto;box-shadow:0 40px 100px rgba(0,0,0,.7)}
+.modal{background:#101219;border:1px solid var(--line2);border-radius:22px;padding:26px;width:min(900px,100%);max-height:92vh;overflow:auto;box-shadow:0 40px 100px rgba(0,0,0,.7)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#15171f;border:1px solid var(--line2);padding:10px 16px;border-radius:12px;z-index:60;font-size:13px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
 .toast.err{border-color:var(--E)}
 .sync{font-size:11px;color:var(--ink3);padding:8px 12px;border-top:1px solid var(--line);margin-top:8px}
@@ -98,6 +98,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
 svg text{font-family:var(--sans)}
 .ticker{font-family:var(--serif);font-style:italic;color:var(--ink2)}
 .rule{height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:14px 0;opacity:.6}
+.lnk{color:var(--gold2);text-decoration:none;cursor:pointer;border-bottom:1px dotted rgba(232,195,106,.55)}
+.lnk:hover{color:#fff}
+table.ev th,table.ev td{padding:6px 8px;font-size:12.5px}
+table.ev td.w{color:var(--ink2)}
+.heat.click{cursor:pointer;transition:.12s}.heat.click:hover{transform:scale(1.12);box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.cl{display:flex;gap:8px;align-items:center;font-size:12.5px;padding:3px 0;cursor:pointer}
+.cl code{color:var(--ink3);font-size:11px;flex:none}.cl span{flex:1}
+.cl .part{display:none;width:190px;padding:4px 8px;font-size:12px;border-radius:8px;flex:none}
+.cl input[type=checkbox]:checked~.part{display:block}
+.stdl{margin-top:10px;display:grid;gap:4px;font-size:12.5px}
+.stdl>div{display:grid;grid-template-columns:104px 1fr auto;gap:10px;align-items:baseline}
+.stdl code,code.cc{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink3)}.stdl span{color:var(--ink2)}.stdl b{color:var(--gold2);font-weight:600;font-size:12px;text-align:right}
+.ct{display:inline-block;margin:1px 5px 1px 0;padding:1px 7px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--ink2);white-space:nowrap}
+.ct b{font-family:var(--sans);font-weight:600;color:var(--gold2)}
 .print-only{display:none}
 /* report */
 .report{max-width:1080px;margin:0 auto}
@@ -106,7 +120,7 @@ svg text{font-family:var(--sans)}
 .rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .areacard{padding:18px 20px;border-radius:18px;background:var(--panel);border:1px solid var(--line);display:flex;gap:18px;align-items:flex-start}
 .areacard .gr.lg{flex:none;margin-top:4px}
-.areacard .strands{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 22px}
+.strands{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 22px}
 .areacard .nm{font-family:var(--serif);font-size:19px}
 @media print{
   body{background:#fff;color:#111}
@@ -116,6 +130,8 @@ svg text{font-family:var(--sans)}
   .report .hero{background:linear-gradient(135deg,#fff7e3,#fff)}
   :root{--ink:#111;--ink2:#444;--ink3:#777;--line:#e4e4e4;--panel:#fff;--panel2:#f4f4f4}
   .brand{color:#9a7a2a}
+  .lnk{color:#7a5c12;border-color:#c9b27a}
+  .ct{background:#f4f4f4;border-color:#ddd;color:#444}.ct b,.stdl b{color:#7a5c12}
   .print-only{display:block}
   svg text{fill:#333}
   .gr{color:#fff}
@@ -314,8 +330,21 @@ const GRADE_PCT={A:92,B:78,C:62,D:45,E:25};
 const uid=(p='')=>p+Math.random().toString(36).slice(2,6).toUpperCase();
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function blank(){return{v:1,updated:0,standards:{4:STANDARDS_Y4},classes:[],students:{},assessments:[],results:{},coverage:{},overrides:{},comments:{},cuts:{...DEFAULT_CUTS}}}
-let D=load(LS_DATA)||blank(); if(!D.standards)D.standards={}; if(!D.standards[4])D.standards[4]=STANDARDS_Y4;
+function blank(){return{v:1,updated:0,standards:{4:STANDARDS_Y4},classes:[],students:{},assessments:[],results:{},coverage:{},overrides:{},comments:{},evidence:{},cuts:{...DEFAULT_CUTS}}}
+const DEMO_PARTS={
+ 'Reading comprehension — Term 1':{'AC9E4LY04':'Section A · oral reading','AC9E4LY05':'Section B · Q11–30'},
+ 'Place value & number test':{'ACMNA072':'Q1–10','ACMNA073':'Q11–20','ACMNA071':'Q21–25'},
+ 'Suspense narrative — The Creek':{'AC9E4LY06':'Whole text','AC9E4LA05':'Criterion: sentence structure','AC9E4LA10':'Criterion: punctuation','AC9E4LE05':'Criterion: language features'},
+ 'Multiplication & division facts':{'ACMNA074':'Part A · facts','ACMNA075':'Part B · problems'},
+ 'First Fleet inquiry':{'ACHASSK085':'Criterion: knowledge','WAHASS-Q4':'Criterion: research','WAHASS-C4':'Criterion: presentation'},
+ 'Time & measurement':{'ACMMG085':'Q1–6','ACMMG086':'Q7–12','ACMMG084':'Q13–20'},
+ 'Fractions & decimals':{'ACMNA077':'Q1–10','ACMNA078':'Q11–20','ACMNA079':'Q21–30'},
+ 'Personal recount — Swan River Colony':{'AC9E4LY06':'Whole text','AC9E4LA03':'Criterion: paragraphing','AC9E4LA07':'Criterion: noun and verb groups'},
+ 'Scratch branching program':{'ACTDIP010':'Planning sheet','ACTDIP011':'Criterion: algorithm design','ACTDIP012':'Criterion: working program'},
+ 'Shape, angles & symmetry':{'ACMMG087':'Q1–8','ACMMG089':'Q9–14','ACMMG091':'Q15–20'}};
+function norm(){D.standards=D.standards||{};if(!D.standards[4])D.standards[4]=STANDARDS_Y4;for(const k of['students','results','coverage','overrides','comments','evidence'])D[k]=D[k]||{};D.classes=D.classes||[];D.assessments=D.assessments||[];D.cuts=D.cuts||{...DEFAULT_CUTS};
+  const demo=new Set(D.classes.filter(c=>c.demo).map(c=>c.id));if(!D.m2){for(const a of D.assessments)if(demo.has(a.classId)){delete a.where;if(!a.parts&&DEMO_PARTS[a.title])a.parts={...DEMO_PARTS[a.title]};const ev=D.evidence[a.id];if(ev)for(const k in ev)if(!ev[k].link&&/^p\. \d+$/.test(ev[k].note||''))delete ev[k]}D.m2=1}}
+let D=load(LS_DATA)||blank(); norm();
 let NAMES=load(LS_NAMES)||{};
 let CFG=load(LS_CFG)||{url:'',key:'',auto:true,privacy:false,classId:null,view:'dash'};
 let UI={view:CFG.view||'dash',student:null,area:null,assess:null,syncMsg:'',busy:false};
@@ -349,8 +378,47 @@ function timeline(sid,areaId){const out=[];const as=classAssess().filter(a=>!are
 function classAreaAvg(areaId){const r=roster();const v=r.map(s=>areaEst(s.id,areaId).pct).filter(x=>x!=null);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null}
 function covData(areaId){const A=area(areaId),c=cls();if(!A||!c)return{list:[],pct:0};
   const as=classAssess().filter(a=>a.area===areaId);
-  const list=A.descriptors.map(d=>{const hits=as.filter(a=>(a.codes||[]).includes(d.code));const taught=!!D.coverage[c.id]?.[d.code];return{...d,hits,taught,done:taught||hits.length>0}});
+  const list=A.descriptors.map(d=>{const hits=as.filter(a=>(a.codes||[]).includes(d.code));const taught=!!D.coverage[c.id]?.[d.code];return{...d,hits,taught,assessed:hits.filter(a=>Object.keys(D.results[a.id]||{}).length).length,done:taught||hits.length>0}});
   return{list,pct:list.length?Math.round(list.filter(x=>x.done).length/list.length*100):0}}
+
+
+// ======================= EVIDENCE =======================
+const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
+function linkBtn(u,label){const x=safeUrl(u);return x?`<a class="lnk" href="${esc(x)}" target="_blank" rel="noopener">${label||'Open'} ↗</a>`:''}
+function rawResult(a,v){return a.type==='score'?`${v} / ${a.max}`:a.type==='rubric'?`Level ${v} of ${a.max}`:`Grade ${v}`}
+function codeTags(a,A){return(a.codes||[]).map(c=>{const d=A.descriptors.find(x=>x.code===c);return`<span class="ct" title="${esc(d?.label||'')}">${c}${a.parts?.[c]?` <b>${esc(a.parts[c])}</b>`:''}</span>`}).join('')}
+function stdList(a,A){if(!a.codes?.length)return'<div class="small muted" style="margin-top:8px">No standards linked yet. Add them under Edit.</div>';
+  return`<div class="stdl">${a.codes.map(c=>{const d=A?.descriptors.find(x=>x.code===c);return`<div><code>${c}</code><span>${esc(d?.label||'')}</span><b>${esc(a.parts?.[c]||'')}</b></div>`}).join('')}</div>`}
+function evidenceRows(sid,areaId){return classAssess().filter(a=>a.area===areaId).map(a=>{const v=D.results[a.id]?.[sid];return{a,v,p:pct(a,v),ev:D.evidence[a.id]?.[sid]||null}}).filter(r=>r.p!=null)}
+const aLink=a=>`<a class="lnk noprint" onclick="closeModal();go('assess',{assess:'${a.id}'})">${esc(a.title)}</a><span class="print-only">${esc(a.title)}</span>`;
+const resCell=r=>`<td style="white-space:nowrap">${esc(rawResult(r.a,r.v))} <span class="muted">· ${Math.round(r.p)}%</span></td><td><b style="color:var(--${letter(r.p)})">${letter(r.p)}</b></td>`;
+const evExtras=r=>[r.ev?.note?esc(r.ev.note):'',linkBtn(r.ev?.link,'Student work'),linkBtn(r.a.link,'Assessment')].filter(Boolean).join(' &nbsp; ');
+// One row per assessment, showing the standards it gives evidence for (and which part of it)
+function evidenceTable(sid,areaId){const A=area(areaId),rows=evidenceRows(sid,areaId);if(!rows.length)return'<div class="muted small">No evidence recorded yet.</div>';
+  return`<div class="scroll"><table class="ev"><tr><th>Date</th><th>Assessment</th><th>Strand</th><th>Result</th><th></th><th>Standards it gives evidence for</th></tr>${rows.map(r=>{const x=evExtras(r);
+   return`<tr><td class="w" style="white-space:nowrap">${r.a.date.slice(8)}/${r.a.date.slice(5,7)}</td><td>${aLink(r.a)}</td><td class="w">${esc(A.rs.find(z=>z.id===r.a.rs)?.name||'')}</td>${resCell(r)}<td>${codeTags(r.a,A)||'<span class="muted">none linked</span>'}${x?`<div class="w" style="margin-top:3px">${x}</div>`:''}</td></tr>`}).join('')}</table></div>`}
+// One block per standard, listing the specific assessments (and part) that evidence it
+function evidenceByStandard(sid,areaId,all){const A=area(areaId),rows=evidenceRows(sid,areaId);
+  const list=A.descriptors.map(d=>({d,hits:rows.filter(r=>(r.a.codes||[]).includes(d.code))})).filter(x=>all||x.hits.length);
+  if(!list.length)return'<div class="muted small">No evidence recorded yet.</div>';
+  return`<div class="scroll"><table class="ev"><tr><th>Standard</th><th>Assessment</th><th>Where in it</th><th>Result</th><th></th></tr>${list.map(({d,hits})=>{
+   const first=`<td rowspan="${Math.max(1,hits.length)}" style="vertical-align:top;max-width:300px"><code class="cc">${d.code}</code><div>${esc(d.label)}</div></td>`;
+   if(!hits.length){const pl=classAssess().filter(x=>x.area===areaId&&(x.codes||[]).includes(d.code)&&D.results[x.id]?.[sid]==null);
+     return`<tr>${first}<td colspan="4" class="muted">${pl.length?'Planned: '+pl.map(x=>aLink(x)+' <span class="muted">'+x.date.slice(8)+'/'+x.date.slice(5,7)+(x.parts?.[d.code]?' · '+esc(x.parts[d.code]):'')+'</span>').join(' &nbsp;·&nbsp; '):'No assessment yet'}</td></tr>`}
+   return hits.map((r,i)=>`<tr>${i?'':first}<td>${aLink(r.a)}</td><td class="w">${esc(r.a.parts?.[d.code]||'whole assessment')}</td>${resCell(r)}</tr>`).join('')}).join('')}</table></div>`}
+function showEvidence(sid,areaId){const A=area(areaId),e=areaEst(sid,areaId),m=CFG.evMode==='standard'?'standard':'assess';
+  const tab=(k,l)=>`<button class="sm ${m===k?'gold':''}" onclick="CFG.evMode='${k}';saveCfg();showEvidence('${sid}','${areaId}')">${l}</button>`;
+  modal(`<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="tiny" style="color:${A.colour}">${esc(A.name)} · what this grade is based on</div><h2 style="margin-top:4px">${esc(nameOf(sid))}</h2><div class="small dim">${e.pct==null?'No evidence yet':Math.round(e.pct)+'% across '+e.n+' piece'+(e.n===1?'':'s')+' of evidence'}${e.override?' · grade set by teacher judgement':''}</div></div><span class="gr lg ${e.grade||'n'}" style="flex:none">${e.grade||'–'}</span></div>
+  <div class="strands" style="margin:12px 0 6px">${bars(e.strands.map(st=>({label:st.name,pct:st.pct,colour:A.colour,grade:letter(st.pct)})))}</div>
+  <div class="row" style="gap:6px;margin:10px 0 8px">${tab('assess','By assessment')}${tab('standard','By standard')}</div>${m==='standard'?evidenceByStandard(sid,areaId,true):evidenceTable(sid,areaId)}
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Close</button><button class="gold" onclick="closeModal();go('report',{student:'${sid}'})">Open report</button></div>`)}
+function evCell(a,s){const ev=D.evidence[a.id]?.[s.id];return`<button class="sm ghost" onclick="editEvidence('${a.id}','${s.id}')">${ev?.note?esc(ev.note):ev?.link?'Edit':'+ Add'}</button> ${linkBtn(ev?.link,'Open')}`}
+function editEvidence(aid,sid){const a=D.assessments.find(x=>x.id===aid),ev=D.evidence[aid]?.[sid]||{};
+  modal(`<div class="tiny">${esc(a.title)}</div><h2 style="margin-top:4px">Work sample · ${esc(nameOf(sid))}</h2><p class="small dim">Optional. Add a link to this student's piece (a scan or photo) and a short note. This syncs to the Sheet, so don't type the student's name here.</p>
+  <div class="grid" style="gap:10px"><label class="f"><span>Link to this student's work</span><input id="e_link" type="url" value="${esc(ev.link||'')}" placeholder="https://…"></label><label class="f"><span>Note</span><input id="e_note" value="${esc(ev.note||'')}" placeholder="e.g. completed with support · second draft"></label></div>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="saveEvidence('${aid}','${sid}')">Save</button></div>`)}
+function saveEvidence(aid,sid){const note=document.getElementById('e_note').value.trim(),link=document.getElementById('e_link').value.trim();if(link&&!safeUrl(link)){toast('Link must start with https://','err');return}
+  D.evidence[aid]=D.evidence[aid]||{};if(note||link)D.evidence[aid][sid]={note,link};else delete D.evidence[aid][sid];save();closeModal();render()}
 
 // ======================= SVG CHARTS =======================
 function radar(vals,labels,colour,size=260){const n=vals.length,cx=size/2,cy=size/2,r=size/2-34;if(!n)return'';
@@ -407,13 +475,13 @@ function dash(){const c=cls(),S=stds(),r=roster(),as=classAssess();
   const areaCards=S.areas.map(A=>{const avg=classAreaAvg(A.id),cov=covData(A.id);return`<div class="card" style="cursor:pointer" onclick="go('coverage',{area:'${A.id}'})"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><div class="tiny" style="color:${A.colour}">Class average</div><div style="font-family:var(--serif);font-size:22px">${esc(({mat:'Maths',hass:'HASS',tec:'Tech'})[A.id]||A.name)}</div></div>${arc(avg,A.colour,70,avg==null?'—':Math.round(avg))}</div>
     <div style="margin:10px 0 6px" class="small dim">${as.filter(a=>a.area===A.id).length} assessments · ${cov.pct}% covered</div>${dist(A.id)}</div>`}).join('');
   const heat=`<div class="scroll"><table><tr><th>Student</th>${S.areas.map(A=>`<th style="text-align:center;color:${A.colour}">${esc(A.short)}</th>`).join('')}<th>Evidence</th></tr>
-    ${r.map(s=>{const ests=S.areas.map(A=>areaEst(s.id,A.id));return`<tr class="srow" onclick="go('report',{student:'${s.id}'})"><td><b>${esc(nameOf(s.id))}</b> <span class="muted small">${esc(s.code)}</span></td>${ests.map(e=>`<td style="text-align:center"><span class="heat" style="background:${e.grade?`var(--${e.grade})`:'rgba(255,255,255,.07)'};${e.grade?'':'color:#767269'}">${e.grade||'·'}</span></td>`).join('')}<td class="dim small">${ests.reduce((a,e)=>a+e.n,0)} results</td></tr>`}).join('')}
+    ${r.map(s=>{const ests=S.areas.map(A=>areaEst(s.id,A.id));return`<tr class="srow" onclick="go('report',{student:'${s.id}'})"><td><b>${esc(nameOf(s.id))}</b> <span class="muted small">${esc(s.code)}</span></td>${ests.map((e,i)=>`<td style="text-align:center"><span class="heat click" title="See the evidence" onclick="event.stopPropagation();showEvidence('${s.id}','${S.areas[i].id}')" style="background:${e.grade?`var(--${e.grade})`:'rgba(255,255,255,.07)'};${e.grade?'':'color:#767269'}">${e.grade||'·'}</span></td>`).join('')}<td class="dim small">${ests.reduce((a,e)=>a+e.n,0)} results</td></tr>`}).join('')}
     ${r.length?'':'<tr><td colspan="9" class="muted">No students yet — add them under Students.</td></tr>'}</table></div>`;
   const recent=as.slice(-5).reverse();
   return`<div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:18px"><div><div class="tiny">${esc(c.year)} · Year ${c.yearLevel}</div><h1>${esc(c.name)}</h1><p class="sub" style="margin:0">${r.length} students · ${as.length} assessments · ${Object.values(D.results).reduce((a,o)=>a+Object.keys(o).length,0)} results recorded</p></div>
    <div class="row noprint"><button onclick="newAssess()">+ Assessment</button><button class="gold" onclick="go('students')">Manage students</button></div></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:18px">${areaCards}</div>
-  <div class="grid" style="grid-template-columns:2fr 1fr"><div class="card"><h3>Grade matrix</h3>${heat}</div>
+  <div class="grid" style="grid-template-columns:2fr 1fr"><div class="card"><h3>Grade matrix <span style="letter-spacing:0;text-transform:none;font-weight:400">· click a grade to see the evidence behind it</span></h3>${heat}</div>
   <div class="card"><h3>Latest assessments</h3>${recent.length?recent.map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="go('assess',{assess:'${a.id}'})"><div><b>${esc(a.title)}</b></div><div class="small dim">${esc(area(a.area)?.name||'')} · ${a.date} · ${Object.keys(D.results[a.id]||{}).length}/${r.length} entered</div></div>`).join(''):'<div class="muted small">Nothing yet.</div>'}</div></div>`}
 
 // ---------- Students ----------
@@ -437,10 +505,10 @@ function assess(){const c=cls(),S=stds(),as=classAssess(),r=roster();const a=as.
   let detail='';
   if(a){const A=area(a.area);const res=D.results[a.id]||{};const vals=r.map(s=>pct(a,res[s.id])).filter(x=>x!=null);const avg=vals.length?vals.reduce((p,q)=>p+q,0)/vals.length:null;
     const input=s=>a.type==='grade'?`<select class="cell gradeSel" onchange="setRes('${a.id}','${s.id}',this.value)"><option value="">–</option>${['A','B','C','D','E'].map(g=>`<option ${res[s.id]===g?'selected':''}>${g}</option>`).join('')}</select>`:`<input class="cell" type="number" inputmode="decimal" min="${a.type==='rubric'?1:0}" max="${a.max}" step="any" value="${res[s.id]??''}" onchange="setRes('${a.id}','${s.id}',this.value)">`;
-    detail=`<div class="card glow"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="tiny" style="color:${A?.colour}">${esc(A?.name||'')} · ${esc(A?.rs.find(z=>z.id===a.rs)?.name||'')}</div><h2>${esc(a.title)}</h2><div class="small dim">${a.date} · ${a.type==='score'?'Score out of '+a.max:a.type==='rubric'?a.max+'-level rubric (1–'+a.max+')':'Grade A–E'} · weight ${a.weight||1}${a.codes?.length?' · '+a.codes.length+' descriptors':''}</div>${a.notes?`<div class="small dim" style="margin-top:6px">${esc(a.notes)}</div>`:''}</div>
-     <div class="row"><button class="sm" onclick="pasteResults('${a.id}')">Paste results</button><button class="sm" onclick="editAssess('${a.id}')">Edit</button><button class="sm danger" onclick="delAssess('${a.id}')">Delete</button></div></div>
+    detail=`<div class="card glow"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="tiny" style="color:${A?.colour}">${esc(A?.name||'')} · ${esc(A?.rs.find(z=>z.id===a.rs)?.name||'')}</div><h2>${esc(a.title)}</h2><div class="small dim">${a.date} · ${a.type==='score'?'Score out of '+a.max:a.type==='rubric'?a.max+'-level rubric (1–'+a.max+')':'Grade A–E'} · weight ${a.weight||1}${a.codes?.length?' · '+a.codes.length+' descriptors':''}</div>${a.notes?`<div class="small dim" style="margin-top:6px">${esc(a.notes)}</div>`:''}${stdList(a,A)}${safeUrl(a.link)?`<div class="small" style="margin-top:8px">${linkBtn(a.link,'Open the assessment')}</div>`:''}</div>
+     <div class="row" style="flex:none"><button class="sm" onclick="pasteResults('${a.id}')">Paste results</button><button class="sm" onclick="editAssess('${a.id}')">Edit</button><button class="sm danger" onclick="delAssess('${a.id}')">Delete</button></div></div>
      <div class="row" style="margin:14px 0;gap:22px"><div><div class="tiny">Class mean</div><div class="kpi" style="color:${A?.colour}">${avg==null?'—':Math.round(avg)+'%'}</div></div><div><div class="tiny">Entered</div><div class="kpi">${vals.length}<span class="muted" style="font-size:18px">/${r.length}</span></div></div></div>
-     <div class="scroll"><table><tr><th>Student</th><th style="text-align:center">Result</th><th>%</th><th>Band</th></tr>${r.map(s=>{const p=pct(a,res[s.id]);const g=letter(p);return`<tr><td>${esc(nameOf(s.id))} <span class="muted small">${esc(s.code)}</span></td><td style="text-align:center">${input(s)}</td><td style="width:130px"><div class="bar"><i style="width:${p||0}%;background:${A?.colour}"></i></div></td><td>${g?`<span class="gr ${g}" style="width:28px;height:28px;font-size:15px">${g}</span>`:''}</td></tr>`}).join('')}</table></div></div>`}
+     <div class="scroll"><table><tr><th>Student</th><th style="text-align:center">Result</th><th>%</th><th>Band</th><th>Work sample</th></tr>${r.map(s=>{const p=pct(a,res[s.id]);const g=letter(p);return`<tr><td>${esc(nameOf(s.id))} <span class="muted small">${esc(s.code)}</span></td><td style="text-align:center">${input(s)}</td><td style="width:130px"><div class="bar"><i style="width:${p||0}%;background:${A?.colour}"></i></div></td><td>${g?`<span class="gr ${g}" style="width:28px;height:28px;font-size:15px">${g}</span>`:''}</td><td>${evCell(a,s)}</td></tr>`}).join('')}</table></div></div>`}
   else detail=`<div class="card"><h2>Record evidence</h2><p class="dim">Pick an assessment on the left or create one. Each assessment belongs to one learning area and one reporting strand, and can be tagged with the content descriptors it provides evidence for — that's what drives both the estimated grades and the coverage view.</p><button class="gold" onclick="newAssess()">+ New assessment</button></div>`;
   return`<h1>Assessments</h1><p class="sub">Tests, rubrics and on-balance grades. Paste in results from any marking sheet.</p><div class="grid" style="grid-template-columns:320px 1fr">${list}<div>${detail}</div></div>`}
 function setRes(aid,sid,v){D.results[aid]=D.results[aid]||{};if(v==='')delete D.results[aid][sid];else D.results[aid][sid]=isNaN(+v)?v:+v;save()}
@@ -453,18 +521,19 @@ function assessForm(a){const S=stds();const A=area(a.area)||S.areas[0];
   <label class="f"><span>Type</span><select id="f_type" onchange="refreshForm(true)"><option value="score" ${a.type==='score'?'selected':''}>Score out of N</option><option value="rubric" ${a.type==='rubric'?'selected':''}>Rubric levels (1–N)</option><option value="grade" ${a.type==='grade'?'selected':''}>Teacher grade A–E</option></select></label>
   <label class="f"><span id="f_maxl">${a.type==='rubric'?'Number of levels':'Maximum score'}</span><input id="f_max" type="number" value="${a.max||(a.type==='rubric'?5:20)}" ${a.type==='grade'?'disabled':''}></label>
   <label class="f"><span>Weight</span><input id="f_w" type="number" step=".5" value="${a.weight||1}"></label>
-  <label class="f"><span>Notes</span><input id="f_notes" value="${esc(a.notes||'')}"></label></div>
-  <div class="tiny" style="margin:16px 0 8px">Content descriptors this evidences</div><div id="f_codes" style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px 12px">${codeList(A,a.codes||[])}</div>
+  <label class="f"><span>Notes</span><input id="f_notes" value="${esc(a.notes||'')}"></label>
+  <label class="f"><span>Link to the assessment (optional)</span><input id="f_link" type="url" value="${esc(a.link||'')}" placeholder="https://…"></label></div>
+  <div class="tiny" style="margin:16px 0 8px">Standards this assessment gives evidence for · tick each, then say where in the assessment</div><div id="f_codes" style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px 12px">${codeList(A,a.codes||[],a.parts||{})}</div>
   <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="saveAssess('${a.id||''}')">Save</button></div>`}
-function codeList(A,sel){let g='';return A.descriptors.map(d=>{const h=d.group!==g?`<div class="tiny" style="margin:8px 0 4px;color:${A.colour}">${esc(g=d.group)}</div>`:'';return h+`<label style="display:flex;gap:8px;font-size:12.5px;padding:3px 0;cursor:pointer"><input type="checkbox" value="${d.code}" ${sel.includes(d.code)?'checked':''}><code style="color:var(--ink3);font-size:11px;flex:none">${d.code}</code>${esc(d.label)}</label>`}).join('')}
+function codeList(A,sel,parts={}){let g='';return A.descriptors.map(d=>{const h=d.group!==g?`<div class="tiny" style="margin:8px 0 4px;color:${A.colour}">${esc(g=d.group)}</div>`:'';return h+`<label class="cl"><input type="checkbox" value="${d.code}" ${sel.includes(d.code)?'checked':''}><code>${d.code}</code><span>${esc(d.label)}</span><input class="part" type="text" value="${esc(parts[d.code]||'')}" placeholder="where? e.g. Q4–9, criterion 2"></label>`}).join('')}
 function refreshForm(typeOnly){const A=area(document.getElementById('f_area').value);if(!typeOnly){document.getElementById('f_rs').innerHTML=A.rs.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');document.getElementById('f_codes').innerHTML=codeList(A,[])}
   const t=document.getElementById('f_type').value;document.getElementById('f_max').disabled=t==='grade';document.getElementById('f_maxl').textContent=t==='rubric'?'Number of levels':'Maximum score';if(t==='rubric'&&+document.getElementById('f_max').value>10)document.getElementById('f_max').value=5}
 function newAssess(){modal(assessForm({area:UI.area||stds().areas[0].id,type:'score'}))}
 function editAssess(id){modal(assessForm(D.assessments.find(a=>a.id===id)))}
 function saveAssess(id){const g=k=>document.getElementById(k).value;const a=id?D.assessments.find(x=>x.id===id):{id:uid('AS'),classId:cls().id};
-  Object.assign(a,{title:g('f_title').trim()||'Untitled',date:g('f_date'),area:g('f_area'),rs:g('f_rs'),type:g('f_type'),max:+g('f_max')||1,weight:+g('f_w')||1,notes:g('f_notes'),codes:[...document.querySelectorAll('#f_codes input:checked')].map(i=>i.value)});
+  Object.assign(a,{title:g('f_title').trim()||'Untitled',date:g('f_date'),area:g('f_area'),rs:g('f_rs'),type:g('f_type'),max:+g('f_max')||1,weight:+g('f_w')||1,notes:g('f_notes'),link:g('f_link').trim(),codes:[...document.querySelectorAll('#f_codes input[type=checkbox]:checked')].map(i=>i.value),parts:Object.fromEntries([...document.querySelectorAll('#f_codes .cl')].filter(l=>l.querySelector('input[type=checkbox]').checked&&l.querySelector('.part').value.trim()).map(l=>[l.querySelector('input[type=checkbox]').value,l.querySelector('.part').value.trim()]))});
   if(!id)D.assessments.push(a);save();closeModal();go('assess',{assess:a.id})}
-function delAssess(id){if(!confirm('Delete this assessment and its results?'))return;D.assessments=D.assessments.filter(a=>a.id!==id);delete D.results[id];save();go('assess',{assess:null})}
+function delAssess(id){if(!confirm('Delete this assessment and its results?'))return;D.assessments=D.assessments.filter(a=>a.id!==id);delete D.results[id];delete D.evidence[id];save();go('assess',{assess:null})}
 function pasteResults(aid){modal(`<h2>Paste results</h2><p class="dim small">One per line: <code>name</code> or <code>ID</code>, then a tab/comma/space, then the result. Names match the local name list.</p><textarea id="m_paste" style="min-height:200px" placeholder="Ava, 17&#10;ST-K3PQ 14"></textarea><div class="row" style="justify-content:flex-end;margin-top:12px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="doPaste('${aid}')">Import</button></div>`)}
 function doPaste(aid){const r=roster();let n=0,miss=[];for(const line of document.getElementById('m_paste').value.split('\n')){const m=line.trim().match(/^(.+?)[\t, ]+([A-Ea-e]|[\d.]+)\s*$/);if(!m)continue;const key=m[1].trim().toLowerCase();
   const s=r.find(x=>x.id.toLowerCase()===key||x.code.toLowerCase()===key||(NAMES[x.id]||'').toLowerCase()===key);if(!s){miss.push(m[1]);continue}setRes(aid,s.id,m[2].toUpperCase());n++}
@@ -473,9 +542,9 @@ function doPaste(aid){const r=roster();let n=0,miss=[];for(const line of documen
 // ---------- Coverage ----------
 function coverage(){const S=stds(),c=cls();const A=area(UI.area)||S.areas[0];const cov=covData(A.id);let g='';
   const tabs=S.areas.map(x=>`<button class="${x.id===A.id?'gold':''}" onclick="go('coverage',{area:'${x.id}'})">${esc(x.short)} <span class="small" style="opacity:.7">${covData(x.id).pct}%</span></button>`).join('');
-  const rows=cov.list.map(d=>{const h=d.group!==g?`<div class="tiny" style="margin:18px 0 4px;color:${A.colour}">${esc(g=d.group)}</div>`:'';return h+`<div class="desc"><code>${d.code}</code><div>${esc(d.label)}${d.hits.length?`<div class="small muted">${d.hits.map(a=>esc(a.title)).join(' · ')}</div>`:''}</div><span class="small ${d.hits.length?'cov1':'cov0'}">${d.hits.length} evidence</span><div class="row" style="gap:6px"><span class="small muted">taught</span><div class="tgl ${d.taught?'on':''}" onclick="toggleTaught('${d.code}')"></div></div></div>`}).join('');
+  const rows=cov.list.map(d=>{const h=d.group!==g?`<div class="tiny" style="margin:18px 0 4px;color:${A.colour}">${esc(g=d.group)}</div>`:'';return h+`<div class="desc"><code>${d.code}</code><div>${esc(d.label)}${d.hits.length?`<div class="small muted">${d.hits.map(a=>`<a class="lnk" onclick="go('assess',{assess:'${a.id}'})">${esc(a.title)}</a>${a.parts?.[d.code]?` (${esc(a.parts[d.code])})`:''}`).join(' &nbsp;·&nbsp; ')}</div>`:''}</div><span class="small ${d.hits.length?'cov1':'cov0'}" style="white-space:nowrap">${d.hits.length?`${d.assessed} assessed${d.hits.length-d.assessed?` · ${d.hits.length-d.assessed} planned`:''}`:'no assessment'}</span><div class="row" style="gap:6px"><span class="small muted">taught</span><div class="tgl ${d.taught?'on':''}" onclick="toggleTaught('${d.code}')"></div></div></div>`}).join('');
   const strandEv=A.rs.map(r=>({label:r.name,pct:Math.min(100,classAssess().filter(a=>a.area===A.id&&a.rs===r.id).length*25),colour:A.colour,sub:classAssess().filter(a=>a.area===A.id&&a.rs===r.id).length+' assessments'}));
-  return`<h1>Coverage</h1><p class="sub">Has every descriptor been taught and evidenced? Toggle <i>taught</i> for things you've covered without a formal assessment.</p><div class="row" style="margin-bottom:18px">${tabs}</div>
+  return`<h1>Coverage</h1><p class="sub">Each standard, the specific assessments that give students a chance to show it, and which part of the assessment. Toggle <i>taught</i> for things covered without a formal assessment.</p><div class="row" style="margin-bottom:18px">${tabs}</div>
   <div class="grid" style="grid-template-columns:1fr 300px"><div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0;color:${A.colour}">${esc(A.name)}</h2><span class="kpi">${cov.pct}%</span></div><div class="bar" style="margin:12px 0 4px"><i style="width:${cov.pct}%;background:${A.colour}"></i></div><div class="small dim">${cov.list.filter(x=>x.done).length} of ${cov.list.length} descriptors taught or evidenced</div>${rows}</div>
   <div><div class="card"><h3>Evidence per reporting strand</h3>${bars(strandEv)}<p class="small muted">Aim for 2–4 pieces of evidence per strand per semester.</p></div><div class="card" style="margin-top:14px"><h3>Achievement standard</h3><p class="small dim" style="margin:0">${esc(A.achievement)}</p></div></div></div>`}
 function toggleTaught(code){const c=cls();D.coverage[c.id]=D.coverage[c.id]||{};if(D.coverage[c.id][code])delete D.coverage[c.id][code];else D.coverage[c.id][code]=today();save();render()}
@@ -495,10 +564,11 @@ function importStandards(){pickFile(txt=>{try{const o=JSON.parse(txt);if(!o.year
 // ---------- Parent report ----------
 function report(){const c=cls(),S=stds(),r=roster();const s=D.students[UI.student]||r[0];if(!s)return`<h1>Parent Report</h1><div class="card muted">Add students first.</div>`;
   const ests=S.areas.map(A=>({A,...areaEst(s.id,A.id)}));const have=ests.filter(e=>e.pct!=null);const overall=have.length?have.reduce((a,e)=>a+e.pct,0)/have.length:null;
-  const picker=`<div class="row noprint" style="justify-content:space-between;margin-bottom:18px"><select onchange="go('report',{student:this.value})">${r.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(nameOf(x.id))}</option>`).join('')}</select><div class="row"><button onclick="CFG.privacy=!CFG.privacy;saveCfg();render()">${CFG.privacy?'Show name':'Hide name'}</button><button class="gold" onclick="window.print()">Print / Save PDF</button></div></div>`;
+  const picker=`<div class="row noprint" style="justify-content:space-between;margin-bottom:18px"><select onchange="go('report',{student:this.value})">${r.map(x=>`<option value="${x.id}" ${x.id===s.id?'selected':''}>${esc(nameOf(x.id))}</option>`).join('')}</select><div class="row"><select onchange="CFG.evRep=this.value;saveCfg();render()">${[['assess','Evidence by assessment'],['standard','Evidence by standard'],['none','No evidence list']].map(([v,l])=>`<option value="${v}" ${(CFG.evRep||'assess')===v?'selected':''}>${l}</option>`).join('')}</select><button onclick="CFG.privacy=!CFG.privacy;saveCfg();render()">${CFG.privacy?'Show name':'Hide name'}</button><button class="gold" onclick="window.print()">Print / Save PDF</button></div></div>`;
   const areaCards=ests.map(e=>`<div class="areacard"><span class="gr lg ${e.grade||'n'}">${e.grade||'–'}</span><div style="flex:1"><div class="tiny" style="color:${e.A.colour}">${esc(e.A.short)}${e.override?' · teacher judgement':''}</div><div class="nm">${esc(e.A.name)}</div><div class="small dim">${e.pct==null?'No evidence yet':Math.round(e.pct)+'% · '+e.n+' piece'+(e.n===1?'':'s')+' of evidence'}</div>
     <div class="strands">${bars(e.strands.map(st=>({label:st.name,pct:st.pct,colour:e.A.colour,grade:letter(st.pct)})))}</div>
     ${e.A.pointers?.[e.grade]?`<div class="small dim" style="margin-top:8px;border-left:2px solid ${e.A.colour};padding-left:8px">${esc(e.A.pointers[e.grade].slice(0,420))}</div>`:''}
+    ${CFG.evRep==='none'?'':`<div class="tiny" style="margin:14px 0 4px">Evidence</div>${CFG.evRep==='standard'?evidenceByStandard(s.id,e.A.id,false):evidenceTable(s.id,e.A.id)}`}
     <div class="row noprint" style="margin-top:8px"><span class="small muted">Override</span><select class="sm" style="padding:4px 26px 4px 8px" onchange="setOverride('${s.id}','${e.A.id}',this.value)"><option value="">auto</option>${['A','B','C','D','E'].map(g=>`<option ${D.overrides[s.id]?.[e.A.id]===g?'selected':''}>${g}</option>`).join('')}</select></div></div></div>`).join('');
   const series=S.areas.map(A=>({colour:A.colour,name:A.name,pts:timeline(s.id,A.id)}));
   const comment=D.comments[s.id]||'';
@@ -519,14 +589,14 @@ function settings(){return`<h1>Settings</h1><p class="sub">Classes, grade cut-of
    <div class="row" style="margin-top:10px"><label class="row small" style="gap:6px"><input type="checkbox" ${CFG.auto?'checked':''} onchange="CFG.auto=this.checked;saveCfg()"> auto-push after changes</label></div>
    <div class="row" style="margin-top:12px"><button class="gold" onclick="CFG.url=document.getElementById('s_url').value.trim();CFG.key=document.getElementById('s_key').value.trim();saveCfg();render();toast('Saved')">Save</button><button onclick="pushNow()">Push to Sheet</button><button onclick="pullNow()">Pull from Sheet</button></div>
    <p class="small muted">Only de-identified data is sent: student IDs, assessments, results, standards, comments. Names never leave this device.</p></div>
-  <div class="card"><h3>Backup &amp; privacy</h3><div class="row"><button onclick="download('marquee-backup.json',JSON.stringify(D))">Export data</button><button onclick="pickFile(t=>{try{D=JSON.parse(t);save();toast('Restored');render()}catch(e){toast('Bad file','err')}})">Import data</button><button onclick="exportNames()">Export names</button><button onclick="importNames()">Import names</button></div>
+  <div class="card"><h3>Backup &amp; privacy</h3><div class="row"><button onclick="download('marquee-backup.json',JSON.stringify(D))">Export data</button><button onclick="pickFile(t=>{try{D=JSON.parse(t);norm();save();toast('Restored');render()}catch(e){toast('Bad file','err')}})">Import data</button><button onclick="exportNames()">Export names</button><button onclick="importNames()">Import names</button></div>
    <div class="row" style="margin-top:12px"><label class="row small" style="gap:6px"><input type="checkbox" ${CFG.privacy?'checked':''} onchange="CFG.privacy=this.checked;saveCfg();render()"> privacy mode (show IDs instead of names)</label></div>
    <div style="margin-top:14px"><button class="danger sm" onclick="if(confirm('Wipe ALL local data and names on this device?')){localStorage.clear();location.reload()}">Reset this device</button></div></div></div>`}
 function classForm(k){return`<h2>${k.id?'Edit':'New'} class</h2><div class="grid g2" style="margin-top:10px"><label class="f"><span>Class name</span><input id="c_name" value="${esc(k.name||'')}" placeholder="e.g. Room 12"></label><label class="f"><span>School year</span><input id="c_year" value="${esc(k.year||new Date().getFullYear())}"></label><label class="f"><span>Year level</span><select id="c_lvl">${[1,2,3,4,5,6].map(y=>`<option value="${y}" ${y==(k.yearLevel||4)?'selected':''}>Year ${y}${D.standards[y]?'':' (no standards loaded)'}</option>`).join('')}</select></label></div>
   <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="closeModal()">Cancel</button><button class="gold" onclick="saveClass('${k.id||''}')">Save</button></div>`}
 function newClass(){modal(classForm({}))}function editClass(id){modal(classForm(D.classes.find(c=>c.id===id)))}
 function saveClass(id){const k=id?D.classes.find(c=>c.id===id):{id:uid('CL')};k.name=document.getElementById('c_name').value.trim()||'Class';k.year=document.getElementById('c_year').value.trim();k.yearLevel=+document.getElementById('c_lvl').value;if(!id){D.classes.push(k);delete D.demoOnly}CFG.classId=k.id;save();saveCfg();closeModal();go('dash')}
-function delClass(id){if(!confirm('Delete this class, its students and assessments?'))return;D.classes=D.classes.filter(c=>c.id!==id);for(const s of Object.values(D.students))if(s.classId===id)delete D.students[s.id];D.assessments=D.assessments.filter(a=>{if(a.classId===id){delete D.results[a.id];return false}return true});if(CFG.classId===id)CFG.classId=D.classes[0]?.id||null;if(!D.classes.some(c=>c.demo))delete D.demoOnly;save();saveCfg();render()}
+function delClass(id){if(!confirm('Delete this class, its students and assessments?'))return;D.classes=D.classes.filter(c=>c.id!==id);for(const s of Object.values(D.students))if(s.classId===id)delete D.students[s.id];D.assessments=D.assessments.filter(a=>{if(a.classId===id){delete D.results[a.id];delete D.evidence[a.id];return false}return true});if(CFG.classId===id)CFG.classId=D.classes[0]?.id||null;if(!D.classes.some(c=>c.demo))delete D.demoOnly;save();saveCfg();render()}
 
 
 // ======================= DEMO DATA =======================
@@ -560,9 +630,11 @@ function seedDemo(){
     ['tec','dtp','Design challenge — bridge build','-09-11','rubric',5,['ACTDEP014','ACTDEP015','ACTDEP016','ACTDEP017']],
     ['mat','mg','Shape, angles & symmetry','-09-18','score',20,['ACMMG087','ACMMG089','ACMMG091']],
     ['eng','sl','Class discussion contribution','-09-25','grade',0,['AC9E4LY02','AC9E4LA01']],
-    ['hea','cc','Community wellbeing poster','-09-25','rubric',4,['ACPPS040','ACPPS042']]
+    ['hea','cc','Community wellbeing poster','-09-25','rubric',4,['ACPPS040','ACPPS042']],
+    ['eng','wc','Persuasive text — Term 4','-11-06','rubric',5,['AC9E4LY06','AC9E4LA06','AC9E4LA08'],true],
+    ['mat','sp','Chance investigation','-11-13','score',20,['ACMSP092','ACMSP093','ACMSP094'],true]
   ];
-  for(const[areaId,rs,title,md,type,max,codes]of plan){const date=c.year+md;const month=+md.slice(1,3);const a={id:uid('AS'),classId:c.id,title,date,area:areaId,rs,type,max,weight:1,codes};D.assessments.push(a);D.results[a.id]={};
+  for(const[areaId,rs,title,md,type,max,codes,planned]of plan){const date=c.year+md;const month=+md.slice(1,3);const a={id:uid('AS'),classId:c.id,title,date,area:areaId,rs,type,max,weight:1,codes};if(DEMO_PARTS[title])a.parts={...DEMO_PARTS[title]};D.assessments.push(a);D.results[a.id]={};D.evidence[a.id]={};if(planned)continue;
     kids.forEach((k,i)=>{let p=k[1]+(k[3][areaId]||0)+k[2]*(month-2)+(rnd()-0.5)*16;p=Math.max(5,Math.min(99,p));let v;
       if(type==='score')v=Math.round(p/100*max);else if(type==='rubric')v=Math.max(1,Math.min(max,Math.round(1+p/100*(max-1))));else v=letter(p);
       if(rnd()<0.04)return; D.results[a.id][ids[i]]=v})}
@@ -577,7 +649,7 @@ async function api(body){const res=await fetch(CFG.url,{method:'POST',headers:{'
 async function pushNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}if(D.demoOnly&&!confirm('This device only holds the demo class. Pushing will replace whatever is in the Sheet with demo data. Continue?'))return;try{UI.syncMsg='Pushing…';renderNav();await api({action:'save',data:D});UI.syncMsg='Synced '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});renderNav()}catch(e){UI.syncMsg='Push failed';renderNav();toast('Push failed: '+e.message,'err')}}
 async function pullNow(){if(!CFG.url||!CFG.key){toast('Add the script URL and key in Settings','err');return}try{UI.syncMsg='Pulling…';renderNav();const j=await api({action:'load'});if(!j.data){toast('Sheet is empty — push first');UI.syncMsg='';renderNav();return}
   if(!D.demoOnly&&j.data.updated<D.updated&&!confirm('The Sheet copy is older than this device. Overwrite local data with it?')){UI.syncMsg='';renderNav();return}
-  D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));if(!D.classes.find(c=>c.id===CFG.classId))CFG.classId=D.classes[0]?.id||null;saveCfg();UI.syncMsg='Pulled '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});toast('Loaded from Sheet');render()}catch(e){UI.syncMsg='Pull failed';renderNav();toast('Pull failed: '+e.message,'err')}}
+  D=j.data;norm();localStorage.setItem(LS_DATA,JSON.stringify(D));if(!D.classes.find(c=>c.id===CFG.classId))CFG.classId=D.classes[0]?.id||null;saveCfg();UI.syncMsg='Pulled '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});toast('Loaded from Sheet');render()}catch(e){UI.syncMsg='Pull failed';renderNav();toast('Pull failed: '+e.message,'err')}}
 
 // ======================= UTIL =======================
 function modal(html){document.getElementById('modal').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`}
@@ -587,7 +659,7 @@ function download(name,txt){const a=document.createElement('a');a.href=URL.creat
 function pickFile(cb){const i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=()=>{const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>cb(r.result);r.readAsText(f)};i.click()}
 if(!D.classes.length&&!localStorage.getItem(LS_DATA)){seedDemo();UI.view='dash';CFG.view='dash'}
 render();
-if(CFG.url&&CFG.key&&navigator.onLine){api({action:'load'}).then(j=>{if(j.data&&(D.demoOnly||j.data.updated>D.updated)){D=j.data;if(!D.standards?.[4])D.standards[4]=STANDARDS_Y4;localStorage.setItem(LS_DATA,JSON.stringify(D));UI.syncMsg='Pulled newer data from Sheet';render()}else{UI.syncMsg='Up to date';renderNav()}}).catch(()=>{UI.syncMsg='Offline';renderNav()})}
+if(CFG.url&&CFG.key&&navigator.onLine){api({action:'load'}).then(j=>{if(j.data&&(D.demoOnly||j.data.updated>D.updated)){D=j.data;norm();localStorage.setItem(LS_DATA,JSON.stringify(D));UI.syncMsg='Pulled newer data from Sheet';render()}else{UI.syncMsg='Up to date';renderNav()}}).catch(()=>{UI.syncMsg='Offline';renderNav()})}
 </script>
 </body>
 </html>
