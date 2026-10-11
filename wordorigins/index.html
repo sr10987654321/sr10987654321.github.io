@@ -1463,21 +1463,21 @@ function slideClass(s){
 }
 
 function stepTag(s){
-  const M = {morpheme: "Review prior learning \u00b7 2 min",
-    sayword: "Phonological form \u00b7 2 min",
-    word: "Phonological form \u00b7 2 min",
-    phonframe: "Phonological form \u00b7 2 min",
-    orthframe: "Orthographic form \u00b7 3 min",
-    definition: "Semantic form \u00b7 5 min",
-    example: "Semantic form \u00b7 5 min",
-    nonexample: "Semantic form \u00b7 5 min",
+  const M = {morpheme: "Review prior learning",
+    sayword: "Phonological form",
+    word: "Phonological form",
+    phonframe: "Phonological form",
+    orthframe: "Orthographic form",
+    definition: "Semantic form",
+    example: "Semantic form",
+    nonexample: "Semantic form",
     syntax: "Syntactic form", syntaxblank: "Syntactic form",
     etymology: "Etymological form",
-    sums: "Morphological form \u00b7 5 min",
-    wordmatrix: "Morphological form \u00b7 5 min",
-    copytable: "Morphological form \u00b7 5 min",
-    matrix: "Morphological form \u00b7 5 min",
-    tileswap: "Morphological form \u00b7 5 min"};
+    sums: "Morphological form",
+    wordmatrix: "Morphological form",
+    copytable: "Morphological form",
+    matrix: "Morphological form",
+    tileswap: "Morphological form"};
   const t = M[s.type];
   return t ? '<div class="steptag">' + t + '</div>' : "";
 }
@@ -2156,10 +2156,9 @@ function intentionSlide(r){
   return {type:"intention", ms: targetMorphemes(r), word: wrow(r).word};
 }
 
-function buildLessonDeck(r, noIntention){
+function buildLessonDeck(r){
   const d = wrow(r);
   const list = [];
-  if(!noIntention) list.push(intentionSlide(r));
   list.push({type:"newword", word: d.word});
   list.push({type:"sayword", word: d.word});
   list.push({type:"word", word: d.word, syllables: d.syllables, sounds: d.sounds});
@@ -2217,9 +2216,7 @@ function revisionSlides(){
 }
 
 function buildFullDeck(r){
-  const rev = revisionSlides();
-  if(!rev.length) return buildLessonDeck(r);
-  return [intentionSlide(r)].concat(rev, buildLessonDeck(r, true));
+  return revisionSlides().concat(buildLessonDeck(r));
 }
 
 function paintSwitch(){
